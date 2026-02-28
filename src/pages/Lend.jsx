@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   HandCoins, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, CheckCircle2, AlertCircle, ChevronDown,
+  PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
 import { useLends } from '../context/LendContext';
 import { useToast } from '../components/ui/Toast';
@@ -197,6 +198,7 @@ export default function Lend() {
   const [personFilter, setPersonFilter]   = useState(null); // highlight from right panel
   const [panelOpen, setPanelOpen]         = useState(true); // collapsible on mobile
   const [chartOpen, setChartOpen]         = useState(true);
+  const [showSidePanel, setShowSidePanel] = useState(true);
 
   // Unique names for autocomplete
   const existingNames = useMemo(() => [...new Set(lends.map(l => l.name))].sort(), [lends]);
@@ -362,6 +364,15 @@ export default function Lend() {
                   </button>
                 )}
               </div>
+              <button
+                onClick={() => setShowSidePanel(o => !o)}
+                title={showSidePanel ? 'Hide panel' : 'Show panel'}
+                className="flex-shrink-0 p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                {showSidePanel
+                  ? <PanelRightClose className="w-4 h-4" />
+                  : <PanelRightOpen  className="w-4 h-4" />}
+              </button>
               {personFilter && (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-lg text-sm border border-primary-200 dark:border-primary-800 flex-shrink-0">
                   <User className="w-3.5 h-3.5" />
@@ -488,6 +499,7 @@ export default function Lend() {
           </div>
 
           {/* ── Right: Person Summary Panel + Bar Chart ── */}
+          {showSidePanel && (
           <div className="w-full lg:w-72 flex-shrink-0 flex flex-col gap-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             <button
@@ -611,7 +623,8 @@ export default function Lend() {
             )}
           </div>
 
-          </div>{/* end right column wrapper */}
+          </div>
+          )}
         </div>
       )}
 

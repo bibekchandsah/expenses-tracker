@@ -165,3 +165,5 @@ The bar chart is now rendered below the Person Summary panel with:
     Dark purple (#7c3aed) — overlaid on top showing the returned portion as a progress fill
     Each bar shows returned / lent amounts as a label on the right
     Clicking any bar also filters the main table by that person (same behavior as the summary panel above)
+Toggle button (PanelRightClose / PanelRightOpen) now sits at the right end of the search bar. Clicking it hides the entire right panel and the main table expands to full width, click again to bring it back.
+
