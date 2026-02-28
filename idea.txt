@@ -25,7 +25,7 @@ Date l amount l name l reason l returned amount l description
 Show in table of individual person given & returned and remaining amount 
 Show bar graph of individual given amount and received amount 
 
-Personal savings 
+Personal savings (done)
 Date l amount  l expend on l description 
 Date l amount l Description
 
@@ -179,4 +179,18 @@ Stats strip: Total Spent, Total Sourced, Net Balance, Savings Rate %
 Main table: Date | Amount | Expend On | Description — sortable columns, search, add/edit/delete
 Right panel (toggleable with PanelRightClose/PanelRightOpen): Independent CRUD table of savings sources — Date | Amount | Description, with hover actions
 Two separate modals for each table
+Colored stat cards (matching Loan page style):
+    Total Spent — plain white/gray
+    Total Sourced — green
+    Net Balance — blue (positive) / red (negative), dynamic
+    Savings Rate — purple
+Table upgraded to Loan-style:
+Responsive 12-col grid layout (not <table>)
+Sticky column headers with SortBtn component (sort arrows show active column)
+Row hover actions fade in on hover (opacity-0 group-hover:opacity-100)
+Footer totals row showing record count + sum of filtered amounts
+Empty state with centered search icon
+Uses shared formatCurrency / formatDate utilities
+Proper validation errors in modals with ConfirmDialog component (same as Loan)
+Toast notifications on add/update/delete
 Live at https://meroexpensetracker.vercel.

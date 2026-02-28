@@ -1,154 +1,103 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import {
-  PiggyBank, Plus, Pencil, Trash2, Search, X, ChevronUp, ChevronDown,
-  PanelRightClose, PanelRightOpen, ArrowDownUp,
+  PiggyBank, Plus, Edit2, Trash2, X, Search,
+  ArrowUp, ArrowDown, ChevronsUpDown,
+  PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
 import { useSavings } from '../context/SavingContext';
+import { useToast } from '../components/ui/Toast';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { formatCurrency, formatDate } from '../utils/formatters';
 
-// ── helpers ───────────────────────────────────────────────────────
-const fmt   = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const today = () => new Date().toISOString().split('T')[0];
+const todayStr = () => new Date().toISOString().split('T')[0];
 
-// ── SortIcon ──────────────────────────────────────────────────────
 function SortIcon({ col, sortCol, sortDir }) {
-  if (sortCol !== col) return <ArrowDownUp size={12} className="inline ml-1 opacity-30" />;
+  if (sortCol !== col) return <ChevronsUpDown className="w-3 h-3 opacity-40" />;
   return sortDir === 'asc'
-    ? <ChevronUp size={12} className="inline ml-1 text-primary-500" />
-    : <ChevronDown size={12} className="inline ml-1 text-primary-500" />;
+    ? <ArrowUp className="w-3 h-3 text-primary-500" />
+    : <ArrowDown className="w-3 h-3 text-primary-500" />;
 }
 
-// ── Modal: Saving (main table) ────────────────────────────────────
-function SavingModal({ open, initial, onClose, onSave }) {
-  const [form, setForm] = useState({ date: today(), amount: '', expendOn: '', description: '' });
+function SavingModal({ isOpen, entry, onClose, onSave }) {
+  const [form, setForm] = useState({ date: todayStr(), amount: '', expendOn: '', description: '' });
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) setForm(initial
-      ? { date: initial.date, amount: initial.amount, expendOn: initial.expendOn || '', description: initial.description || '' }
-      : { date: today(), amount: '', expendOn: '', description: '' });
-  }, [open, initial]);
+    if (!isOpen) return;
+    setForm(entry
+      ? { date: entry.date, amount: String(entry.amount), expendOn: entry.expendOn || '', description: entry.description || '' }
+      : { date: todayStr(), amount: '', expendOn: '', description: '' });
+    setErrors({});
+  }, [isOpen, entry]);
 
-  if (!open) return null;
+  if (!isOpen) return null;
+  const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: '' })); };
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  function validate() {
+    const e = {};
+    if (!form.date) e.date = 'Date is required';
+    if (!form.amount || +form.amount <= 0) e.amount = 'Amount must be positive';
+    return e;
+  }
 
-  const submit = (e) => {
-    e.preventDefault();
-    if (!form.date || !form.amount) return;
-    onSave(form);
-    onClose();
-  };
+  async function handleSubmit(ev) {
+    ev.preventDefault();
+    const e = validate();
+    if (Object.keys(e).length) { setErrors(e); return; }
+    setSaving(true);
+    try { await onSave(form); onClose(); }
+    catch { setErrors({ global: 'Failed to save. Please try again.' }); }
+    finally { setSaving(false); }
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {initial ? 'Edit Saving' : 'Add Saving'}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md animate-slide-in max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <PiggyBank className="w-5 h-5 text-primary-600" />
+            {entry ? 'Edit Saving' : 'New Saving'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-            <X size={20} />
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <X className="w-5 h-5" />
           </button>
         </div>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {errors.global && <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-xl">{errors.global}</p>}
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date *</label>
-              <input type="date" required value={form.date} onChange={e => set('date', e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date <span className="text-red-400">*</span></label>
+              <input type="date" value={form.date} onChange={e => set('date', e.target.value)}
+                className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`} />
+              {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount *</label>
-              <input type="number" required min="0" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
-                placeholder="0.00"
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount <span className="text-red-400">*</span></label>
+              <input type="number" min="0.01" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="0.00"
+                className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.amount ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`} />
+              {errors.amount && <p className="text-xs text-red-500 mt-1">{errors.amount}</p>}
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Expend On</label>
-            <input type="text" value={form.expendOn} onChange={e => set('expendOn', e.target.value)}
-              placeholder="e.g. Emergency fund, Vacation…"
-              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            <input type="text" value={form.expendOn} onChange={e => set('expendOn', e.target.value)} placeholder="e.g. Emergency fund, Vacation..."
+              className="w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-            <textarea rows={2} value={form.description} onChange={e => set('description', e.target.value)}
-              placeholder="Optional notes…"
-              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none" />
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
-              Cancel
-            </button>
-            <button type="submit"
-              className="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium">
-              {initial ? 'Save Changes' : 'Add Saving'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// ── Modal: Source (right panel) ───────────────────────────────────
-function SourceModal({ open, initial, onClose, onSave }) {
-  const [form, setForm] = useState({ date: today(), amount: '', description: '' });
-
-  useEffect(() => {
-    if (open) setForm(initial
-      ? { date: initial.date, amount: initial.amount, description: initial.description || '' }
-      : { date: today(), amount: '', description: '' });
-  }, [open, initial]);
-
-  if (!open) return null;
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const submit = (e) => {
-    e.preventDefault();
-    if (!form.date || !form.amount) return;
-    onSave(form);
-    onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {initial ? 'Edit Source' : 'Add Source'}
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-            <X size={20} />
-          </button>
-        </div>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Date *</label>
-              <input type="date" required value={form.date} onChange={e => set('date', e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-2 py-1.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Amount *</label>
-              <input type="number" required min="0" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
-                placeholder="0.00"
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-2 py-1.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-            <textarea rows={2} value={form.description} onChange={e => set('description', e.target.value)}
-              placeholder="e.g. Salary, Freelance…"
-              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-2 py-1.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none" />
+            <textarea rows={2} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Optional notes..."
+              className="w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors resize-none" />
           </div>
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose}
-              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+              className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               Cancel
             </button>
-            <button type="submit"
-              className="flex-1 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium">
-              {initial ? 'Save' : 'Add Source'}
+            <button type="submit" disabled={saving}
+              className="flex-1 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-60">
+              {saving ? 'Saving...' : entry ? 'Save Changes' : 'Add Saving'}
             </button>
           </div>
         </form>
@@ -157,54 +106,109 @@ function SourceModal({ open, initial, onClose, onSave }) {
   );
 }
 
-// ── Confirm Delete ────────────────────────────────────────────────
-function ConfirmDelete({ open, label, onConfirm, onCancel }) {
-  if (!open) return null;
+function SourceModal({ isOpen, source, onClose, onSave }) {
+  const [form, setForm] = useState({ date: todayStr(), amount: '', description: '' });
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setForm(source
+      ? { date: source.date, amount: String(source.amount), description: source.description || '' }
+      : { date: todayStr(), amount: '', description: '' });
+    setErrors({});
+  }, [isOpen, source]);
+
+  if (!isOpen) return null;
+  const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: '' })); };
+
+  function validate() {
+    const e = {};
+    if (!form.date) e.date = 'Date is required';
+    if (!form.amount || +form.amount <= 0) e.amount = 'Amount must be positive';
+    return e;
+  }
+
+  async function handleSubmit(ev) {
+    ev.preventDefault();
+    const e = validate();
+    if (Object.keys(e).length) { setErrors(e); return; }
+    setSaving(true);
+    try { await onSave(form); onClose(); }
+    catch { setErrors({ global: 'Failed to save.' }); }
+    finally { setSaving(false); }
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6 text-center">
-        <Trash2 size={40} className="mx-auto mb-3 text-red-500" />
-        <p className="text-gray-800 dark:text-gray-200 font-medium mb-1">Delete record?</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">{label}</p>
-        <div className="flex gap-3">
-          <button onClick={onCancel}
-            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
-            Cancel
-          </button>
-          <button onClick={onConfirm}
-            className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium">
-            Delete
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm animate-slide-in">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            {source ? 'Edit Source' : 'New Source'}
+          </h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <X className="w-5 h-5" />
           </button>
         </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {errors.global && <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-xl">{errors.global}</p>}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date <span className="text-red-400">*</span></label>
+              <input type="date" value={form.date} onChange={e => set('date', e.target.value)}
+                className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`} />
+              {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount <span className="text-red-400">*</span></label>
+              <input type="number" min="0.01" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="0.00"
+                className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.amount ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`} />
+              {errors.amount && <p className="text-xs text-red-500 mt-1">{errors.amount}</p>}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+            <textarea rows={2} value={form.description} onChange={e => set('description', e.target.value)} placeholder="e.g. Salary, Freelance..."
+              className="w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors resize-none" />
+          </div>
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving}
+              className="flex-1 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-60">
+              {saving ? 'Saving...' : source ? 'Save' : 'Add Source'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────
 export default function Saving() {
   const { savings, sources, loading, addSaving, updateSaving, deleteSaving, addSource, updateSource, deleteSource } = useSavings();
+  const { addToast } = useToast();
 
-  // ── panel toggle
   const [showSidePanel, setShowSidePanel] = useState(true);
+  const [savingModal, setSavingModal]     = useState({ open: false, item: null });
+  const [deleteTarget, setDeleteTarget]   = useState(null);
+  const [sourceModal, setSourceModal]     = useState({ open: false, item: null });
+  const [deleteSourceTarget, setDeleteSourceTarget] = useState(null);
+  const [sortCol, setSortCol] = useState(null);
+  const [sortDir, setSortDir] = useState('desc');
+  const [search,  setSearch]  = useState('');
 
-  // ── saving modal
-  const [savingModal, setSavingModal] = useState({ open: false, item: null });
-  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null, label: '' });
-
-  // ── source modal
-  const [sourceModal, setSourceModal] = useState({ open: false, item: null });
-  const [deleteSourceConfirm, setDeleteSourceConfirm] = useState({ open: false, id: null, label: '' });
-
-  // ── main table sort / search
-  const [sortCol, setSortCol]   = useState(null);
-  const [sortDir, setSortDir]   = useState('desc');
-  const [search,  setSearch]    = useState('');
-
-  const toggleSort = (col) => {
-    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortCol(col); setSortDir('asc'); }
-  };
+  function handleSort(col) {
+    if (sortCol === col) {
+      if (sortDir === 'desc') setSortDir('asc');
+      else { setSortCol(null); setSortDir('desc'); }
+    } else {
+      setSortCol(col);
+      setSortDir('desc');
+    }
+  }
 
   const filteredSavings = useMemo(() => {
     let rows = [...savings];
@@ -227,252 +231,282 @@ export default function Saving() {
     return rows;
   }, [savings, sortCol, sortDir, search]);
 
-  // ── stats
-  const totalSaved   = useMemo(() => savings.reduce((s, r) => s + (+r.amount || 0), 0), [savings]);
-  const totalSources = useMemo(() => sources.reduce((s, r) => s + (+r.amount || 0), 0), [sources]);
-  const netSaving    = totalSources - totalSaved;
+  const totalSpent   = useMemo(() => savings.reduce((s, r) => s + (+r.amount || 0), 0), [savings]);
+  const totalSourced = useMemo(() => sources.reduce((s, r) => s + (+r.amount || 0), 0), [sources]);
+  const netBalance   = totalSourced - totalSpent;
 
-  // ── handlers: savings
-  const openAdd  = () => setSavingModal({ open: true, item: null });
-  const openEdit = (item) => setSavingModal({ open: true, item });
-  const saveEntry = (form) => {
-    if (savingModal.item) updateSaving(savingModal.item.id, form);
-    else addSaving(form);
-  };
-  const askDelete = (r) => setDeleteConfirm({ open: true, id: r.id, label: `Amount: ${fmt(r.amount)} on ${r.date}` });
-  const confirmDelete = () => { deleteSaving(deleteConfirm.id); setDeleteConfirm({ open: false, id: null, label: '' }); };
+  async function handleSave(form) {
+    if (savingModal.item) { await updateSaving(savingModal.item.id, form); addToast('Record updated!'); }
+    else                  { await addSaving(form);                         addToast('Record added!');   }
+  }
+  async function handleDelete() {
+    await deleteSaving(deleteTarget.id);
+    setDeleteTarget(null);
+    addToast('Record deleted');
+  }
+  async function handleSaveSource(form) {
+    if (sourceModal.item) { await updateSource(sourceModal.item.id, form); addToast('Source updated!'); }
+    else                  { await addSource(form);                         addToast('Source added!');   }
+  }
+  async function handleDeleteSource() {
+    await deleteSource(deleteSourceTarget.id);
+    setDeleteSourceTarget(null);
+    addToast('Source deleted');
+  }
 
-  // ── handlers: sources
-  const openAddSource  = () => setSourceModal({ open: true, item: null });
-  const openEditSource = (item) => setSourceModal({ open: true, item });
-  const saveSource = (form) => {
-    if (sourceModal.item) updateSource(sourceModal.item.id, form);
-    else addSource(form);
-  };
-  const askDeleteSource = (r) => setDeleteSourceConfirm({ open: true, id: r.id, label: `Amount: ${fmt(r.amount)} on ${r.date}` });
-  const confirmDeleteSource = () => { deleteSource(deleteSourceConfirm.id); setDeleteSourceConfirm({ open: false, id: null, label: '' }); };
+  if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
-    </div>
+  const SortBtn = ({ col, label, align = 'left' }) => (
+    <button
+      onClick={() => handleSort(col)}
+      className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''} w-full hover:text-gray-900 dark:hover:text-white transition-colors ${sortCol === col ? 'text-primary-600 dark:text-primary-400' : ''}`}
+    >
+      {align === 'right' && <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />}
+      <span>{label}</span>
+      {align !== 'right' && <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />}
+    </button>
   );
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="space-y-5 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
-            <PiggyBank size={22} className="text-primary-600 dark:text-primary-400" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Personal Saving</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Track savings and their sources</p>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <PiggyBank className="w-6 h-6 text-primary-600" /> Personal Saving
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track savings and their sources</p>
         </div>
+        <button
+          onClick={() => setSavingModal({ open: true, item: null })}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors self-start sm:self-auto"
+        >
+          <Plus className="w-4 h-4" /> New Saving
+        </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Spent</p>
-          <p className="text-lg font-bold text-gray-900 dark:text-white">{fmt(totalSaved)}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Spent</p>
+          <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(totalSpent)}</p>
           <p className="text-xs text-gray-400 mt-0.5">{savings.length} record{savings.length !== 1 ? 's' : ''}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Sourced</p>
-          <p className="text-lg font-bold text-gray-900 dark:text-white">{fmt(totalSources)}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{sources.length} source{sources.length !== 1 ? 's' : ''}</p>
+        <div className="bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-200 dark:border-green-800 p-4">
+          <p className="text-xs text-green-700 dark:text-green-400 font-medium">Total Sourced</p>
+          <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">{formatCurrency(totalSourced)}</p>
+          <p className="text-xs text-green-600/60 dark:text-green-600 mt-0.5">{sources.length} source{sources.length !== 1 ? 's' : ''}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Net Balance</p>
-          <p className={`text-lg font-bold ${netSaving >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
-            {fmt(netSaving)}
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">Sources − Spent</p>
+        <div className={`rounded-2xl border p-4 ${netBalance >= 0 ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800' : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'}`}>
+          <p className={`text-xs font-medium ${netBalance >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-700 dark:text-red-400'}`}>Net Balance</p>
+          <p className={`text-lg font-bold mt-1 ${netBalance >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-700 dark:text-red-400'}`}>{formatCurrency(netBalance)}</p>
+          <p className={`text-xs mt-0.5 ${netBalance >= 0 ? 'text-blue-600/60 dark:text-blue-600' : 'text-red-600/60 dark:text-red-600'}`}>Sources minus Spent</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Savings Rate</p>
-          <p className="text-lg font-bold text-primary-600 dark:text-primary-400">
-            {totalSources > 0 ? `${Math.round((netSaving / totalSources) * 100)}%` : '—'}
+        <div className="bg-purple-50 dark:bg-purple-900/10 rounded-2xl border border-purple-200 dark:border-purple-800 p-4">
+          <p className="text-xs text-purple-700 dark:text-purple-400 font-medium">Savings Rate</p>
+          <p className="text-lg font-bold text-purple-700 dark:text-purple-400 mt-1">
+            {totalSourced > 0 ? `${Math.round((netBalance / totalSourced) * 100)}%` : '-'}
           </p>
-          <p className="text-xs text-gray-400 mt-0.5">Net / Sourced</p>
+          <p className="text-xs text-purple-600/60 dark:text-purple-600 mt-0.5">Net / Sourced</p>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex gap-4 items-start">
-        {/* Main Table */}
-        <div className="flex-1 min-w-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          {/* Toolbar */}
-          <div className="flex items-center gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="relative flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text" value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Search savings…"
-                className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  <X size={13} />
-                </button>
-              )}
-            </div>
-            <button onClick={openAdd}
-              className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium whitespace-nowrap">
-              <Plus size={15} /> Add
-            </button>
-            <button
-              onClick={() => setShowSidePanel(o => !o)}
-              title={showSidePanel ? 'Hide sources panel' : 'Show sources panel'}
-              className="p-2 rounded-lg text-gray-500 hover:text-primary-600 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              {showSidePanel ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
-            </button>
+      {savings.length === 0 && sources.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 text-center px-4">
+          <div className="w-16 h-16 bg-primary-50 dark:bg-primary-900/20 rounded-2xl flex items-center justify-center mb-4">
+            <PiggyBank className="w-8 h-8 text-primary-600" />
           </div>
-
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-gray-700/50 text-left">
-                  {[
-                    { col: 'date',      label: 'Date' },
-                    { col: 'amount',   label: 'Amount' },
-                    { col: 'expendOn', label: 'Expend On' },
-                    { col: 'description', label: 'Description' },
-                  ].map(({ col, label }) => (
-                    <th key={col}
-                      onClick={() => toggleSort(col)}
-                      className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700">
-                      {label}<SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />
-                    </th>
-                  ))}
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {filteredSavings.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-gray-400 dark:text-gray-500">
-                      {search ? 'No results found.' : 'No savings recorded yet. Click Add to start.'}
-                    </td>
-                  </tr>
-                ) : filteredSavings.map(row => (
-                  <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                    <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">{row.date}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-white whitespace-nowrap">{fmt(row.amount)}</td>
-                    <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
-                      {row.expendOn
-                        ? <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs">{row.expendOn}</span>
-                        : <span className="text-gray-400 text-xs">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400 max-w-[180px] truncate" title={row.description}>
-                      {row.description || <span className="text-gray-400 text-xs">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <button onClick={() => openEdit(row)} className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 mr-1">
-                        <Pencil size={14} />
-                      </button>
-                      <button onClick={() => askDelete(row)} className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {filteredSavings.length > 0 && (
-            <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-400">
-              {filteredSavings.length} record{filteredSavings.length !== 1 ? 's' : ''}
-              {search && ` (filtered from ${savings.length})`}
-            </div>
-          )}
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No savings yet</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-xs">Start tracking your savings and where your money comes from.</p>
+          <button
+            onClick={() => setSavingModal({ open: true, item: null })}
+            className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Add First Record
+          </button>
         </div>
+      ) : (
+        <div className="flex flex-col lg:flex-row gap-4 items-start">
 
-        {/* Right Panel: Saving Sources */}
-        {showSidePanel && (
-          <div className="w-72 shrink-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-            {/* Panel Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Saved Money From</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Sources of savings</p>
+          {/* Main Table */}
+          <div className="flex-1 min-w-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+
+            {/* Search toolbar */}
+            <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input
+                  type="text" value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Search date (YYYY-MM-DD), amount, expend on, description..."
+                  className="w-full pl-9 pr-9 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                />
+                {search && (
+                  <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
-              <button onClick={openAddSource}
-                className="p-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg">
-                <Plus size={14} />
+              <button
+                onClick={() => setSavingModal({ open: true, item: null })}
+                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Add
+              </button>
+              <button
+                onClick={() => setShowSidePanel(o => !o)}
+                title={showSidePanel ? 'Hide sources panel' : 'Show sources panel'}
+                className="flex-shrink-0 p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                {showSidePanel ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
               </button>
             </div>
 
-            {/* Panel summary strip */}
-            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/40 border-b border-gray-100 dark:border-gray-700 flex justify-between text-xs">
-              <span className="text-gray-500 dark:text-gray-400">{sources.length} sources</span>
-              <span className="font-semibold text-green-600 dark:text-green-400">{fmt(totalSources)}</span>
+            {/* Table header */}
+            <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-2.5 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              <div className="col-span-2"><SortBtn col="date"     label="Date"      /></div>
+              <div className="col-span-2 flex justify-end"><SortBtn col="amount"   label="Amount"    align="right" /></div>
+              <div className="col-span-3"><SortBtn col="expendOn" label="Expend On" /></div>
+              <div className="col-span-4 pl-1">Description</div>
+              <div className="col-span-1 text-right">Act.</div>
             </div>
 
-            {/* Sources list */}
-            <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-[520px] overflow-y-auto">
-              {sources.length === 0 ? (
-                <p className="text-center text-gray-400 dark:text-gray-500 text-sm py-10">
-                  No sources yet.<br />
-                  <button onClick={openAddSource} className="mt-2 text-primary-600 hover:underline text-xs">Add your first source</button>
-                </p>
-              ) : sources.map(src => (
-                <div key={src.id} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 group">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">{fmt(src.amount)}</span>
-                        <span className="text-xs text-gray-400">{src.date}</span>
-                      </div>
-                      {src.description && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate" title={src.description}>{src.description}</p>
-                      )}
+            {/* Rows */}
+            {filteredSavings.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-14 text-center px-4">
+                <Search className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">No records found</p>
+                {search && <button onClick={() => setSearch('')} className="mt-2 text-xs text-primary-600 hover:underline">Clear filter</button>}
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                {filteredSavings.map(row => (
+                  <div key={row.id}
+                    className="grid grid-cols-1 lg:grid-cols-12 gap-1 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors items-center group">
+                    <div className="lg:col-span-2 text-xs text-gray-500 dark:text-gray-400">{formatDate(row.date)}</div>
+                    <div className="lg:col-span-2 text-right">
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount)}</span>
                     </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <button onClick={() => openEditSource(src)} className="p-1 text-gray-400 hover:text-primary-600 rounded">
-                        <Pencil size={12} />
-                      </button>
-                      <button onClick={() => askDeleteSource(src)} className="p-1 text-gray-400 hover:text-red-500 rounded">
-                        <Trash2 size={12} />
-                      </button>
+                    <div className="lg:col-span-3">
+                      {row.expendOn
+                        ? <span className="inline-block px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs truncate max-w-full" title={row.expendOn}>{row.expendOn}</span>
+                        : <span className="text-gray-300 dark:text-gray-600 text-sm">-</span>
+                      }
+                    </div>
+                    <div className="lg:col-span-4 pl-0 lg:pl-1">
+                      {row.description
+                        ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={row.description}>{row.description}</span>
+                        : <span className="text-gray-300 dark:text-gray-600 text-sm">-</span>
+                      }
+                    </div>
+                    <div className="lg:col-span-1 flex items-center gap-1 justify-start lg:justify-end opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => setSavingModal({ open: true, item: row })}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                        title="Edit"
+                      ><Edit2 className="w-3.5 h-3.5" /></button>
+                      <button
+                        onClick={() => setDeleteTarget(row)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        title="Delete"
+                      ><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+                ))}
+              </div>
+            )}
 
-      {/* Modals */}
+            {/* Footer totals */}
+            {filteredSavings.length > 0 && (
+              <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-3 bg-gray-50 dark:bg-gray-700/50 border-t-2 border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">
+                <div className="col-span-2">{filteredSavings.length} record{filteredSavings.length !== 1 ? 's' : ''}{search && ` (of ${savings.length})`}</div>
+                <div className="col-span-2 text-right text-gray-900 dark:text-white">
+                  {formatCurrency(filteredSavings.reduce((s, r) => s + (+r.amount || 0), 0))}
+                </div>
+                <div className="col-span-8" />
+              </div>
+            )}
+          </div>
+
+          {/* Right Panel: Saving Sources */}
+          {showSidePanel && (
+            <div className="w-full lg:w-72 flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Saved Money From</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Sources of savings</p>
+                </div>
+                <button
+                  onClick={() => setSourceModal({ open: true, item: null })}
+                  className="p-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+                  title="Add source"
+                ><Plus className="w-3.5 h-3.5" /></button>
+              </div>
+              <div className="px-4 py-2 bg-green-50 dark:bg-green-900/10 border-b border-green-100 dark:border-green-900/30 flex justify-between text-xs">
+                <span className="text-green-700 dark:text-green-400 font-medium">{sources.length} source{sources.length !== 1 ? 's' : ''}</span>
+                <span className="font-bold text-green-700 dark:text-green-400">{formatCurrency(totalSourced)}</span>
+              </div>
+              <div className="divide-y divide-gray-100 dark:divide-gray-700/50 max-h-[520px] overflow-y-auto">
+                {sources.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center px-4">
+                    <p className="text-sm text-gray-400 dark:text-gray-500">No sources yet.</p>
+                    <button onClick={() => setSourceModal({ open: true, item: null })} className="mt-2 text-xs text-primary-600 hover:underline">Add your first source</button>
+                  </div>
+                ) : sources.map(src => (
+                  <div key={src.id} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 group transition-colors">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(src.amount)}</span>
+                          <span className="text-xs text-gray-400">{formatDate(src.date)}</span>
+                        </div>
+                        {src.description && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate" title={src.description}>{src.description}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                        <button onClick={() => setSourceModal({ open: true, item: src })}
+                          className="p-1 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors">
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                        <button onClick={() => setDeleteSourceTarget(src)}
+                          className="p-1 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <SavingModal
-        open={savingModal.open}
-        initial={savingModal.item}
+        isOpen={savingModal.open}
+        entry={savingModal.item}
         onClose={() => setSavingModal({ open: false, item: null })}
-        onSave={saveEntry}
+        onSave={handleSave}
       />
       <SourceModal
-        open={sourceModal.open}
-        initial={sourceModal.item}
+        isOpen={sourceModal.open}
+        source={sourceModal.item}
         onClose={() => setSourceModal({ open: false, item: null })}
-        onSave={saveSource}
+        onSave={handleSaveSource}
       />
-      <ConfirmDelete
-        open={deleteConfirm.open}
-        label={deleteConfirm.label}
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteConfirm({ open: false, id: null, label: '' })}
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        title="Delete saving record?"
+        message={deleteTarget ? `Amount: ${formatCurrency(deleteTarget.amount)} on ${formatDate(deleteTarget.date)}` : ''}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
       />
-      <ConfirmDelete
-        open={deleteSourceConfirm.open}
-        label={deleteSourceConfirm.label}
-        onConfirm={confirmDeleteSource}
-        onCancel={() => setDeleteSourceConfirm({ open: false, id: null, label: '' })}
+      <ConfirmDialog
+        isOpen={!!deleteSourceTarget}
+        title="Delete source record?"
+        message={deleteSourceTarget ? `Amount: ${formatCurrency(deleteSourceTarget.amount)} on ${formatDate(deleteSourceTarget.date)}` : ''}
+        onConfirm={handleDeleteSource}
+        onCancel={() => setDeleteSourceTarget(null)}
       />
     </div>
   );
