@@ -20,21 +20,21 @@ Bar graph and pie chart of expense category
 Filter record by month, year, amount expend on category, start date and end date, 
 Show bar graph of monthly expend
 
-Given amount 
-Date l name l amount l reason l returned amount l description 
+Given amount (done)
+Date l amount l name l reason l returned amount l description 
 Show in table of individual person given & returned and remaining amount 
 Show bar graph of individual given amount and received amount 
 
 Personal savings 
-Date l expend on l reason l description l amount 
+Date l amount  l expend on l reason l description 
 Date l amount l from where I fot
 
-Loan
-Date l description l amount l person from whom l returned or not l remark
+Loan 
+Date l amount l description l person from whom l returned or not l remark
 In tabular view name l amount l remaining 
 
 For me
-Date l name l expend on l amount 
+Date l amount l name l expend on 
 In tabular view name l loan amount l given amount l remaining amount to receive L remaining amount to give L whatsapp message 
 
 Bank (done)
@@ -148,3 +148,20 @@ Click a different column → sorts that column ascending and resets the previous
 Sorting applies within each month group (so months stay grouped in All Months / search view, but entries inside each month are reordered)
 The Actions column is non-sortable (no button)
 
+
+Lend feature is now fully implemented with the following features:
+4 stat cards (Total Lent, Returned, To Receive, People count)
+Sortable main table: Date | Name | Lent | Reason | Returned | Due | Description | Actions
+cycle works correctly for every column:
+    1st click → descending (↓)
+    2nd click → ascending (↑)
+    3rd click → resets to default (⇅, natural Firestore order)
+Click any name in the table to filter by that person
+Person Summary panel (right side, collapsible on mobile): grouped by name, sorted by most owed first, green checkmark when settled / orange alert when pending, click to filter table
+Add/Edit modal with name autocomplete (suggests previous names)
+Confirm delete dialog
+The bar chart is now rendered below the Person Summary panel with:
+    Light purple (#c4b5fd) — represents the total lent amount, scaled so the largest lender fills the full width
+    Dark purple (#7c3aed) — overlaid on top showing the returned portion as a progress fill
+    Each bar shows returned / lent amounts as a label on the right
+    Clicking any bar also filters the main table by that person (same behavior as the summary panel above)

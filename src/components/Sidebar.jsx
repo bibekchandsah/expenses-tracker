@@ -8,6 +8,7 @@ import {
   TrendingUp,
   X,
   Landmark,
+  HandCoins,
 } from 'lucide-react';
 
 const navItems = [
@@ -17,6 +18,7 @@ const navItems = [
   { to: '/budget', label: 'Budget', icon: Target },
   { to: '/profile', label: 'Profile', icon: User },
   { to: '/bank', label: 'Bank', icon: Landmark },
+  { to: '/lend', label: 'Lend', icon: HandCoins },
 ];
 
 export default function Sidebar({ open, onClose }) {

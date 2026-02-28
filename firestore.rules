@@ -36,6 +36,11 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
+      // Lends
+      match /lends/{lendId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
       // Banks
       match /banks/{bankId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
