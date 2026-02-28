@@ -24,6 +24,23 @@
         { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
     }
+    ,
+    {
+      "collectionGroup": "savings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "date", "order": "DESCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "savingSources",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "date", "order": "DESCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
   ],
   "fieldOverrides": []
 }

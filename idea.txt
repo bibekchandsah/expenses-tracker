@@ -26,8 +26,8 @@ Show in table of individual person given & returned and remaining amount
 Show bar graph of individual given amount and received amount 
 
 Personal savings 
-Date l amount  l expend on l reason l description 
-Date l amount l from where I got
+Date l amount  l expend on l description 
+Date l amount l Description
 
 Loan (done)
 Date l amount l name | description l returned amount l remark
@@ -167,9 +167,16 @@ The bar chart is now rendered below the Person Summary panel with:
     Clicking any bar also filters the main table by that person (same behavior as the summary panel above)
 Toggle button (PanelRightClose / PanelRightOpen) now sits at the right end of the search bar. Clicking it hides the entire right panel and the main table expands to full width, click again to bring it back.
 
-loan feature is now fully implemented with the following features:
+Loan feature is now fully implemented with the following features:
 Stats: Total Borrowed / Paid Back / To Pay / Lenders count
 Table: Date | Name | Borrowed | Reason | Paid | Due | Description | Actions
 Lender Summary panel (right): grouped by lender name, showing total borrowed, due, settled status
 Borrowed vs Paid bar chart: same light/dark purple bars
 All features: sort, search, person filter, side panel toggle, autocomplete, confirm delete
+
+Features on the Saving page:
+Stats strip: Total Spent, Total Sourced, Net Balance, Savings Rate %
+Main table: Date | Amount | Expend On | Description — sortable columns, search, add/edit/delete
+Right panel (toggleable with PanelRightClose/PanelRightOpen): Independent CRUD table of savings sources — Date | Amount | Description, with hover actions
+Two separate modals for each table
+Live at https://meroexpensetracker.vercel.

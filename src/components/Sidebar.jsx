@@ -10,6 +10,7 @@ import {
   Landmark,
   HandCoins,
   Wallet,
+  PiggyBank,
 } from 'lucide-react';
 
 const navItems = [
@@ -21,6 +22,7 @@ const navItems = [
   { to: '/bank', label: 'Bank', icon: Landmark },
   { to: '/lend', label: 'Lend', icon: HandCoins },
   { to: '/loan', label: 'Loan', icon: Wallet },
+  { to: '/saving', label: 'Saving', icon: PiggyBank },
 ];
 
 export default function Sidebar({ open, onClose }) {
