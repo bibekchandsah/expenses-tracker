@@ -27,10 +27,10 @@ Show bar graph of individual given amount and received amount
 
 Personal savings 
 Date l amount  l expend on l reason l description 
-Date l amount l from where I fot
+Date l amount l from where I got
 
-Loan 
-Date l amount l description l person from whom l returned or not l remark
+Loan (done)
+Date l amount l name | description l returned amount l remark
 In tabular view name l amount l remaining 
 
 For me
@@ -167,3 +167,9 @@ The bar chart is now rendered below the Person Summary panel with:
     Clicking any bar also filters the main table by that person (same behavior as the summary panel above)
 Toggle button (PanelRightClose / PanelRightOpen) now sits at the right end of the search bar. Clicking it hides the entire right panel and the main table expands to full width, click again to bring it back.
 
+loan feature is now fully implemented with the following features:
+Stats: Total Borrowed / Paid Back / To Pay / Lenders count
+Table: Date | Name | Borrowed | Reason | Paid | Due | Description | Actions
+Lender Summary panel (right): grouped by lender name, showing total borrowed, due, settled status
+Borrowed vs Paid bar chart: same light/dark purple bars
+All features: sort, search, person filter, side panel toggle, autocomplete, confirm delete

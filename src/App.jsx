@@ -7,6 +7,7 @@ import { CategoryProvider } from './context/CategoryContext';
 import { BudgetProvider } from './context/BudgetContext';
 import { BankProvider } from './context/BankContext';
 import { LendProvider } from './context/LendContext';
+import { LoanProvider } from './context/LoanContext';
 import { ToastProvider } from './components/ui/Toast';
 import PrivateRoute from './routes/PrivateRoute';
 import Layout from './components/Layout';
@@ -21,6 +22,7 @@ const Budget = lazy(() => import('./pages/Budget'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Bank = lazy(() => import('./pages/Bank'));
 const Lend = lazy(() => import('./pages/Lend'));
+const Loan = lazy(() => import('./pages/Loan'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-64">
@@ -39,6 +41,7 @@ export default function App() {
                 <BudgetProvider>
                   <BankProvider>
                   <LendProvider>
+                  <LoanProvider>
                   <Suspense fallback={<PageLoader />}>
                     <Routes>
                       <Route path="/login" element={<Login />} />
@@ -52,11 +55,13 @@ export default function App() {
                           <Route path="/profile" element={<Profile />} />
                           <Route path="/bank" element={<Bank />} />
                           <Route path="/lend" element={<Lend />} />
+                          <Route path="/loan" element={<Loan />} />
                         </Route>
                       </Route>
                       <Route path="*" element={<Navigate to="/dashboard" replace />} />
                     </Routes>
                   </Suspense>
+                  </LoanProvider>
                   </LendProvider>
                   </BankProvider>
                 </BudgetProvider>
