@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   Building2, Plus, Edit2, Trash2, X, ChevronDown,
   ArrowDownCircle, ArrowUpCircle, Wallet, Download,
-  ChevronsUpDown, Check, Settings,
+  ChevronsUpDown, Check, Settings, Search, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import { useBanks } from '../context/BankContext';
 import { useToast } from '../components/ui/Toast';
@@ -265,10 +265,30 @@ export default function Bank() {
 
   const [monthPage, setMonthPage] = useState(0); // 0 = newest month
   const [showAll, setShowAll] = useState(false);
+  const [search, setSearch] = useState('');
+  const [sortCol, setSortCol] = useState(null);   // null | 'date'|'description'|'deposit'|'withdraw'|'balance'
+  const [sortDir, setSortDir] = useState('asc');  // 'asc' | 'desc'
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Reset to newest month when bank changes
-  useEffect(() => { setMonthPage(0); setShowAll(false); }, [selectedBankId]);
+  // Reset to newest month + clear search when bank changes
+  useEffect(() => { setMonthPage(0); setShowAll(false); setSearch(''); setSortCol(null); }, [selectedBankId]);
+
+  function handleSort(col) {
+    if (sortCol === col) {
+      if (sortDir === 'asc') setSortDir('desc');
+      else { setSortCol(null); setSortDir('asc'); } // third click resets
+    } else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
+  }
+
+  function SortIcon({ col }) {
+    if (sortCol !== col) return <ChevronsUpDown className="w-3 h-3 opacity-40" />;
+    return sortDir === 'asc'
+      ? <ArrowUp className="w-3 h-3 text-primary-500" />
+      : <ArrowDown className="w-3 h-3 text-primary-500" />;
+  }
 
   // Group entries by month (newest month first).
   // Within each month entries are reversed for display (newest entry at top).
@@ -293,6 +313,41 @@ export default function Bank() {
   }, [entries]);
 
   const currentMonth = months[monthPage] ?? null;
+
+  // Search: filter all entries, then re-group into months
+  const query = search.trim().toLowerCase();
+  const searchActive = query.length > 0;
+
+  // Apply per-month entry sorting
+  function sortEntries(arr) {
+    if (!sortCol) return arr;
+    return [...arr].sort((a, b) => {
+      let av, bv;
+      if (sortCol === 'date')        { av = a.date; bv = b.date; }
+      else if (sortCol === 'description') { av = a.description.toLowerCase(); bv = b.description.toLowerCase(); }
+      else if (sortCol === 'deposit')  { av = +a.deposit  || 0; bv = +b.deposit  || 0; }
+      else if (sortCol === 'withdraw') { av = +a.withdraw || 0; bv = +b.withdraw || 0; }
+      else if (sortCol === 'balance')  { av = a.closingBalance; bv = b.closingBalance; }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  const filteredMonths = useMemo(() => {
+    if (!searchActive) return months;
+    return months
+      .map(month => ({
+        ...month,
+        entries: month.entries.filter(e =>
+          e.description.toLowerCase().includes(query) ||
+          e.date.includes(query) ||
+          String(e.deposit  || '').includes(query) ||
+          String(e.withdraw || '').includes(query)
+        ),
+      }))
+      .filter(month => month.entries.length > 0);
+  }, [months, query, searchActive]);
 
   // Bank stats
   const stats = useMemo(() => {
@@ -482,13 +537,44 @@ export default function Bank() {
 
           {/* ── Statement Table ── */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {/* Search bar */}
+            <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => { setSearch(e.target.value); setMonthPage(0); }}
+                  placeholder="Search by description, date (YYYY-MM-DD) or amount..."
+                  className="w-full pl-9 pr-9 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                />
+                {search && (
+                  <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
             {/* Table Head */}
-            <div className="hidden sm:grid grid-cols-12 gap-2 px-5 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              <div className="col-span-2">Date</div>
-              <div className="col-span-4">Description</div>
-              <div className="col-span-2 text-right">Deposit</div>
-              <div className="col-span-2 text-right">Withdraw</div>
-              <div className="col-span-1 text-right">Balance</div>
+            <div className="hidden sm:grid grid-cols-12 gap-2 px-5 py-2.5 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              {[{col:'date',label:'Date',span:'col-span-2',align:'text-left'},
+                {col:'description',label:'Description',span:'col-span-4',align:'text-left'},
+                {col:'deposit',label:'Deposit',span:'col-span-2',align:'text-right'},
+                {col:'withdraw',label:'Withdraw',span:'col-span-2',align:'text-right'},
+                {col:'balance',label:'Balance',span:'col-span-1',align:'text-right'},
+              ].map(({col,label,span,align}) => (
+                <button
+                  key={col}
+                  onClick={() => handleSort(col)}
+                  className={`${span} flex items-center gap-1 ${align === 'text-right' ? 'justify-end' : ''} hover:text-gray-900 dark:hover:text-white transition-colors ${
+                    sortCol === col ? 'text-primary-600 dark:text-primary-400' : ''
+                  }`}
+                >
+                  {align === 'text-right' && <SortIcon col={col} />}
+                  {label}
+                  {align !== 'text-right' && <SortIcon col={col} />}
+                </button>
+              ))}
               <div className="col-span-1 text-right">Actions</div>
             </div>
 
@@ -509,12 +595,21 @@ export default function Bank() {
                   <Plus className="w-4 h-4" /> Add First Entry
                 </button>
               </div>
+            ) : filteredMonths.length === 0 && searchActive ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+                <Search className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3" />
+                <p className="text-gray-500 dark:text-gray-400 text-sm">No entries match <strong>&ldquo;{search}&rdquo;</strong></p>
+                <button onClick={() => setSearch('')} className="mt-3 text-xs text-primary-600 hover:underline">Clear search</button>
+              </div>
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
-                {(showAll ? months : (currentMonth ? [currentMonth] : [])).map((month) => (
+                {(searchActive ? filteredMonths : (showAll ? months : (currentMonth ? [currentMonth] : []))).map((month) => (
+                  // apply sort inside each month group
+                  { ...month, entries: sortEntries(month.entries) }
+                )).map((month) => (
                   <div key={month.key}>
-                    {/* Month section header (only in all-months view) */}
-                    {showAll && (
+                    {/* Month section header (only in all-months / search view) */}
+                    {(showAll || searchActive) && (
                       <div className="grid grid-cols-12 gap-2 px-5 py-2 bg-primary-50 dark:bg-primary-900/20 border-b border-primary-100 dark:border-primary-800">
                         <div className="col-span-12 text-xs font-bold text-primary-700 dark:text-primary-400 uppercase tracking-wider">
                           {month.label}
@@ -534,7 +629,7 @@ export default function Bank() {
 
                       {/* Description */}
                       <div className="sm:col-span-4">
-                        <p className="text-sm text-gray-900 dark:text-white font-medium truncate">{entry.description}</p>
+                        <p className="text-sm text-gray-900 dark:text-white font-medium truncate" title={entry.description}>{entry.description}</p>
                         {/* Mobile amounts */}
                         <div className="flex items-center gap-3 sm:hidden mt-0.5">
                           {+entry.deposit > 0 && <span className="text-xs font-semibold text-green-600">+{formatCurrency(entry.deposit)}</span>}
@@ -610,8 +705,8 @@ export default function Bank() {
               </div>
             )}
 
-            {/* Month navigation — hidden when showing all months */}
-            {months.length > 0 && !showAll && (
+            {/* Month navigation — hidden when showing all months or searching */}
+            {months.length > 0 && !showAll && !searchActive && (
               <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => setMonthPage(p => Math.min(months.length - 1, p + 1))}

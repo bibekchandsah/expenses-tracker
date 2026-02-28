@@ -1,18 +1,15 @@
 npm run dev
 # Install Firebase CLI
 npm install -g firebase-tools
-
 # Login to Firebase
 firebase login
-
 # Link to your Firebase project
 firebase use --add    # pick your project from the list
-
 # Deploy the security rules
 firebase deploy --only firestore:rules
 
 
-all user should be able to login their accound and see their profile and edit it if they want to.They should also be able to see their expenses and add new expenses. They can also see their budget and how much they have left for the month. They can set goals for their savings and track their progress. They can also see tips and advice on how to save money and manage their finances better.
+all user should be able to login their account and see their profile and edit it if they want to. They should also be able to see their expenses and add new expenses. They can also see their budget and how much they have left for the month. They can set goals for their savings and track their progress. They can also see tips and advice on how to save money and manage their finances better.
 
 Expense tracker
 Country wise date selection 
@@ -21,7 +18,6 @@ Bar graph and pie chart of expense category
 
 
 Filter record by month, year, amount expend on category, start date and end date, 
-
 Show bar graph of monthly expend
 
 Given amount 
@@ -39,7 +35,6 @@ In tabular view name l amount l remaining
 
 For me
 Date l name l expend on l amount 
-
 In tabular view name l loan amount l given amount l remaining amount to receive L remaining amount to give L whatsapp message 
 
 Bank (done)
@@ -138,3 +133,18 @@ In All Months mode:
     A Grand Total row at the very bottom shows all-time totals across every month
     The ← Older / Newer → navigation is hidden (not needed)
 Button label switches to "Monthly View" while in all-months mode to toggle back
+Search input sits at the top of the statement table, spanning full width with a magnifier icon and a clear (×) button
+Searches across all entries (not just the current month) — matches on description, date (YYYY-MM-DD), deposit amount, and withdraw amount
+While searching, results are shown grouped by month with month headers (same as All Months view), so you can see which month each result belongs to
+Clearing the search returns to whichever view was active (monthly or all-months)
+Month navigation (← Older / Newer →) is hidden while a search is active
+Typing also resets to the first results page automatically
+hovering over any truncated description now shows a native browser tooltip with the full text.
+Every column header (Date, Description, Deposit, Withdraw, Balance) is now a clickable button
+Click once → sort ascending (↑ arrow, column label turns blue)
+Click again → sort descending (↓ arrow)
+Click a third time → reset to default order (⇅ icon, label returns to grey)
+Click a different column → sorts that column ascending and resets the previous one
+Sorting applies within each month group (so months stay grouped in All Months / search view, but entries inside each month are reordered)
+The Actions column is non-sortable (no button)
+
