@@ -1,2 +1,140 @@
+npm run dev
+# Install Firebase CLI
+npm install -g firebase-tools
+
+# Login to Firebase
+firebase login
+
+# Link to your Firebase project
+firebase use --add    # pick your project from the list
+
+# Deploy the security rules
+firebase deploy --only firestore:rules
+
+
 all user should be able to login their accound and see their profile and edit it if they want to.They should also be able to see their expenses and add new expenses. They can also see their budget and how much they have left for the month. They can set goals for their savings and track their progress. They can also see tips and advice on how to save money and manage their finances better.
 
+Expense tracker
+Country wise date selection 
+Date l amount l expend on l note l description l amount expend on
+Bar graph and pie chart of expense category
+
+
+Filter record by month, year, amount expend on category, start date and end date, 
+
+Show bar graph of monthly expend
+
+Given amount 
+Date l name l amount l reason l returned amount l description 
+Show in table of individual person given & returned and remaining amount 
+Show bar graph of individual given amount and received amount 
+
+Personal savings 
+Date l expend on l reason l description l amount 
+Date l amount l from where I fot
+
+Loan
+Date l description l amount l person from whom l returned or not l remark
+In tabular view name l amount l remaining 
+
+For me
+Date l name l expend on l amount 
+
+In tabular view name l loan amount l given amount l remaining amount to receive L remaining amount to give L whatsapp message 
+
+Bank (done)
+Dropdoen of multiple bank and user can add name of it
+Date l description l deposit l withdraw l closing amount 
+
+Discussion or note page 
+
+Graph showing how much u take and what percentage I returned dual data in same bar
+
+
+show/hide sidebar
+show tooltip on hover of sidebar icons
+show user profile picture in sidebar
+add logout button in sidebar
+add tools page with calculator, currency converter, loan calculator, etc.
+
+add it to loan, expense and given entry form
+add search functionality to expenses, loans and bank entries
+create a yearly summary page with total expenses, loans, savings, etc. and graphs
+user can choose the year in their profile settings and the dashboard and summary page will show data for that year by default so that in the future when they have multiple years of data, they can easily switch between years to see their financial history and progress over time. when user choose 2026 in profile settings, the dashboard and summary page will show data for 2026 by default. user can still change the year on the dashboard and summary page to view data for other years, but it will always default to the year they selected in their profile settings when they first visit those pages. this allows users to easily focus on their current year's financial data while still having access to their historical data when needed.
+
+show the user selected currency type in the profile page and use it throughout the app for displaying amounts. user can choose from a list of common currencies (USD, EUR, GBP, etc.) or enter a custom currency code. the selected currency will be saved in their profile and used as the default currency for all financial data displayed in the app, including expenses, budgets, bank entries, etc. this way users can see their financial data in their preferred currency format and easily track their finances without having to manually convert amounts.
+
+
+
+setup firebase hosting and deploy the app
+-----Set Up Firebase (one-time)-----
+
+Step 1: Create Firebase Project
+Go to console.firebase.google.com
+Click "Add project" → name it (e.g. expenseiq) → Create
+On the left sidebar:
+    Authentication → Get started → Google → Enable → Save
+    Firestore Database → Create database → Production mode → Pick a region → Enable
+
+Step 2: Get your Firebase config
+In Firebase Console → Project Settings (gear icon) → "Your apps" → click </> (Web)
+Register app (name it anything) → copy the firebaseConfig values
+Fill in your .env file:
+    VITE_FIREBASE_API_KEY=AIzaSy...
+    VITE_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
+    VITE_FIREBASE_PROJECT_ID=your-project-id
+    VITE_FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
+    VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
+    VITE_FIREBASE_APP_ID=1:123456789:web:abc123
+
+-----Deploy to Vercel-----
+Step 3: Deploy on Vercel
+Go to vercel.com → Sign up/login with your GitHub account
+Click "Add New Project" → Import your GitHub repository
+In "Environment Variables", add all 6 variables from your .env:
+Click "Deploy" — Vercel auto-detects Vite
+Your app gets a public URL like https://your-app.vercel.app
+
+Step 4: Allow the Vercel domain in Firebase ⚠️ Critical
+Without this step, Google login will fail for everyone.
+Go to Firebase Console → Authentication → Settings → Authorized domains
+Click "Add domain"
+Enter your Vercel URL: your-app.vercel.app
+
+
+
+
+
+implemented
+-----------------------
+Page	Features
+Login	Google Sign-In, branded split layout
+Dashboard	4 stat cards, bar/pie/area charts, recent transactions
+Expenses	CRUD, search, filters (category/date), sort, pagination, CSV export
+Categories	Default + custom categories with icon/color pickers
+Budget	Per-category monthly budgets, progress bars, over-budget alerts
+Profile	Display name, currency setting, account stats
+
+What the Bank page includes:
+Custom dropdown to switch between banks, with edit/delete per bank
+Add Bank modal — name + opening balance
+4 summary cards — Opening Balance, Total Deposits, Total Withdrawals, Current Balance
+Statement table — Date | Description | Deposit (+green) | Withdraw (−red) | Closing Balance (running)
+Deposit / Withdraw toggle in the entry modal — one amount field, color-coded
+Edit & Delete per row (hover to reveal actions)
+Totals row at the bottom of the table
+CSV export of the full statement
+Full dark mode support
+Pagination (each month per page)
+Each month is its own page — February 2026, January 2026, etc.
+Newest month shown first by default; use ← Older / Newer → buttons at the bottom to navigate
+The totals row at the bottom of the table shows that month's deposits, withdrawals, and closing balance — not all-time totals (those remain in the 4 summary cards at the top)
+Switching banks auto-resets to the newest month for that bank
+Months with no entries simply don't appear as pages — only months that actually have transactions are navigable
+"All Months" button appears in the action bar whenever there are 2+ months of data — toggles between monthly view and full view
+In All Months mode:
+    Every month is shown as a labelled section with a blue header (e.g. "FEBRUARY 2026")
+    Each month has its own subtotal row (deposits, withdrawals, closing balance for that month)
+    A Grand Total row at the very bottom shows all-time totals across every month
+    The ← Older / Newer → navigation is hidden (not needed)
+Button label switches to "Monthly View" while in all-months mode to toggle back

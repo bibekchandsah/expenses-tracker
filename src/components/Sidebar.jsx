@@ -7,6 +7,7 @@ import {
   User,
   TrendingUp,
   X,
+  Landmark,
 } from 'lucide-react';
 
 const navItems = [
@@ -15,6 +16,7 @@ const navItems = [
   { to: '/categories', label: 'Categories', icon: Tag },
   { to: '/budget', label: 'Budget', icon: Target },
   { to: '/profile', label: 'Profile', icon: User },
+  { to: '/bank', label: 'Bank', icon: Landmark },
 ];
 
 export default function Sidebar({ open, onClose }) {
