@@ -47,9 +47,9 @@ Discussion or note page (done)
 Graph showing how much u take and what percentage I returned dual data in same bar (done)
 
 
-show/hide sidebar
+show/hide sidebar icon & tooltip on hover
 show tooltip on hover of sidebar icons
-show user profile picture in sidebar
+show user profile picture and name in sidebar bottom add a dropdown menu with options to view profile and logout
 add logout button in sidebar
 add tools page with calculator, currency converter, loan calculator, etc.
 
@@ -258,4 +258,14 @@ To Give card = sum of absolute net values where net < 0 (people you owe more tha
 3rd click → resets to natural order ⇅ (column returns to grey)
 
 
-
+Collapse/Expand sidebar toggle
+Hover tooltips : When collapsed, hovering over any nav icon shows a floating label tooltip to the right of the icon with an arrow pointer.
+Profile section (bottom)
+Shows user's Google profile picture (or initials avatar if no photo) + name + email when expanded
+Just the avatar when collapsed (with title tooltip)
+Clicking opens a dropdown menu with:
+    Signed in as header (name + email)
+    View Profile → navigates to /profile
+    Logout (red) → signs out and redirects to /login
+Sidebar — theme toggle button added above the profile section. In expanded mode it shows the icon + "Dark Mode" / "Light Mode" label. In collapsed mode it shows just the icon with a tooltip on hover.
+Layout — Navbar removed entirely. On desktop the sidebar is always visible so no header is needed. On mobile a slim top bar (lg:hidden) shows only the hamburger button to open the sidebar.
