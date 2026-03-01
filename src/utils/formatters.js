@@ -93,3 +93,11 @@ export function last12Months() {
   }
   return months;
 }
+
+export function monthsOfYear(year) {
+  const months = [];
+  for (let m = 1; m <= 12; m++) {
+    months.push(`${year}-${String(m).padStart(2, '0')}`);
+  }
+  return months;
+}

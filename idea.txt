@@ -403,13 +403,7 @@ Equation sub-line now shows:
 Active operator button highlights in brighter orange
 
 
-
-
-
-
-
-
-
+quick-add feature:
 add (plus icon) in the actions column of income, expenses, bank, lend, loan, saving, for me pages to quickly add an entry to those pages without having to go through the full add entry modal. this quick-add clicks "Add", the entry should be created immediately and the form should reset for the next entry. this will allow users to quickly log their transactions on the go without interrupting their workflow or having to navigate away from the current page.
 
 income/loan/saving ↔ bank(deposit) -> choose bank
@@ -461,5 +455,14 @@ Current page disabled in page picker — the button for whichever page the ⚡ w
 
 create a yearly summary page with total expenses, loans, savings, etc. and graphs
 user can choose the year in their profile settings and the dashboard and summary page will show data for that year by default so that in the future when they have multiple years of data, they can easily switch between years to see their financial history and progress over time. when user choose 2026 in profile settings, the dashboard and summary page will show data for 2026 by default. user can still change the year on the dashboard and summary page to view data for other years, but it will always default to the year they selected in their profile settings when they first visit those pages. this allows users to easily focus on their current year's financial data while still having access to their historical data when needed.
+Profile — year picker (2020–next year) persists to Firestore
+Dashboard — YearSelector in header; all stats, charts, and category breakdown filtered by selected year
+Income / Expenses — YearSelector in header; search results pre-filtered by year
+Bank — YearSelector in actions row; monthly grouping filtered by year
+Lend / Loan — YearSelector in header; filteredLends/filteredLoans scoped to year
+Saving — YearSelector in header; filteredSavings scoped to year
+ForMe — YearSelector in header; filtered scoped to year (uses toInputDate() for Firestore Timestamps)
+NetSummary — YearSelector in header; lend/loan rows, monthly chart, and category breakdown all scoped to year
+Every page initializes its local year from the activeYear context (the profile setting) and syncs on change, but the user can freely override it per-page.
 
 delete/export data of selected year

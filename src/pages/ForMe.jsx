@@ -14,6 +14,8 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useActiveYear } from '../context/ActiveYearContext';
+import YearSelector from '../components/ui/YearSelector';
 
 // ── helpers ──────────────────────────────────────────────────────
 function toInputDate(date) {
@@ -200,6 +202,9 @@ export default function ForMe() {
   const [panelOpen,     setPanelOpen]     = useState(true);
   const [chartOpen,     setChartOpen]     = useState(true);
   const [showSidePanel, setShowSidePanel] = useState(true);
+  const { activeYear } = useActiveYear();
+  const [yearFilter, setYearFilter] = useState(() => activeYear);
+  useEffect(() => { setYearFilter(activeYear); }, [activeYear]);
 
   const existingNames = useMemo(() => [...new Set(entries.map(e => e.name))].sort(), [entries]);
 
@@ -227,6 +232,9 @@ export default function ForMe() {
         ? entries.filter(e => e.name === personFilter)
         : entries;
 
+    // Year filter
+    data = data.filter(e => toInputDate(e.date).startsWith(String(yearFilter)));
+
     if (!sortCol) return data;
     return [...data].sort((a, b) => {
       let av, bv;
@@ -237,7 +245,7 @@ export default function ForMe() {
       if (av > bv) return sortDir === 'asc' ?  1 : -1;
       return 0;
     });
-  }, [entries, search, sortCol, sortDir, personFilter]);
+  }, [entries, search, sortCol, sortDir, personFilter, yearFilter]);
 
   // Per-person summary for right panel
   const personSummary = useMemo(() => {
@@ -322,6 +330,7 @@ export default function ForMe() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track people who owe you a treat or payment</p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
+          <YearSelector year={yearFilter} onChange={yr => setYearFilter(yr)} />
           <button
             onClick={() => setImportOpen(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"

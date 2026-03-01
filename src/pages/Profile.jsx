@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Globe, Save, Check } from 'lucide-react';
+import { User, Mail, Globe, Save, Check, CalendarRange } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useActiveYear } from '../context/ActiveYearContext';
 import { useToast } from '../components/ui/Toast';
 import { getUserProfile, updateUserProfile } from '../services/profileService';
 import { useExpenses } from '../context/ExpenseContext';
@@ -52,6 +53,7 @@ const CURRENCIES = [
 export default function Profile() {
   const { user } = useAuth();
   const { currency: activeCurrency, updateCurrency } = useCurrency();
+  const { activeYear, updateActiveYear } = useActiveYear();
   const { expenses } = useExpenses();
   const { addToast } = useToast();
   const [profile, setProfile] = useState(null);
@@ -269,6 +271,52 @@ export default function Profile() {
           )}
         </div>
       </div>
+
+      {/* Active Year Picker */}
+      {(() => {
+        const thisYear = new Date().getFullYear();
+        const yearRange = [];
+        for (let y = 2020; y <= thisYear + 1; y++) yearRange.push(y);
+        return (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <CalendarRange className="w-4 h-4 text-primary-500" /> Active Year
+              </h2>
+              <span className="text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 px-2.5 py-1 rounded-full font-semibold">
+                Active: {activeYear}
+              </span>
+            </div>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+              All pages will default to showing data for this year. You can still change the year on any page.
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {yearRange.map(y => {
+                const isActive = activeYear === y;
+                const isCurrent = y === thisYear;
+                return (
+                  <button
+                    key={y}
+                    onClick={() => updateActiveYear(y)}
+                    className={`relative py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                      isActive
+                        ? 'bg-primary-600 border-primary-600 text-white shadow-sm'
+                        : 'border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-primary-400 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20'
+                    }`}
+                  >
+                    {y}
+                    {isCurrent && (
+                      <span className={`absolute -top-1.5 -right-1.5 text-[9px] font-bold px-1 py-0.5 rounded-full ${
+                        isActive ? 'bg-white text-primary-600' : 'bg-primary-600 text-white'
+                      }`}>NOW</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

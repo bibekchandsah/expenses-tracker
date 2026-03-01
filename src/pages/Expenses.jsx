@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useMemo } from 'react';
+﻿import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Plus, Search, Filter, Download, Edit2, Trash2, ChevronUp, ChevronDown, SlidersHorizontal, X, BarChart2, Upload, Zap } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
@@ -12,6 +12,8 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { exportToCSV } from '../utils/csvExport';
+import { useActiveYear } from '../context/ActiveYearContext';
+import YearSelector from '../components/ui/YearSelector';
 import { useDebounce } from '../hooks/useDebounce';
 
 const PAGE_SIZE = 30;
@@ -35,6 +37,7 @@ export default function Expenses() {
   const { categories, getCategoryById } = useCategories();
   const { banks, selectedBankId } = useBanks();
   const { addToast } = useToast();
+  const { activeYear } = useActiveYear();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -42,16 +45,20 @@ export default function Expenses() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [quickAddOpen, setQuickAddOpen] = useState({ open: false, row: null });
   const [showFilters, setShowFilters] = useState(false);
+  const [yearFilter, setYearFilter] = useState(() => activeYear);
   const [page, setPage] = useState(1);
+
+  useEffect(() => { setYearFilter(activeYear); }, [activeYear]);
 
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebounce(searchInput, 300);
 
   // Full-text search across all visible fields
   const searchFiltered = useMemo(() => {
-    if (!debouncedSearch.trim()) return filteredExpenses;
+    const yearFiltered = filteredExpenses.filter(e => e.date?.startsWith(String(yearFilter)));
+    if (!debouncedSearch.trim()) return yearFiltered;
     const q = debouncedSearch.toLowerCase();
-    return filteredExpenses.filter(e => {
+    return yearFiltered.filter(e => {
       const cat = getCategoryById(e.category);
       return (
         e.title?.toLowerCase().includes(q) ||
@@ -62,7 +69,7 @@ export default function Expenses() {
         cat?.name?.toLowerCase().includes(q)
       );
     });
-  }, [filteredExpenses, debouncedSearch, getCategoryById]);
+  }, [filteredExpenses, debouncedSearch, getCategoryById, yearFilter]);
 
   const useMonthView = searchFiltered.length > 30;
 
@@ -237,6 +244,7 @@ export default function Expenses() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{searchFiltered.length} of {expenses.length} expenses</p>
         </div>
         <div className="flex items-center gap-2">
+          <YearSelector year={yearFilter} onChange={yr => { setYearFilter(yr); setPage(1); }} />
           <button
             onClick={() => setImportOpen(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, SlidersHorizontal, X, Download, Edit2, Trash2, Upload, Zap } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
@@ -10,6 +10,8 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useActiveYear } from '../context/ActiveYearContext';
+import YearSelector from '../components/ui/YearSelector';
 import { useDebounce } from '../hooks/useDebounce';
 
 const PAGE_SIZE = 30;
@@ -51,6 +53,7 @@ export default function Income() {
   const { currency } = useCurrency();
   const { addToast } = useToast();
   const { banks, selectedBankId } = useBanks();
+  const { activeYear } = useActiveYear();
 
   const [modalOpen, setModalOpen]       = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState({ open: false, row: null });
@@ -58,16 +61,20 @@ export default function Income() {
   const [editingIncome, setEditingIncome] = useState(null);
   const [deleteTarget, setDeleteTarget]  = useState(null);
   const [showFilters, setShowFilters]    = useState(false);
+  const [yearFilter, setYearFilter]      = useState(() => activeYear);
   const [page, setPage]                  = useState(1);
+
+  useEffect(() => { setYearFilter(activeYear); }, [activeYear]);
 
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebounce(searchInput, 300);
 
   // Full-text search
   const searchFiltered = useMemo(() => {
-    if (!debouncedSearch.trim()) return filteredIncomes;
+    const yearFiltered = filteredIncomes.filter(i => i.date?.startsWith(String(yearFilter)));
+    if (!debouncedSearch.trim()) return yearFiltered;
     const q = debouncedSearch.toLowerCase();
-    return filteredIncomes.filter(i =>
+    return yearFiltered.filter(i =>
       i.title?.toLowerCase().includes(q) ||
       i.date?.toLowerCase().includes(q) ||
       String(i.amount).includes(q) ||
@@ -75,7 +82,7 @@ export default function Income() {
       i.notes?.toLowerCase().includes(q) ||
       i.description?.toLowerCase().includes(q)
     );
-  }, [filteredIncomes, debouncedSearch]);
+  }, [filteredIncomes, debouncedSearch, yearFilter]);
 
   const useMonthView = searchFiltered.length > 30;
 
@@ -265,6 +272,7 @@ export default function Income() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <YearSelector year={yearFilter} onChange={yr => { setYearFilter(yr); setPage(1); }} />
           <button
             onClick={() => setImportOpen(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"

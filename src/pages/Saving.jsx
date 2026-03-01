@@ -13,6 +13,8 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useActiveYear } from '../context/ActiveYearContext';
+import YearSelector from '../components/ui/YearSelector';
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 
@@ -204,6 +206,7 @@ export default function Saving() {
   const { currency } = useCurrency();
   const { addToast } = useToast();
   const { banks, selectedBankId } = useBanks();
+  const { activeYear } = useActiveYear();
 
   const [showSidePanel, setShowSidePanel] = useState(true);
   const [importOpen, setImportOpen]        = useState(false);
@@ -215,6 +218,9 @@ export default function Saving() {
   const [sortCol, setSortCol] = useState(null);
   const [sortDir, setSortDir] = useState('desc');
   const [search,  setSearch]  = useState('');
+  const [yearFilter, setYearFilter] = useState(() => activeYear);
+
+  useEffect(() => { setYearFilter(activeYear); }, [activeYear]);
 
   function handleSort(col) {
     if (sortCol === col) {
@@ -227,7 +233,7 @@ export default function Saving() {
   }
 
   const filteredSavings = useMemo(() => {
-    let rows = [...savings];
+    let rows = savings.filter(r => r.date?.startsWith(String(yearFilter)));
     const q = search.toLowerCase();
     if (q) rows = rows.filter(r =>
       r.expendOn?.toLowerCase().includes(q) ||
@@ -245,7 +251,7 @@ export default function Saving() {
       });
     }
     return rows;
-  }, [savings, sortCol, sortDir, search]);
+  }, [savings, sortCol, sortDir, search, yearFilter]);
 
   const totalSpent   = useMemo(() => savings.reduce((s, r) => s + (+r.amount || 0), 0), [savings]);
   const totalSourced = useMemo(() => sources.reduce((s, r) => s + (+r.amount || 0), 0), [sources]);
@@ -322,6 +328,7 @@ export default function Saving() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track savings and their sources</p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
+          <YearSelector year={yearFilter} onChange={yr => setYearFilter(yr)} />
           <button
             onClick={() => setImportOpen(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"

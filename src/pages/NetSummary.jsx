@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { ArrowUp, ArrowDown, ChevronsUpDown, BarChart3, TrendingUp, TrendingDown, Users, Calendar, Tag } from 'lucide-react';
 import { useLends } from '../context/LendContext';
 import { useLoans } from '../context/LoanContext';
@@ -7,6 +7,8 @@ import { useCategories } from '../context/CategoryContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useActiveYear } from '../context/ActiveYearContext';
+import YearSelector from '../components/ui/YearSelector';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
@@ -26,6 +28,10 @@ export default function NetSummary() {
   const [sortCol, setSortCol] = useState('net');
   const [sortDir, setSortDir] = useState('desc');
   const [search,  setSearch]  = useState('');
+  const { activeYear } = useActiveYear();
+  const [yearFilter, setYearFilter] = useState(() => activeYear);
+
+  useEffect(() => { setYearFilter(activeYear); }, [activeYear]);
 
   const loading = lendLoading || loanLoading;
 
@@ -46,15 +52,16 @@ export default function NetSummary() {
   // Build combined per-person map
   const rows = useMemo(() => {
     const map = {};
+    const yearStr = String(yearFilter);
 
-    lends.forEach(l => {
+    lends.filter(l => l.date?.startsWith(yearStr)).forEach(l => {
       const k = l.name;
       if (!map[k]) map[k] = { name: k, lent: 0, returned: 0, borrowed: 0, paid: 0 };
       map[k].lent     += +l.amount         || 0;
       map[k].returned += +l.returnedAmount || 0;
     });
 
-    loans.forEach(l => {
+    loans.filter(l => l.date?.startsWith(yearStr)).forEach(l => {
       const k = l.name;
       if (!map[k]) map[k] = { name: k, lent: 0, returned: 0, borrowed: 0, paid: 0 };
       map[k].borrowed += +l.amount     || 0;
@@ -63,11 +70,11 @@ export default function NetSummary() {
 
     return Object.values(map).map(p => ({
       ...p,
-      toReceive: p.lent     - p.returned,   // what this person still owes you
-      toGive:    p.borrowed - p.paid,        // what you still owe this person
-      net:       (p.lent - p.returned) - (p.borrowed - p.paid), // positive = you net receive, negative = you net owe
+      toReceive: p.lent     - p.returned,
+      toGive:    p.borrowed - p.paid,
+      net:       (p.lent - p.returned) - (p.borrowed - p.paid),
     }));
-  }, [lends, loans]);
+  }, [lends, loans, yearFilter]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -92,28 +99,29 @@ export default function NetSummary() {
     people:      rows.length,
   }), [rows]);
 
-  // Monthly expense breakdown (last 12 months)
+  // Monthly expense breakdown for selected year
   const monthlyData = useMemo(() => {
+    const yearStr = String(yearFilter);
     const map = {};
-    expenses.forEach(e => {
+    expenses.filter(e => e.date?.startsWith(yearStr)).forEach(e => {
       const m = e.date?.slice(0, 7);
       if (!m) return;
       map[m] = (map[m] || 0) + (+e.amount || 0);
     });
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-12)
       .map(([month, total]) => ({
         month,
-        label: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        label: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short' }),
         total,
       }));
-  }, [expenses]);
+  }, [expenses, yearFilter]);
 
   // Per-category expense breakdown
   const categoryData = useMemo(() => {
+    const yearStr = String(yearFilter);
     const map = {};
-    expenses.forEach(e => {
+    expenses.filter(e => e.date?.startsWith(yearStr)).forEach(e => {
       const id = e.category;
       if (!id) return;
       map[id] = (map[id] || 0) + (+e.amount || 0);
@@ -124,7 +132,7 @@ export default function NetSummary() {
         return { id, total, name: cat?.name || id, icon: cat?.icon || '📦', color: cat?.color || '#6366f1' };
       })
       .sort((a, b) => b.total - a.total);
-  }, [expenses, getCategoryById]);
+  }, [expenses, getCategoryById, yearFilter]);
 
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
 
@@ -142,11 +150,14 @@ export default function NetSummary() {
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <BarChart3 className="w-6 h-6 text-primary-600" /> Net Summary
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Combined view of all lend &amp; loan transactions per person</p>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <BarChart3 className="w-6 h-6 text-primary-600" /> Net Summary
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Combined view of all lend &amp; loan transactions per person</p>
+        </div>
+        <YearSelector year={yearFilter} onChange={yr => setYearFilter(yr)} />
       </div>
 
       {/* Stat cards */}

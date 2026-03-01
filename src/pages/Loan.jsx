@@ -14,6 +14,8 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useActiveYear } from '../context/ActiveYearContext';
+import YearSelector from '../components/ui/YearSelector';
 
 // ── Add / Edit Loan Modal ───────────────────────────────────────
 const EMPTY_FORM = {
@@ -218,6 +220,9 @@ export default function Loan() {
   const [panelOpen, setPanelOpen]         = useState(true);
   const [chartOpen, setChartOpen]         = useState(true);
   const [showSidePanel, setShowSidePanel] = useState(true);
+  const { activeYear } = useActiveYear();
+  const [yearFilter, setYearFilter] = useState(() => activeYear);
+  useEffect(() => { setYearFilter(activeYear); }, [activeYear]);
 
   // Unique names for autocomplete — merged from both Loan and Lend pages
   const existingNames = useMemo(() => [
@@ -239,8 +244,9 @@ export default function Loan() {
 
   const filteredLoans = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const yearLoans = loans.filter(l => l.date?.startsWith(String(yearFilter)));
     let data = q
-      ? loans.filter(l =>
+      ? yearLoans.filter(l =>
           l.name.toLowerCase().includes(q) ||
           l.reason.toLowerCase().includes(q) ||
           l.description.toLowerCase().includes(q) ||
@@ -248,8 +254,8 @@ export default function Loan() {
           String(l.amount).includes(q)
         )
       : personFilter
-        ? loans.filter(l => l.name === personFilter)
-        : loans;
+        ? yearLoans.filter(l => l.name === personFilter)
+        : yearLoans;
 
     if (!sortCol) return data;
     return [...data].sort((a, b) => {
@@ -264,7 +270,7 @@ export default function Loan() {
       if (av > bv) return sortDir === 'asc' ?  1 : -1;
       return 0;
     });
-  }, [loans, search, sortCol, sortDir, personFilter]);
+  }, [loans, search, sortCol, sortDir, personFilter, yearFilter]);
 
   // Per-lender summary (right panel)
   const lenderSummary = useMemo(() => {
@@ -354,6 +360,7 @@ export default function Loan() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track money you've borrowed and amounts paid back</p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
+          <YearSelector year={yearFilter} onChange={yr => setYearFilter(yr)} />
           <button
             onClick={() => setImportOpen(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"

@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
@@ -11,9 +11,11 @@ import { useCategories } from '../context/CategoryContext';
 import { useAuth } from '../context/AuthContext';
 import { useBanks } from '../context/BankContext';
 import { useIncomes } from '../context/IncomeContext';
+import { useActiveYear } from '../context/ActiveYearContext';
 import StatsCard from '../components/ui/StatsCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { formatCurrency, groupByMonth, groupByCategory, currentMonth, currentYear, last12Months } from '../utils/formatters';
+import YearSelector from '../components/ui/YearSelector';
+import { formatCurrency, groupByMonth, groupByCategory, monthsOfYear } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 
 export default function Dashboard() {
@@ -25,76 +27,92 @@ export default function Dashboard() {
   const { incomes } = useIncomes();
 
   const now = new Date();
-  const thisMonth = currentMonth();
-  const thisYear = currentYear();
+  const { activeYear } = useActiveYear();
+  const [selectedYear, setSelectedYear] = useState(() => activeYear);
+  useEffect(() => { setSelectedYear(activeYear); }, [activeYear]);
+
+  // The same calendar month inside the selected year (e.g. March 2025 if today is March)
+  const displayMonth = `${selectedYear}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
   const [catPeriod, setCatPeriod] = useState('month');
   const [trendPeriod, setTrendPeriod] = useState('6m');
   const [incomeTrendPeriod, setIncomeTrendPeriod] = useState('6m');
   const [bankPeriod, setBankPeriod] = useState('6m');
 
   const stats = useMemo(() => {
-    const monthExpenses = expenses.filter(e => e.date.startsWith(thisMonth));
-    const yearExpenses = expenses.filter(e => e.date.startsWith(String(thisYear)));
+    const monthExpenses    = expenses.filter(e => e.date.startsWith(displayMonth));
+    const yearExpenses     = expenses.filter(e => e.date.startsWith(String(selectedYear)));
 
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 7);
-    const lastMonthExpenses = expenses.filter(e => e.date.startsWith(lastMonth));
+    // Previous month relative to displayMonth (for trend %)
+    const prevM = new Date(selectedYear, now.getMonth() - 1, 1).toISOString().slice(0, 7);
+    const lastMonthExpenses = expenses.filter(e => e.date.startsWith(prevM));
 
-    const monthTotal = monthExpenses.reduce((s, e) => s + +e.amount, 0);
+    const monthTotal     = monthExpenses.reduce((s, e) => s + +e.amount, 0);
     const lastMonthTotal = lastMonthExpenses.reduce((s, e) => s + +e.amount, 0);
-    const yearTotal = yearExpenses.reduce((s, e) => s + +e.amount, 0);
+    const yearTotal      = yearExpenses.reduce((s, e) => s + +e.amount, 0);
     const trend = lastMonthTotal ? ((monthTotal - lastMonthTotal) / lastMonthTotal) * 100 : 0;
 
-    const avgMonthly = expenses.length
-      ? yearTotal / Math.max(1, new Set(expenses.filter(e => e.date.startsWith(String(thisYear))).map(e => e.date.slice(0, 7))).size)
-      : 0;
+    const avgMonthly = yearTotal / Math.max(1, new Set(yearExpenses.map(e => e.date.slice(0, 7))).size);
 
-    return { monthTotal, yearTotal, trend, avgMonthly, count: monthExpenses.length };
-  }, [expenses, thisMonth, thisYear]);
+    return { monthTotal, yearTotal, trend, avgMonthly, count: monthExpenses.length, yearCount: yearExpenses.length };
+  }, [expenses, displayMonth, selectedYear]);
 
-  // Category breakdown — this month or this year
+  // Category breakdown — this month (within selectedYear) or full year
   const categoryData = useMemo(() => {
     const filtered = catPeriod === 'month'
-      ? expenses.filter(e => e.date.startsWith(thisMonth))
-      : expenses.filter(e => e.date.startsWith(String(thisYear)));
+      ? expenses.filter(e => e.date.startsWith(displayMonth))
+      : expenses.filter(e => e.date.startsWith(String(selectedYear)));
     return groupByCategory(filtered).map(g => {
       const cat = getCategoryById(g.category);
       return { ...g, name: cat?.name || g.category, color: cat?.color || '#6b7280' };
     }).sort((a, b) => b.total - a.total);
-  }, [expenses, thisMonth, thisYear, catPeriod, getCategoryById]);
+  }, [expenses, displayMonth, selectedYear, catPeriod, getCategoryById]);
 
-  // Monthly bar chart (last 12 months)
+  // Monthly bar chart (all 12 months of selectedYear)
   const monthlyData = useMemo(() => {
-    const months = last12Months();
-    const grouped = groupByMonth(expenses);
-    const groupMap = {};
-    grouped.forEach(g => { groupMap[g.month] = g.total; });
+    const months = monthsOfYear(selectedYear);
+    const map = {};
+    expenses.filter(e => e.date?.startsWith(String(selectedYear))).forEach(e => {
+      const m = e.date.slice(0, 7);
+      map[m] = (map[m] || 0) + (+e.amount || 0);
+    });
     return months.map(m => ({
-      month: new Date(m + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-      amount: groupMap[m] || 0,
+      month: new Date(m + '-01').toLocaleDateString('en-US', { month: 'short' }),
+      amount: map[m] || 0,
     }));
-  }, [expenses]);
+  }, [expenses, selectedYear]);
 
-  // Line chart data (6 or 12 months)
-  const trendData = trendPeriod === '12m' ? monthlyData : monthlyData.slice(-6);
+  // Line chart data — 12m = all 12 months of selectedYear, 6m = last 6 months of selectedYear
+  const trendData = useMemo(() => {
+    const months = trendPeriod === '12m' ? monthsOfYear(selectedYear) : monthsOfYear(selectedYear).slice(-6);
+    const map = {};
+    expenses.forEach(e => {
+      const m = e.date?.slice(0, 7);
+      if (m) map[m] = (map[m] || 0) + (+e.amount || 0);
+    });
+    return months.map(m => ({
+      month: new Date(m + '-01').toLocaleDateString('en-US', { month: 'short' }),
+      amount: map[m] || 0,
+    }));
+  }, [expenses, trendPeriod, selectedYear]);
 
-  // Income trend data (6 or 12 months)
+  // Income trend — 12m = all 12 months of selectedYear, 6m = last 6 months of selectedYear
   const incomeTrendData = useMemo(() => {
-    const months = last12Months();
+    const months = incomeTrendPeriod === '12m' ? monthsOfYear(selectedYear) : monthsOfYear(selectedYear).slice(-6);
     const map = {};
     incomes.forEach(i => {
       const m = i.date?.slice(0, 7);
       if (m) map[m] = (map[m] || 0) + (+i.amount || 0);
     });
-    const all = months.map(m => ({
-      month: new Date(m + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+    return months.map(m => ({
+      month: new Date(m + '-01').toLocaleDateString('en-US', { month: 'short' }),
       amount: map[m] || 0,
     }));
-    return incomeTrendPeriod === '12m' ? all : all.slice(-6);
-  }, [incomes, incomeTrendPeriod]);
+  }, [incomes, incomeTrendPeriod, selectedYear]);
 
-  // Bank deposit / withdraw trend
+  // Bank deposit / withdraw trend — 12m = all 12 months of selectedYear, 6m = last 6 months of selectedYear
   const bankTrendData = useMemo(() => {
-    const months = last12Months();
+    const months = bankPeriod === '12m' ? monthsOfYear(selectedYear) : monthsOfYear(selectedYear).slice(-6);
     const map = {};
     bankEntries.forEach(e => {
       const m = e.date?.slice(0, 7);
@@ -103,26 +121,31 @@ export default function Dashboard() {
       map[m].deposit  += +e.deposit  || 0;
       map[m].withdraw += +e.withdraw || 0;
     });
-    const all = months.map(m => ({
-      month: new Date(m + '-02').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+    return months.map(m => ({
+      month: new Date(m + '-02').toLocaleDateString('en-US', { month: 'short' }),
       deposit:  map[m]?.deposit  || 0,
       withdraw: map[m]?.withdraw || 0,
     }));
-    return bankPeriod === '12m' ? all : all.slice(-6);
-  }, [bankEntries, bankPeriod]);
+  }, [bankEntries, bankPeriod, selectedYear]);
 
-  const recentExpenses = expenses.slice(0, 5);
+  const recentExpenses = useMemo(
+    () => expenses.filter(e => e.date.startsWith(String(selectedYear))).slice(0, 5),
+    [expenses, selectedYear]
+  );
 
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Greeting */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Good {now.getHours() < 12 ? 'morning' : now.getHours() < 18 ? 'afternoon' : 'evening'}, {user?.displayName?.split(' ')[0]} 👋
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Here's your financial overview</p>
+      <div className="flex flex-col sm:flex-row sm:items-start gap-3 justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Good {now.getHours() < 12 ? 'morning' : now.getHours() < 18 ? 'afternoon' : 'evening'}, {user?.displayName?.split(' ')[0]} 👋
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Here's your financial overview</p>
+        </div>
+        <YearSelector year={selectedYear} onChange={setSelectedYear} />
       </div>
 
       {/* Stats cards */}
@@ -133,14 +156,14 @@ export default function Dashboard() {
           icon={DollarSign}
           color="blue"
           trend={stats.trend}
-          subtitle={`${stats.count} transactions`}
+          subtitle={`${now.toLocaleDateString('en-US', { month: 'long' })} ${selectedYear}`}
         />
         <StatsCard
           title="This Year"
           value={formatCurrency(stats.yearTotal, currency)}
           icon={Calendar}
           color="purple"
-          subtitle={`${thisYear}`}
+          subtitle={`${selectedYear}`}
         />
         <StatsCard
           title="Monthly Average"
@@ -151,10 +174,10 @@ export default function Dashboard() {
         />
         <StatsCard
           title="Total Expenses"
-          value={expenses.length}
+          value={stats.yearCount}
           icon={ShoppingBag}
           color="orange"
-          subtitle="All time"
+          subtitle={`In ${selectedYear}`}
         />
       </div>
 
@@ -162,7 +185,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Bar chart */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Monthly Expenses</h2>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Monthly Expenses {selectedYear}</h2>
           {expenses.length === 0 ? (
             <div className="flex items-center justify-center h-48 text-gray-400 text-sm">No data yet</div>
           ) : (
@@ -185,7 +208,9 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
-              Category Breakdown ({catPeriod === 'month' ? 'This Month' : 'This Year'})
+              Category Breakdown ({catPeriod === 'month'
+                ? `${now.toLocaleDateString('en-US', { month: 'long' })} ${selectedYear}`
+                : String(selectedYear)})
             </h2>
             <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 text-xs font-medium">
               <button
@@ -207,7 +232,7 @@ export default function Dashboard() {
             </div>
           </div>
           {categoryData.length === 0 ? (
-            <div className="flex items-center justify-center h-48 text-gray-400 text-sm">No expenses {catPeriod === 'month' ? 'this month' : 'this year'}</div>
+            <div className="flex items-center justify-center h-48 text-gray-400 text-sm">No expenses {catPeriod === 'month' ? 'this month' : `in ${selectedYear}`}</div>
           ) : (
             <div className="flex items-center gap-4">
               <ResponsiveContainer width="55%" height={200}>
@@ -246,7 +271,7 @@ export default function Dashboard() {
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
-            Income Trend (Last {incomeTrendPeriod === '12m' ? '12 Months' : '6 Months'})
+            Income Trend {selectedYear} ({incomeTrendPeriod === '12m' ? 'Full Year' : 'Last 6 Months'})
           </h2>
           <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 text-xs font-medium">
             <button
@@ -292,7 +317,7 @@ export default function Dashboard() {
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
-            Spending Trend (Last {trendPeriod === '12m' ? '12 Months' : '6 Months'})
+            Spending Trend {selectedYear} ({trendPeriod === '12m' ? 'Full Year' : 'Last 6 Months'})
           </h2>
           <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 text-xs font-medium">
             <button

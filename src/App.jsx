@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { CurrencyProvider } from './context/CurrencyContext';
+import { ActiveYearProvider } from './context/ActiveYearContext';
 import { ExpenseProvider } from './context/ExpenseContext';
 import { CategoryProvider } from './context/CategoryContext';
 import { BudgetProvider } from './context/BudgetContext';
@@ -47,6 +48,7 @@ export default function App() {
         <ToastProvider>
           <AuthProvider>
             <CurrencyProvider>
+            <ActiveYearProvider>
             <CategoryProvider>
               <ExpenseProvider>
                 <BudgetProvider>
@@ -91,6 +93,7 @@ export default function App() {
                 </BudgetProvider>
               </ExpenseProvider>
             </CategoryProvider>
+            </ActiveYearProvider>
             </CurrencyProvider>
           </AuthProvider>
         </ToastProvider>

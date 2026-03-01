@@ -12,6 +12,8 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useActiveYear } from '../context/ActiveYearContext';
+import YearSelector from '../components/ui/YearSelector';
 
 // ── Add/Edit Bank Modal ─────────────────────────────────────────
 function BankModal({ isOpen, bank, onClose, onSave }) {
@@ -271,6 +273,7 @@ export default function Bank() {
   } = useBanks();
   const { addToast } = useToast();
   const { currency } = useCurrency();
+  const { activeYear } = useActiveYear();
 
   const [bankModalOpen, setBankModalOpen] = useState(false);
   const [editingBank, setEditingBank] = useState(null);
@@ -288,6 +291,9 @@ export default function Bank() {
   const [sortCol, setSortCol] = useState(null);   // null | 'date'|'description'|'deposit'|'withdraw'|'balance'
   const [sortDir, setSortDir] = useState('asc');  // 'asc' | 'desc'
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [yearFilter, setYearFilter] = useState(() => activeYear);
+
+  useEffect(() => { setYearFilter(activeYear); }, [activeYear]);
 
   // Reset to newest month + clear search when bank changes
   useEffect(() => { setMonthPage(0); setShowAll(false); setSearch(''); setSortCol(null); }, [selectedBankId]);
@@ -313,8 +319,9 @@ export default function Bank() {
   // Within each month entries are reversed for display (newest entry at top).
   // closingBalance on each entry is already computed oldest-first in context.
   const months = useMemo(() => {
+    const yearEntries = entries.filter(e => e.date?.startsWith(String(yearFilter)));
     const map = {};
-    entries.forEach(e => {
+    yearEntries.forEach(e => {
       const key = e.date.slice(0, 7); // "YYYY-MM"
       if (!map[key]) map[key] = [];
       map[key].push(e);
@@ -329,7 +336,7 @@ export default function Bank() {
         const totalWithdraw = monthEntries.reduce((s, e) => s + (+e.withdraw || 0), 0);
         return { key, label, entries: [...monthEntries].reverse(), totalDeposit, totalWithdraw };
       });
-  }, [entries]);
+  }, [entries, yearFilter]);
 
   const currentMonth = months[monthPage] ?? null;
 
@@ -494,6 +501,7 @@ export default function Bank() {
             )}
 
             <div className="sm:ml-auto flex items-center gap-2">
+              <YearSelector year={yearFilter} onChange={yr => { setYearFilter(yr); setMonthPage(0); }} />
               {selectedBank && (
                 <button
                   onClick={() => setImportOpen(true)}
