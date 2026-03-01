@@ -1,4 +1,5 @@
 npm run dev
+Live at https://meroexpensetracker.vercel
 # Install Firebase CLI
 npm install -g firebase-tools
 # Login to Firebase
@@ -214,4 +215,22 @@ Cancel button → always calls reset() — discards without saving
 Escape key → same, discards without saving
 Clicking outside → still auto-saves (intentional)
 
-Live at https://meroexpensetracker.vercel
+
+For Me page Features:
+Table columns: Date | Amount | Name | Description — all sortable (3-click cycle: desc → asc → reset)
+Stats bar: Total Entries · Total Amount · Unique People
+Add/Edit modal with validation (name, amount, date required; description optional)
+Search by name or description
+Delete with confirmation dialog
+Table footer shows filtered count + filtered total amount
+Toast notifications on all actions
+"For Me" nav item (Heart icon) added to sidebar at /for-me
+4 colored stat cards (Total Entries, Total Amount in pink, People in blue, Highest in orange)
+Sortable table (Date, Amount, Name, Description, Actions)
+Name filter — click any name in the table to filter by that person
+Right-side panel with collapsible Person Summary table and Bar Chart (pink bars)
+Panel toggle button to show/hide the side panel
+Name autocomplete in the add/edit modal
+Light pink bar (full width) = grand total (Rs 170) — acts as the reference/background
+Dark pink bar (proportional fill) = each person's share (Ram Rs 150 → ~88% wide, Shyam Rs 20 → ~12% wide)
+A Grand Total reference row at the top showing the full light pink bar
