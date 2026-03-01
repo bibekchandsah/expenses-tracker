@@ -313,4 +313,6 @@ Column sort now follows the 3-click cycle:
     1st	    Descending ↓	↓ (blue)
     2nd	    Ascending ↑	    ↑ (blue)
     3rd	    Reset	        ⇅ (grey)
-
+"Expenses by Category" section now appears in Net Summary (above the monthly breakdown), with:
+Left: scrollable table showing each category's icon, name, and total spent — plus a grand total row in the footer
+Right: horizontal bar chart with each bar colored using the category's own color, sized dynamically to fit all categories
