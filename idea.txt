@@ -455,6 +455,8 @@ Click a target page → form opens pre-filled from the current row:
 Click Add → entry saved, form re-prefills from original row (ready for another add to the same page)
 Click Back → return to the page picker to choose a different target
 Bank sync toggle still available (except when adding to Bank itself)
+Current page disabled in page picker — the button for whichever page the ⚡ was clicked on renders grayed out with opacity-40 cursor-not-allowed and a (current) label, and its onClick / disabled prevent selection.
+
 
 
 create a yearly summary page with total expenses, loans, savings, etc. and graphs

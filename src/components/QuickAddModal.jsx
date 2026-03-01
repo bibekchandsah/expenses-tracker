@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Building2, ArrowDown, ArrowUp, ChevronLeft } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { X, Plus, ArrowDown, ArrowUp, ChevronLeft } from 'lucide-react';
 import { useToast } from './ui/Toast';
 import { useIncomes } from '../context/IncomeContext';
 import { useExpenses } from '../context/ExpenseContext';
@@ -10,7 +9,6 @@ import { useLoans } from '../context/LoanContext';
 import { useSavings } from '../context/SavingContext';
 import { useForMe } from '../context/ForMeContext';
 import { useCategories } from '../context/CategoryContext';
-import { addBankEntry } from '../services/bankService';
 import { INCOME_SOURCES } from './IncomeModal';
 
 const TODAY = () => new Date().toISOString().slice(0, 10);
@@ -58,6 +56,15 @@ const ACCENT_CARD = {
 const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent';
 const LABEL_CLS = 'block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1';
 
+// Safely convert any date value (string, JS Date, Firestore Timestamp) to "YYYY-MM-DD"
+function toISODate(d) {
+  if (!d) return null;
+  if (typeof d === 'string') return d.slice(0, 10);
+  if (typeof d.toDate === 'function') return d.toDate().toISOString().slice(0, 10); // Firestore Timestamp
+  if (d instanceof Date) return d.toISOString().slice(0, 10);
+  return null;
+}
+
 // Build a pre-filled form for targetPage from the sourceRow values
 function prefill(targetPage, sourceRow) {
   const today = TODAY();
@@ -74,44 +81,31 @@ function prefill(targetPage, sourceRow) {
       default:         return { date: today };
     }
   }
-  const date        = sourceRow.date        || today;
+  const date        = toISODate(sourceRow.date) || today;
   const amount      = sourceRow.amount != null ? String(sourceRow.amount) : '';
   const description = sourceRow.description || '';
   // Normalise a "name-like" value from whatever field the source row has
   const nameish = sourceRow.name || sourceRow.title || sourceRow.expendOn || '';
   switch (targetPage) {
-    case 'income':   return { date, amount, title: nameish, source: '', notes: sourceRow.notes || '', description };
-    case 'expenses': return { date, amount, title: nameish, category: '', note: sourceRow.note || '', description };
-    case 'bank':     return { date, type: 'deposit', amount, description: nameish || description };
-    case 'lend':     return { date, amount, name: nameish, reason: sourceRow.reason || '', description };
-    case 'loan':     return { date, amount, name: nameish, reason: sourceRow.reason || '', description };
-    case 'saving':   return { date, amount, expendOn: nameish, description };
-    case 'forMe':    return { date, amount, name: nameish, person: sourceRow.person || '', description };
+    case 'income':   return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, title: nameish || sourceRow.description || '', source: '', notes: sourceRow.notes || sourceRow.reason || '', description };
+    case 'expenses': return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, title: nameish || sourceRow.description || '', category: '', note: sourceRow.note || sourceRow.notes|| sourceRow.reason || '', description };
+    case 'bank':     return { date, type: 'deposit', amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, description: nameish+' '+sourceRow.reason || description };
+    case 'lend':     return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, name: nameish, reason: sourceRow.reason || sourceRow.note || sourceRow.notes || '', description };
+    case 'loan':     return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, name: nameish, reason: sourceRow.reason || sourceRow.note || sourceRow.notes || '', description };
+    case 'saving':   return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, expendOn: nameish+' '+sourceRow.reason, description };
+    case 'forMe':    return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, name: nameish, person: sourceRow.person || '', description };
     default:         return { date: today };
   }
 }
 
-function toBankSyncEntry(targetPage, form) {
-  const amt = +form.amount || 0;
-  switch (targetPage) {
-    case 'income':   return { date: form.date, deposit: amt, withdraw: 0,   description: form.title   || '' };
-    case 'expenses': return { date: form.date, deposit: 0,   withdraw: amt, description: form.title   || '' };
-    case 'lend':     return { date: form.date, deposit: 0,   withdraw: amt, description: form.name    || form.reason || '' };
-    case 'loan':     return { date: form.date, deposit: amt, withdraw: 0,   description: form.name    || form.reason || '' };
-    case 'saving':   return { date: form.date, deposit: amt, withdraw: 0,   description: form.expendOn || '' };
-    case 'forMe':    return { date: form.date, deposit: amt, withdraw: 0,   description: form.name    || '' };
-    default:         return null;
-  }
-}
 
 export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }) {
-  const { user }     = useAuth();
   const { addToast } = useToast();
 
   // ── Consume all page contexts internally ─────────────────────
   const { addIncome }                           = useIncomes();
   const { addExpense }                          = useExpenses();
-  const { banks, selectedBankId, addEntry: addBankEntry_ctx } = useBanks();
+  const { addEntry: addBankEntry_ctx }          = useBanks();
   const { addLend }                             = useLends();
   const { addLoan }                             = useLoans();
   const { addSaving }                           = useSavings();
@@ -121,8 +115,6 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
   // ── Component state ──────────────────────────────────────────
   const [targetPage, setTargetPage] = useState(null);   // null = page-picker step
   const [form,       setForm]       = useState({});
-  const [bankSync,   setBankSync]   = useState(false);
-  const [bankId,     setBankId]     = useState('');
   const [saving,     setSaving]     = useState(false);
   const [count,      setCount]      = useState(0);
 
@@ -131,8 +123,6 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
     if (isOpen) {
       setTargetPage(null);
       setForm({});
-      setBankSync(false);
-      setBankId(selectedBankId || banks[0]?.id || '');
       setCount(0);
     }
   }, [isOpen]); // eslint-disable-line
@@ -141,14 +131,12 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
   useEffect(() => {
     if (targetPage) {
       setForm(prefill(targetPage, sourceRow));
-      setBankSync(false);
     }
   }, [targetPage]); // eslint-disable-line
 
   if (!isOpen) return null;
 
   const pageOpt  = PAGE_OPTIONS.find(p => p.key === targetPage);
-  const canSync  = !!(targetPage && targetPage !== 'bank' && banks.length > 0);
 
   function set(key, val) { setForm(f => ({ ...f, [key]: val })); }
 
@@ -182,10 +170,6 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
     if ((targetPage === 'lend' || targetPage === 'loan') && !form.name?.trim()) {
       addToast('Name is required', 'error'); return;
     }
-    if (canSync && bankSync && !bankId) {
-      addToast('Select a bank to sync with', 'error'); return;
-    }
-
     setSaving(true);
     try {
       const data = { ...form };
@@ -205,17 +189,8 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
       const addFn = getAddFn(targetPage);
       if (addFn) await addFn(data);
 
-      // Bank sync (skip when adding to bank itself)
-      if (canSync && bankSync && bankId && user) {
-        const be = toBankSyncEntry(targetPage, form);
-        if (be) await addBankEntry(user.uid, bankId, be);
-      }
-
       setCount(c => c + 1);
-      addToast(
-        `${pageOpt.label} entry added${canSync && bankSync ? ' + synced to bank' : ''}`,
-        'success'
-      );
+      addToast(`${pageOpt.label} entry added`, 'success');
       // Re-prefill (keeps date + source row values, clears editable fields)
       setForm(prefill(targetPage, sourceRow));
     } catch {
@@ -270,26 +245,36 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
               <div className="mb-3 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Pre-filling from selected row:</p>
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-600 dark:text-gray-300">
-                  {sourceRow.date   && <span>📅 {sourceRow.date}</span>}
-                  {sourceRow.amount && <span>💲 {sourceRow.amount}</span>}
-                  {(sourceRow.name || sourceRow.title || sourceRow.expendOn) && (
-                    <span>🏷 {sourceRow.name || sourceRow.title || sourceRow.expendOn}</span>
+                  {sourceRow.date   && <span>📅 {toISODate(sourceRow.date)}</span>}
+                  {(sourceRow.withdraw || sourceRow.deposit || sourceRow.amount) && (
+                    <span>💲 {sourceRow.withdraw || sourceRow.deposit || sourceRow.amount}</span>
+                  )}
+                  {(sourceRow.name || sourceRow.title || sourceRow.expendOn || sourceRow.description) && (
+                    <span>🏷 {sourceRow.name || sourceRow.title || sourceRow.expendOn || sourceRow.description}</span>
                   )}
                 </div>
               </div>
             )}
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Select a page to add an entry to:</p>
             <div className="grid grid-cols-2 gap-2">
-              {PAGE_OPTIONS.map(opt => (
-                <button
-                  key={opt.key}
-                  onClick={() => setTargetPage(opt.key)}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${ACCENT_CARD[opt.accent]} ${ACCENT_TEXT[opt.accent]}`}
-                >
-                  <span className="text-base leading-none">{opt.icon}</span>
-                  {opt.label}
-                </button>
-              ))}
+              {PAGE_OPTIONS.map(opt => {
+                const isCurrent = opt.key === sourcePage;
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => !isCurrent && setTargetPage(opt.key)}
+                    disabled={isCurrent}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                      isCurrent
+                        ? 'opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-700/40 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'
+                        : `${ACCENT_CARD[opt.accent]} ${ACCENT_TEXT[opt.accent]}`
+                    }`}
+                  >
+                    <span className="text-base leading-none">{opt.icon}</span>
+                    <span>{opt.label}{isCurrent && <span className="ml-1 text-xs opacity-70">(current)</span>}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -409,28 +394,6 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
               <label className={LABEL_CLS}>Description</label>
               <input type="text" placeholder="Description" value={form.description || ''} onChange={e => set('description', e.target.value)} className={INPUT_CLS} />
             </div>
-
-            {/* Bank Sync */}
-            {canSync && (
-              <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input type="checkbox" checked={bankSync} onChange={e => setBankSync(e.target.checked)} className="rounded border-gray-300 dark:border-gray-600" />
-                  <Building2 className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Also add to bank
-                    <span className="ml-1 text-xs text-gray-400">
-                      ({pageOpt.bankDir === 'deposit' ? '↓ deposit' : '↑ withdraw'})
-                    </span>
-                  </span>
-                </label>
-                {bankSync && (
-                  <select value={bankId} onChange={e => setBankId(e.target.value)} className={INPUT_CLS}>
-                    <option value="">— Select bank —</option>
-                    {banks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
-                )}
-              </div>
-            )}
 
             {/* Actions */}
             <div className="flex gap-2 pt-1">
