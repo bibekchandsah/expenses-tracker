@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
@@ -23,6 +23,7 @@ export default function Dashboard() {
   const now = new Date();
   const thisMonth = currentMonth();
   const thisYear = currentYear();
+  const [catPeriod, setCatPeriod] = useState('month');
 
   const stats = useMemo(() => {
     const monthExpenses = expenses.filter(e => e.date.startsWith(thisMonth));
@@ -43,14 +44,16 @@ export default function Dashboard() {
     return { monthTotal, yearTotal, trend, avgMonthly, count: monthExpenses.length };
   }, [expenses, thisMonth, thisYear]);
 
-  // Category breakdown for this month
+  // Category breakdown — this month or this year
   const categoryData = useMemo(() => {
-    const monthExp = expenses.filter(e => e.date.startsWith(thisMonth));
-    return groupByCategory(monthExp).map(g => {
+    const filtered = catPeriod === 'month'
+      ? expenses.filter(e => e.date.startsWith(thisMonth))
+      : expenses.filter(e => e.date.startsWith(String(thisYear)));
+    return groupByCategory(filtered).map(g => {
       const cat = getCategoryById(g.category);
       return { ...g, name: cat?.name || g.category, color: cat?.color || '#6b7280' };
     }).sort((a, b) => b.total - a.total);
-  }, [expenses, thisMonth, getCategoryById]);
+  }, [expenses, thisMonth, thisYear, catPeriod, getCategoryById]);
 
   // Monthly bar chart (last 12 months)
   const monthlyData = useMemo(() => {
@@ -139,9 +142,31 @@ export default function Dashboard() {
 
         {/* Pie chart */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Category Breakdown (This Month)</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+              Category Breakdown ({catPeriod === 'month' ? 'This Month' : 'This Year'})
+            </h2>
+            <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 text-xs font-medium">
+              <button
+                onClick={() => setCatPeriod('month')}
+                className={`px-3 py-1.5 transition-colors ${
+                  catPeriod === 'month'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                }`}
+              >Monthly</button>
+              <button
+                onClick={() => setCatPeriod('year')}
+                className={`px-3 py-1.5 transition-colors ${
+                  catPeriod === 'year'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                }`}
+              >Yearly</button>
+            </div>
+          </div>
           {categoryData.length === 0 ? (
-            <div className="flex items-center justify-center h-48 text-gray-400 text-sm">No expenses this month</div>
+            <div className="flex items-center justify-center h-48 text-gray-400 text-sm">No expenses {catPeriod === 'month' ? 'this month' : 'this year'}</div>
           ) : (
             <div className="flex items-center gap-4">
               <ResponsiveContainer width="55%" height={200}>

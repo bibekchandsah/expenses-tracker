@@ -303,6 +303,7 @@ Color picker:
     A small hex code text field below so you can type a precise hex value like #ff6b35
 
 
+Expenses page updates:
 Title/Date(4) | Amount(2) | Category(2) | Note(2) | Actions(2)
 The 12-column grid is currently full (4+2+2+2+2). I'll compress Title/Date to 3 and Actions to 1 to make room for a Description column.
 Title / Date → Amount → Note → Description → Category → Actions
@@ -316,3 +317,8 @@ Column sort now follows the 3-click cycle:
 "Expenses by Category" section now appears in Net Summary (above the monthly breakdown), with:
 Left: scrollable table showing each category's icon, name, and total spent — plus a grand total row in the footer
 Right: horizontal bar chart with each bar colored using the category's own color, sized dynamically to fit all categories
+
+
+Dashboard page updates:
+Category Breakdown toggle — now defaults to Monthly with a Monthly / Yearly pill toggle in the top-right corner of the chart card. Switching to Yearly aggregates all expenses from the current year.
+Monthly Expenses showing current month — the root cause was a timezone bug: new Date().toISOString() converts to UTC, so in Nepal (UTC+5:45) "March 1 local" = "Feb 28 UTC", making March invisible. 

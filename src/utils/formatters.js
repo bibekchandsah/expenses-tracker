@@ -53,7 +53,8 @@ export function getMonthYear(dateStr) {
 }
 
 export function currentMonth() {
-  return new Date().toISOString().slice(0, 7);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
 export function currentYear() {
@@ -86,7 +87,9 @@ export function last12Months() {
   const now = new Date();
   for (let i = 11; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push(d.toISOString().slice(0, 7));
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    months.push(`${y}-${m}`);
   }
   return months;
 }
