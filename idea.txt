@@ -176,6 +176,10 @@ Lender Summary panel (right): grouped by lender name, showing total borrowed, du
 Borrowed vs Paid bar chart: same light/dark purple bars
 All features: sort, search, person filter, side panel toggle, autocomplete, confirm delete
 
+link lender name & person name in loan and lend page that is if in lender name is Ram then it should show suggestion of Ram in person name and vice versa. if user click on that suggestion then it should fill the name in the form. this will make it easier for user to fill the form and also it will maintain consistency in naming. this feature is implemented in both loan and lend page.
+Lend page: the name field suggests names from both Lend entries and Loan entries (lender names)
+Loan page: the name field suggests names from both Loan entries and Lend entries (person names)
+
 
 Features on the Saving page:
 Stats strip: Total Spent, Total Sourced, Net Balance, Savings Rate %
@@ -254,4 +258,4 @@ To Give card = sum of absolute net values where net < 0 (people you owe more tha
 3rd click → resets to natural order ⇅ (column returns to grey)
 
 
-link lender name & person name in loan and lend page that is if in lender name is Ram then it should show suggestion of Ram in person name and vice versa. if user click on that suggestion then it should fill the name in the form. this will make it easier for user to fill the form and also it will maintain consistency in naming. this feature is implemented in both loan and lend page.
+

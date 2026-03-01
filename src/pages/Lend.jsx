@@ -5,6 +5,7 @@ import {
   PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
 import { useLends } from '../context/LendContext';
+import { useLoans } from '../context/LoanContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -187,6 +188,7 @@ function SortIcon({ col, sortCol, sortDir }) {
 // ── Main Lend Page ──────────────────────────────────────────────
 export default function Lend() {
   const { lends, loading, addLend, updateLend, deleteLend } = useLends();
+  const { loans } = useLoans();
   const { addToast } = useToast();
 
   const [modalOpen, setModalOpen]         = useState(false);
@@ -200,8 +202,13 @@ export default function Lend() {
   const [chartOpen, setChartOpen]         = useState(true);
   const [showSidePanel, setShowSidePanel] = useState(true);
 
-  // Unique names for autocomplete
-  const existingNames = useMemo(() => [...new Set(lends.map(l => l.name))].sort(), [lends]);
+  // Unique names for autocomplete — merged from both Lend and Loan pages
+  const existingNames = useMemo(() => [
+    ...new Set([
+      ...lends.map(l => l.name),
+      ...loans.map(l => l.name),
+    ])
+  ].filter(Boolean).sort(), [lends, loans]);
 
   // Sort
   function handleSort(col) {
