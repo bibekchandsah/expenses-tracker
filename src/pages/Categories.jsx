@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Edit2, Trash2, Lock, X, Check, Smile } from 'lucide-react';
 import { useCategories } from '../context/CategoryContext';
 import { useToast } from '../components/ui/Toast';
@@ -33,7 +33,7 @@ function CategoryModal({ isOpen, category, onClose, onSave }) {
   const [activeGroup, setActiveGroup] = useState(0);
   const colorRef = useRef(null);
 
-  useState(() => {
+  useEffect(() => {
     if (isOpen) {
       setForm(category ? { name: category.name, icon: category.icon, color: category.color } : EMPTY_FORM);
       setCustomEmoji('');

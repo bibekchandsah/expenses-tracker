@@ -295,6 +295,8 @@ Color picker:
     20 preset color swatches (expanded from 10)
     A + dashed-circle button at the end opens the native OS color wheel for any custom color
     A small hex code text field below so you can type a precise hex value like #ff6b35
+category editing bug fix don't show values of current selected category in the edit form to avoid confusion and accidental overwriting of existing data.
+editing name, emoji, color, should reflect changes in expenses
 
 
 Expenses page updates:
@@ -400,7 +402,6 @@ Equation sub-line now shows:
 Active operator button highlights in brighter orange
 
 
-category editing bug fix don't show values of current selected category in the edit form to avoid confusion and accidental overwriting of existing data.
 
 
 
