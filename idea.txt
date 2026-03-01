@@ -11,6 +11,9 @@ firebase use --add    # pick your project from the list
 # Deploy the security rules
 firebase deploy --only firestore:rules
 
+cd "d:\programming exercise\react\expenses tracker"
+echo y | vercel --prod
+
 
 (done) all user should be able to login their account and see their profile and edit it if they want to. They should also be able to see their expenses and add new expenses. They can also see their budget and how much they have left for the month. They can set goals for their savings and track their progress. They can also see tips and advice on how to save money and manage their finances better.
 
@@ -475,3 +478,6 @@ Shows an inline confirmation panel with a clear warning before doing anything
 On confirm, deletes all records across all 7 data types in parallel
 Shows "Deleting..." state on the button while in progress
 Toast on success or failure
+
+
+login using google, Email/Password, Microsoft, Apple, Twitter, github
