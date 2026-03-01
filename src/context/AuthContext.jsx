@@ -99,6 +99,16 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function updateUserInfo(data) {
+    try {
+      await updateProfile(auth.currentUser, data);
+      setUser({ ...auth.currentUser });
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  }
+
   async function logout() {
     setError(null);
     try {
@@ -114,7 +124,7 @@ export function AuthProvider({ children }) {
       user, loading, error, clearError,
       signInWithGoogle, signInWithMicrosoft, signInWithApple, signInWithTwitter, signInWithGitHub,
       signUpWithEmail, signInWithEmail, resetPassword,
-      logout,
+      updateUserInfo, logout,
     }}>
       {children}
     </AuthContext.Provider>

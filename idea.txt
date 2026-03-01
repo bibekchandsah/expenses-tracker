@@ -99,6 +99,40 @@ Go to Firebase Console → Authentication → Settings → Authorized domains
 Click "Add domain"
 Enter your Vercel URL: your-app.vercel.app
 
+Enable GitHub Login
+1. Create a GitHub OAuth App
+    Go to github.com/settings/developers → OAuth Apps → New OAuth App
+    Homepage URL: https://meroexpensetracker.vercel.app
+    Authorization callback URL: get this from the next step
+
+2. Enable in Firebase Console
+    Go to console.firebase.google.com → your project → Authentication → Sign-in method
+    Click GitHub → toggle Enable
+    Copy the callback URL shown (looks like https://your-project.firebaseapp.com/__/auth/handler)
+    Paste it into the GitHub OAuth App's Authorization callback URL, then save
+    Copy the GitHub app's Client ID and Client Secret → paste into Firebase → Save
+
+Enable Microsoft Login
+1. Create an Azure App Registration
+    Go to portal.azure.com → Azure Active Directory → App registrations → New registration
+    Name: anything (e.g. ExpenseIQ)
+    Supported account types: choose Accounts in any organizational directory and personal Microsoft accounts (for both work and personal Outlook/Hotmail)
+    Redirect URI: Web → get from Firebase next step
+
+2. Enable in Firebase Console
+    Authentication → Sign-in method → Microsoft → toggle Enable
+    Copy the OAuth redirect URI shown → paste into Azure app's Redirect URIs → Save
+    Back in Azure: go to Certificates & secrets → New client secret → copy the Value
+    Go to Overview → copy the Application (client) ID
+    Paste both into Firebase → Save
+
+Enable twitter login
+Go to developer.twitter.com → Sign up for Free
+Create a project + app
+In app settings → User authentication settings → enable OAuth 2.0
+Set Callback URL to the Firebase redirect URI (https://<project>.firebaseapp.com/__/auth/handler)
+Copy API Key (Client ID) + API Secret → paste into Firebase Console → Twitter sign-in method
+
 
 
 

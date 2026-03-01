@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
-import { User, Mail, Globe, Save, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { User, Mail, Globe, Save, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet, Camera } from 'lucide-react';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useActiveYear } from '../context/ActiveYearContext';
@@ -66,7 +68,7 @@ const CURRENCIES = [
 ];
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, updateUserInfo } = useAuth();
   const { currency: activeCurrency, updateCurrency } = useCurrency();
   const { activeYear, updateActiveYear } = useActiveYear();
   const { expenses, deleteExpense } = useExpenses();
@@ -79,8 +81,10 @@ export default function Profile() {
   const { getCategoryById } = useCategories();
   const { addToast } = useToast();
   const [profile, setProfile] = useState(null);
+  const photoInputRef = useRef(null);
   const [form, setForm] = useState({ displayName: '' });
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -111,12 +115,36 @@ export default function Profile() {
     e.preventDefault();
     setSaving(true);
     try {
-      await updateUserProfile(user.uid, { displayName: form.displayName });
+      await Promise.all([
+        updateUserProfile(user.uid, { displayName: form.displayName }),
+        updateUserInfo({ displayName: form.displayName }),
+      ]);
       addToast('Profile updated!', 'success');
     } catch {
       addToast('Failed to update profile', 'error');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handlePhotoChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const fileRef = storageRef(storage, `users/${user.uid}/profile`);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+      await Promise.all([
+        updateUserProfile(user.uid, { photoURL: url }),
+        updateUserInfo({ photoURL: url }),
+      ]);
+      addToast('Profile picture updated!', 'success');
+    } catch {
+      addToast('Failed to upload photo', 'error');
+    } finally {
+      setUploadingPhoto(false);
+      e.target.value = '';
     }
   }
 
@@ -316,7 +344,11 @@ export default function Profile() {
       {/* Avatar + info */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-center gap-5">
-          <div className="relative">
+          <div
+            className="relative group cursor-pointer"
+            onClick={() => photoInputRef.current?.click()}
+            title="Change profile picture"
+          >
             {user?.photoURL ? (
               <img src={user.photoURL} alt={user.displayName} referrerPolicy="no-referrer" className="w-20 h-20 rounded-2xl object-cover" />
             ) : (
@@ -324,6 +356,13 @@ export default function Profile() {
                 {user?.displayName?.[0] || 'U'}
               </div>
             )}
+            <div className="absolute inset-0 rounded-2xl bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              {uploadingPhoto
+                ? <div className="w-5 h-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                : <Camera className="w-5 h-5 text-white" />
+              }
+            </div>
+            <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{user?.displayName}</h2>
