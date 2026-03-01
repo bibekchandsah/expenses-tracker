@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import {
   Building2, Plus, Edit2, Trash2, X, ChevronDown,
   ArrowDownCircle, ArrowUpCircle, Wallet, Download,
@@ -9,6 +9,7 @@ import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { useCurrency } from '../context/CurrencyContext';
 
 // ── Add/Edit Bank Modal ─────────────────────────────────────────
 function BankModal({ isOpen, bank, onClose, onSave }) {
@@ -254,6 +255,7 @@ export default function Bank() {
     entries, entriesLoading, addBank, updateBank, deleteBank, addEntry, updateEntry, deleteEntry,
   } = useBanks();
   const { addToast } = useToast();
+  const { currency } = useCurrency();
 
   const [bankModalOpen, setBankModalOpen] = useState(false);
   const [editingBank, setEditingBank] = useState(null);
@@ -510,26 +512,26 @@ export default function Bank() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Opening Balance</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(selectedBank.openingBalance || 0)}</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(selectedBank.openingBalance || 0, currency)}</p>
               </div>
               <div className="bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-200 dark:border-green-800 p-4">
                 <p className="text-xs text-green-700 dark:text-green-400 font-medium flex items-center gap-1">
                   <ArrowDownCircle className="w-3.5 h-3.5" /> Total Deposits
                 </p>
-                <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">{formatCurrency(stats.totalDeposit)}</p>
+                <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">{formatCurrency(stats.totalDeposit, currency)}</p>
               </div>
               <div className="bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-200 dark:border-red-800 p-4">
                 <p className="text-xs text-red-700 dark:text-red-400 font-medium flex items-center gap-1">
                   <ArrowUpCircle className="w-3.5 h-3.5" /> Total Withdrawals
                 </p>
-                <p className="text-lg font-bold text-red-700 dark:text-red-400 mt-1">{formatCurrency(stats.totalWithdraw)}</p>
+                <p className="text-lg font-bold text-red-700 dark:text-red-400 mt-1">{formatCurrency(stats.totalWithdraw, currency)}</p>
               </div>
               <div className={`rounded-2xl border p-4 ${stats.currentBalance >= 0 ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800' : 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800'}`}>
                 <p className={`text-xs font-medium flex items-center gap-1 ${stats.currentBalance >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>
                   <Wallet className="w-3.5 h-3.5" /> Current Balance
                 </p>
                 <p className={`text-lg font-bold mt-1 ${stats.currentBalance >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>
-                  {formatCurrency(stats.currentBalance)}
+                  {formatCurrency(stats.currentBalance, currency)}
                 </p>
               </div>
             </div>
@@ -632,9 +634,9 @@ export default function Bank() {
                         <p className="text-sm text-gray-900 dark:text-white font-medium truncate" title={entry.description}>{entry.description}</p>
                         {/* Mobile amounts */}
                         <div className="flex items-center gap-3 sm:hidden mt-0.5">
-                          {+entry.deposit > 0 && <span className="text-xs font-semibold text-green-600">+{formatCurrency(entry.deposit)}</span>}
-                          {+entry.withdraw > 0 && <span className="text-xs font-semibold text-red-600">−{formatCurrency(entry.withdraw)}</span>}
-                          <span className="text-xs text-gray-500">Bal: {formatCurrency(entry.closingBalance)}</span>
+                          {+entry.deposit > 0 && <span className="text-xs font-semibold text-green-600">+{formatCurrency(entry.deposit, currency)}</span>}
+                          {+entry.withdraw > 0 && <span className="text-xs font-semibold text-red-600">−{formatCurrency(entry.withdraw, currency)}</span>}
+                          <span className="text-xs text-gray-500">Bal: {formatCurrency(entry.closingBalance, currency)}</span>
                         </div>
                       </div>
 
@@ -642,7 +644,7 @@ export default function Bank() {
                       <div className="hidden sm:block sm:col-span-2 text-right">
                         {+entry.deposit > 0 ? (
                           <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-                            +{formatCurrency(entry.deposit)}
+                            +{formatCurrency(entry.deposit, currency)}
                           </span>
                         ) : <span className="text-gray-300 dark:text-gray-600">—</span>}
                       </div>
@@ -651,7 +653,7 @@ export default function Bank() {
                       <div className="hidden sm:block sm:col-span-2 text-right">
                         {+entry.withdraw > 0 ? (
                           <span className="text-sm font-semibold text-red-600 dark:text-red-400">
-                            −{formatCurrency(entry.withdraw)}
+                            −{formatCurrency(entry.withdraw, currency)}
                           </span>
                         ) : <span className="text-gray-300 dark:text-gray-600">—</span>}
                       </div>
@@ -659,7 +661,7 @@ export default function Bank() {
                       {/* Closing Balance */}
                       <div className="hidden sm:block sm:col-span-1 text-right">
                         <span className={`text-sm font-bold ${entry.closingBalance >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-600 dark:text-red-400'}`}>
-                          {formatCurrency(entry.closingBalance)}
+                          {formatCurrency(entry.closingBalance, currency)}
                         </span>
                       </div>
 
@@ -686,9 +688,9 @@ export default function Bank() {
                   {/* Per-month totals row */}
                   <div className="hidden sm:grid grid-cols-12 gap-2 px-5 py-2.5 bg-gray-50 dark:bg-gray-700/40 border-t border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     <div className="col-span-6">{month.label} — {month.entries.length} transaction{month.entries.length !== 1 ? 's' : ''}</div>
-                    <div className="col-span-2 text-right text-green-600 dark:text-green-400">{formatCurrency(month.totalDeposit)}</div>
-                    <div className="col-span-2 text-right text-red-600 dark:text-red-400">{formatCurrency(month.totalWithdraw)}</div>
-                    <div className="col-span-2 text-right text-blue-600 dark:text-blue-400">{formatCurrency(month.entries[0]?.closingBalance ?? (selectedBank?.openingBalance || 0))}</div>
+                    <div className="col-span-2 text-right text-green-600 dark:text-green-400">{formatCurrency(month.totalDeposit, currency)}</div>
+                    <div className="col-span-2 text-right text-red-600 dark:text-red-400">{formatCurrency(month.totalWithdraw, currency)}</div>
+                    <div className="col-span-2 text-right text-blue-600 dark:text-blue-400">{formatCurrency(month.entries[0]?.closingBalance ?? (selectedBank?.openingBalance || 0), currency)}</div>
                   </div>
                 </div>
                 ))}
@@ -697,9 +699,9 @@ export default function Bank() {
                 {showAll && entries.length > 0 && (
                   <div className="hidden sm:grid grid-cols-12 gap-2 px-5 py-3 bg-gray-100 dark:bg-gray-700 border-t-2 border-gray-300 dark:border-gray-600 text-xs font-black text-gray-700 dark:text-gray-200 uppercase tracking-wide">
                     <div className="col-span-6">Grand Total — {entries.length} transactions</div>
-                    <div className="col-span-2 text-right text-green-700 dark:text-green-400">{formatCurrency(stats.totalDeposit)}</div>
-                    <div className="col-span-2 text-right text-red-700 dark:text-red-400">{formatCurrency(stats.totalWithdraw)}</div>
-                    <div className="col-span-2 text-right text-blue-700 dark:text-blue-400">{formatCurrency(stats.currentBalance)}</div>
+                    <div className="col-span-2 text-right text-green-700 dark:text-green-400">{formatCurrency(stats.totalDeposit, currency)}</div>
+                    <div className="col-span-2 text-right text-red-700 dark:text-red-400">{formatCurrency(stats.totalWithdraw, currency)}</div>
+                    <div className="col-span-2 text-right text-blue-700 dark:text-blue-400">{formatCurrency(stats.currentBalance, currency)}</div>
                   </div>
                 )}
               </div>

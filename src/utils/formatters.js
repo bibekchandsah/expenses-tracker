@@ -1,9 +1,35 @@
+const CURRENCY_SYMBOLS = {
+  USD: '$',   EUR: '€',   GBP: '£',   INR: '₹',   NPR: 'Rs',
+  THB: '฿',  IDR: 'Rp',  BTN: 'Nu',  LKR: 'Rs',  MVR: 'Rf',
+  JPY: '¥',  CNY: '¥',   CAD: 'C$',  AUD: 'A$',  SGD: 'S$',
+  AED: 'د.إ',SAR: '﷼',  MYR: 'RM',  PKR: '₨',   BDT: '৳',
+  MMK: 'K',  KHR: '៛',   VND: '₫',   PHP: '₱',   BRL: 'R$',
+  MXN: '$',  ZAR: 'R',   NGN: '₦',   KES: 'Ksh', CHF: 'Fr',
+  SEK: 'kr', NOK: 'kr',  DKK: 'kr',  NZD: 'NZ$', HKD: 'HK$',
+  KRW: '₩',  TRY: '₺',   RUB: '₽',   QAR: 'QR',  HUF: 'Ft',
+  CZK: 'Kč', PLN: 'zł',  ILS: '₪',   CLP: '$',   COP: '$',
+};
+
 export function formatCurrency(amount, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
+  const num = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
+
+  const sym = CURRENCY_SYMBOLS[currency?.toUpperCase()];
+  if (sym) return `${sym} ${num}`;
+
+  // Fallback: try Intl currency formatting, catch unknown codes
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'USD',
+      currencyDisplay: 'narrowSymbol',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${currency} ${num}`;
+  }
 }
 
 export function formatDate(dateStr) {

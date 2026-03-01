@@ -10,7 +10,7 @@ firebase use --add    # pick your project from the list
 firebase deploy --only firestore:rules
 
 
-all user should be able to login their account and see their profile and edit it if they want to. They should also be able to see their expenses and add new expenses. They can also see their budget and how much they have left for the month. They can set goals for their savings and track their progress. They can also see tips and advice on how to save money and manage their finances better.
+(done) all user should be able to login their account and see their profile and edit it if they want to. They should also be able to see their expenses and add new expenses. They can also see their budget and how much they have left for the month. They can set goals for their savings and track their progress. They can also see tips and advice on how to save money and manage their finances better.
 
 Expense tracker
 Country wise date selection 
@@ -46,19 +46,20 @@ Discussion or note page (done)
 
 Graph showing how much u take and what percentage I returned dual data in same bar (done)
 
-
+(done)
 show/hide sidebar icon & tooltip on hover
 show tooltip on hover of sidebar icons
 show user profile picture and name in sidebar bottom add a dropdown menu with options to view profile and logout
 add logout button in sidebar
-add tools page with calculator, currency converter, loan calculator, etc.
-
-add it to lent, expense and for me entry form
 add search functionality to expenses, loans and bank entries
+
+add tools page with draggable & resizable calculator like ios, currency converter, loan calculator, etc.
+add it to lent, expense and for me entry form
+
 create a yearly summary page with total expenses, loans, savings, etc. and graphs
 user can choose the year in their profile settings and the dashboard and summary page will show data for that year by default so that in the future when they have multiple years of data, they can easily switch between years to see their financial history and progress over time. when user choose 2026 in profile settings, the dashboard and summary page will show data for 2026 by default. user can still change the year on the dashboard and summary page to view data for other years, but it will always default to the year they selected in their profile settings when they first visit those pages. this allows users to easily focus on their current year's financial data while still having access to their historical data when needed.
 
-show the user selected currency type in the profile page and use it throughout the app for displaying amounts. user can choose from a list of common currencies (USD, EUR, GBP, etc.) or enter a custom currency code. the selected currency will be saved in their profile and used as the default currency for all financial data displayed in the app, including expenses, budgets, bank entries, etc. this way users can see their financial data in their preferred currency format and easily track their finances without having to manually convert amounts.
+(done) show the user selected currency type in the profile page and use it throughout the app for displaying amounts. user can choose from a list of common currencies (USD, EUR, INR, NPR, THB, IDR, BTN, LKR, MVR, GBP, etc.) or enter a custom currency code. the selected currency will be saved in their profile and used as the default currency for all financial data displayed in the app, including expenses, budgets, bank entries, etc. this way users can see their financial data in their preferred currency format and easily track their finances without having to manually convert amounts.
 
 
 
@@ -269,3 +270,18 @@ Clicking opens a dropdown menu with:
     Logout (red) → signs out and redirects to /login
 Sidebar — theme toggle button added above the profile section. In expanded mode it shows the icon + "Dark Mode" / "Light Mode" label. In collapsed mode it shows just the icon with a tooltip on hover.
 Layout — Navbar removed entirely. On desktop the sidebar is always visible so no header is needed. On mobile a slim top bar (lg:hidden) shows only the hamburger button to open the sidebar.
+
+
+Active currency badge (always visible)
+Search box to filter the list
+2-column visual picker with symbol + code + label, checkmark on active selection
+"Enter custom currency code" toggle for anything not in the list (BTC, XAF, etc.)
+Currency changes are applied immediately on click (no save button needed)
+NPR → Rs 601.00
+IDR → Rp 1,000.00
+THB → ฿ 500.00
+INR → ₹ 1,234.00
+USD → $ 100.00
+etc...
+
+

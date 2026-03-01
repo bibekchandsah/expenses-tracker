@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { CurrencyProvider } from './context/CurrencyContext';
 import { ExpenseProvider } from './context/ExpenseContext';
 import { CategoryProvider } from './context/CategoryContext';
 import { BudgetProvider } from './context/BudgetContext';
@@ -43,6 +44,7 @@ export default function App() {
       <ThemeProvider>
         <ToastProvider>
           <AuthProvider>
+            <CurrencyProvider>
             <CategoryProvider>
               <ExpenseProvider>
                 <BudgetProvider>
@@ -84,6 +86,7 @@ export default function App() {
                 </BudgetProvider>
               </ExpenseProvider>
             </CategoryProvider>
+            </CurrencyProvider>
           </AuthProvider>
         </ToastProvider>
       </ThemeProvider>

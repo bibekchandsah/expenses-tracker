@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import {
   Heart, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, ChevronDown,
@@ -10,6 +10,7 @@ import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { useCurrency } from '../context/CurrencyContext';
 
 // ── helpers ──────────────────────────────────────────────────────
 function toInputDate(date) {
@@ -173,6 +174,7 @@ function ForMeModal({ isOpen, entry, onClose, onSave, existingNames }) {
 // ── Main Page ─────────────────────────────────────────────────────
 export default function ForMe() {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useForMe();
+  const { currency } = useCurrency();
   const { addToast } = useToast();
 
   const [modalOpen,     setModalOpen]     = useState(false);
@@ -294,7 +296,7 @@ export default function ForMe() {
         </div>
         <div className="bg-pink-50 dark:bg-pink-900/10 rounded-2xl border border-pink-200 dark:border-pink-800 p-4">
           <p className="text-xs text-pink-700 dark:text-pink-400 font-medium">Total Amount</p>
-          <p className="text-lg font-bold text-pink-600 dark:text-pink-400 mt-1">{formatCurrency(stats.total)}</p>
+          <p className="text-lg font-bold text-pink-600 dark:text-pink-400 mt-1">{formatCurrency(stats.total, currency)}</p>
         </div>
         <div className="bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-200 dark:border-blue-800 p-4">
           <p className="text-xs text-blue-700 dark:text-blue-400 font-medium">People</p>
@@ -302,7 +304,7 @@ export default function ForMe() {
         </div>
         <div className="bg-orange-50 dark:bg-orange-900/10 rounded-2xl border border-orange-200 dark:border-orange-800 p-4">
           <p className="text-xs text-orange-700 dark:text-orange-400 font-medium">Highest</p>
-          <p className="text-lg font-bold text-orange-600 dark:text-orange-400 mt-1">{formatCurrency(stats.highest)}</p>
+          <p className="text-lg font-bold text-orange-600 dark:text-orange-400 mt-1">{formatCurrency(stats.highest, currency)}</p>
         </div>
       </div>
 
@@ -388,7 +390,7 @@ export default function ForMe() {
 
                     {/* Amount */}
                     <div className="lg:col-span-2 text-right">
-                      <span className="text-sm font-bold text-pink-600 dark:text-pink-400">{formatCurrency(entry.amount)}</span>
+                      <span className="text-sm font-bold text-pink-600 dark:text-pink-400">{formatCurrency(entry.amount, currency)}</span>
                     </div>
 
                     {/* Name */}
@@ -481,7 +483,7 @@ export default function ForMe() {
                             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">{person.count}</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-xs font-bold text-pink-600 dark:text-pink-400">{formatCurrency(person.total)}</span>
+                            <span className="text-xs font-bold text-pink-600 dark:text-pink-400">{formatCurrency(person.total, currency)}</span>
                           </div>
                         </button>
                       );
@@ -489,7 +491,7 @@ export default function ForMe() {
                     <div className="grid grid-cols-4 gap-1 px-4 py-3 bg-gray-50 dark:bg-gray-700/40 text-xs font-black text-gray-700 dark:text-gray-200 uppercase">
                       <div className="col-span-2">Total</div>
                       <div className="text-right">{stats.count}</div>
-                      <div className="text-right text-pink-600 dark:text-pink-400">{formatCurrency(stats.total)}</div>
+                      <div className="text-right text-pink-600 dark:text-pink-400">{formatCurrency(stats.total, currency)}</div>
                     </div>
                   </div>
                 )}
@@ -510,7 +512,7 @@ export default function ForMe() {
                     <div className="px-1">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-semibold text-gray-400 dark:text-gray-500">Grand Total</span>
-                        <span className="text-xs font-bold text-pink-400 dark:text-pink-500">{formatCurrency(stats.total)}</span>
+                        <span className="text-xs font-bold text-pink-400 dark:text-pink-500">{formatCurrency(stats.total, currency)}</span>
                       </div>
                       <div className="w-full h-4 rounded-full overflow-hidden" style={{ backgroundColor: '#fce7f3' }}>
                         <div className="h-full w-full rounded-full" style={{ backgroundColor: '#fbcfe8' }} />
@@ -532,7 +534,7 @@ export default function ForMe() {
                               {person.name}
                             </span>
                             <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
-                              {formatCurrency(person.total)}
+                              {formatCurrency(person.total, currency)}
                             </span>
                           </div>
                           {/* Light pink = full bar (total), dark pink fill = person's share */}
@@ -565,7 +567,7 @@ export default function ForMe() {
       <ConfirmDialog
         isOpen={!!deleteTarget}
         title="Delete Entry"
-        message={`Delete entry for "${deleteTarget?.name}" (${formatCurrency(deleteTarget?.amount || 0)})? This cannot be undone.`}
+        message={`Delete entry for "${deleteTarget?.name}" (${formatCurrency(deleteTarget?.amount || 0, currency)})? This cannot be undone.`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
         danger

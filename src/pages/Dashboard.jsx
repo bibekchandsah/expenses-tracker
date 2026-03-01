@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+﻿import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
@@ -12,9 +12,11 @@ import { useAuth } from '../context/AuthContext';
 import StatsCard from '../components/ui/StatsCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, groupByMonth, groupByCategory, currentMonth, currentYear, last12Months } from '../utils/formatters';
+import { useCurrency } from '../context/CurrencyContext';
 
 export default function Dashboard() {
   const { expenses, loading } = useExpenses();
+  const { currency } = useCurrency();
   const { categories, getCategoryById } = useCategories();
   const { user } = useAuth();
 
@@ -83,7 +85,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatsCard
           title="This Month"
-          value={formatCurrency(stats.monthTotal)}
+          value={formatCurrency(stats.monthTotal, currency)}
           icon={DollarSign}
           color="blue"
           trend={stats.trend}
@@ -91,14 +93,14 @@ export default function Dashboard() {
         />
         <StatsCard
           title="This Year"
-          value={formatCurrency(stats.yearTotal)}
+          value={formatCurrency(stats.yearTotal, currency)}
           icon={Calendar}
           color="purple"
           subtitle={`${thisYear}`}
         />
         <StatsCard
           title="Monthly Average"
-          value={formatCurrency(stats.avgMonthly)}
+          value={formatCurrency(stats.avgMonthly, currency)}
           icon={TrendingUp}
           color="green"
           subtitle="This year"
@@ -126,7 +128,7 @@ export default function Dashboard() {
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} className="dark:fill-gray-400" />
                 <YAxis tick={{ fontSize: 11 }} className="dark:fill-gray-400" />
                 <Tooltip
-                  formatter={(v) => [formatCurrency(v), 'Amount']}
+                  formatter={(v) => [formatCurrency(v, currency), 'Amount']}
                   contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
                 />
                 <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} />
@@ -157,7 +159,7 @@ export default function Dashboard() {
                       <Cell key={i} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v) => formatCurrency(v)} contentStyle={{ borderRadius: 12, border: 'none' }} />
+                  <Tooltip formatter={(v) => formatCurrency(v, currency)} contentStyle={{ borderRadius: 12, border: 'none' }} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex-1 space-y-2">
@@ -165,7 +167,7 @@ export default function Dashboard() {
                   <div key={c.category} className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: c.color }} />
                     <span className="text-xs text-gray-600 dark:text-gray-400 flex-1 truncate">{c.name}</span>
-                    <span className="text-xs font-semibold text-gray-900 dark:text-white">{formatCurrency(c.total)}</span>
+                    <span className="text-xs font-semibold text-gray-900 dark:text-white">{formatCurrency(c.total, currency)}</span>
                   </div>
                 ))}
               </div>
@@ -188,7 +190,7 @@ export default function Dashboard() {
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:stroke-gray-700" />
             <XAxis dataKey="month" tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip formatter={(v) => [formatCurrency(v), 'Amount']} contentStyle={{ borderRadius: 12, border: 'none' }} />
+            <Tooltip formatter={(v) => [formatCurrency(v, currency), 'Amount']} contentStyle={{ borderRadius: 12, border: 'none' }} />
             <Area type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={2} fill="url(#areaGradient)" />
           </AreaChart>
         </ResponsiveContainer>
@@ -226,7 +228,7 @@ export default function Dashboard() {
                     <p className="text-xs text-gray-500 dark:text-gray-400">{cat?.name} • {e.date}</p>
                   </div>
                   <span className="text-sm font-semibold text-gray-900 dark:text-white flex-shrink-0">
-                    {formatCurrency(e.amount)}
+                    {formatCurrency(e.amount, currency)}
                   </span>
                 </div>
               );

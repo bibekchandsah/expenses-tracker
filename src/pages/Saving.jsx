@@ -9,6 +9,7 @@ import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { useCurrency } from '../context/CurrencyContext';
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 
@@ -189,6 +190,7 @@ function SourceModal({ isOpen, source, onClose, onSave }) {
 
 export default function Saving() {
   const { savings, sources, loading, addSaving, updateSaving, deleteSaving, addSource, updateSource, deleteSource } = useSavings();
+  const { currency } = useCurrency();
   const { addToast } = useToast();
 
   const [showSidePanel, setShowSidePanel] = useState(true);
@@ -289,17 +291,17 @@ export default function Saving() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Spent</p>
-          <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(totalSpent)}</p>
+          <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(totalSpent, currency)}</p>
           <p className="text-xs text-gray-400 mt-0.5">{savings.length} record{savings.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-200 dark:border-green-800 p-4">
           <p className="text-xs text-green-700 dark:text-green-400 font-medium">Total Sourced</p>
-          <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">{formatCurrency(totalSourced)}</p>
+          <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">{formatCurrency(totalSourced, currency)}</p>
           <p className="text-xs text-green-600/60 dark:text-green-600 mt-0.5">{sources.length} source{sources.length !== 1 ? 's' : ''}</p>
         </div>
         <div className={`rounded-2xl border p-4 ${netBalance >= 0 ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800' : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'}`}>
           <p className={`text-xs font-medium ${netBalance >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-700 dark:text-red-400'}`}>Net Balance</p>
-          <p className={`text-lg font-bold mt-1 ${netBalance >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-700 dark:text-red-400'}`}>{formatCurrency(netBalance)}</p>
+          <p className={`text-lg font-bold mt-1 ${netBalance >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-700 dark:text-red-400'}`}>{formatCurrency(netBalance, currency)}</p>
           <p className={`text-xs mt-0.5 ${netBalance >= 0 ? 'text-blue-600/60 dark:text-blue-600' : 'text-red-600/60 dark:text-red-600'}`}>Sources minus Spent</p>
         </div>
         <div className="bg-purple-50 dark:bg-purple-900/10 rounded-2xl border border-purple-200 dark:border-purple-800 p-4">
@@ -384,7 +386,7 @@ export default function Saving() {
                     className="grid grid-cols-1 lg:grid-cols-12 gap-1 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors items-center group">
                     <div className="lg:col-span-2 text-xs text-gray-500 dark:text-gray-400">{formatDate(row.date)}</div>
                     <div className="lg:col-span-2 text-right">
-                      <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount)}</span>
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount, currency)}</span>
                     </div>
                     <div className="lg:col-span-3">
                       {row.expendOn
@@ -443,7 +445,7 @@ export default function Saving() {
               </div>
               <div className="px-4 py-2 bg-green-50 dark:bg-green-900/10 border-b border-green-100 dark:border-green-900/30 flex justify-between text-xs">
                 <span className="text-green-700 dark:text-green-400 font-medium">{sources.length} source{sources.length !== 1 ? 's' : ''}</span>
-                <span className="font-bold text-green-700 dark:text-green-400">{formatCurrency(totalSourced)}</span>
+                <span className="font-bold text-green-700 dark:text-green-400">{formatCurrency(totalSourced, currency)}</span>
               </div>
               <div className="divide-y divide-gray-100 dark:divide-gray-700/50 max-h-[520px] overflow-y-auto">
                 {sources.length === 0 ? (
@@ -456,7 +458,7 @@ export default function Saving() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(src.amount)}</span>
+                          <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(src.amount, currency)}</span>
                           <span className="text-xs text-gray-400">{formatDate(src.date)}</span>
                         </div>
                         {src.description && (
@@ -497,14 +499,14 @@ export default function Saving() {
       <ConfirmDialog
         isOpen={!!deleteTarget}
         title="Delete saving record?"
-        message={deleteTarget ? `Amount: ${formatCurrency(deleteTarget.amount)} on ${formatDate(deleteTarget.date)}` : ''}
+        message={deleteTarget ? `Amount: ${formatCurrency(deleteTarget.amount, currency)} on ${formatDate(deleteTarget.date)}` : ''}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />
       <ConfirmDialog
         isOpen={!!deleteSourceTarget}
         title="Delete source record?"
-        message={deleteSourceTarget ? `Amount: ${formatCurrency(deleteSourceTarget.amount)} on ${formatDate(deleteSourceTarget.date)}` : ''}
+        message={deleteSourceTarget ? `Amount: ${formatCurrency(deleteSourceTarget.amount, currency)} on ${formatDate(deleteSourceTarget.date)}` : ''}
         onConfirm={handleDeleteSource}
         onCancel={() => setDeleteSourceTarget(null)}
       />

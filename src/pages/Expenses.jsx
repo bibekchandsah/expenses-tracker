@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+﻿import { useState, useCallback, useMemo } from 'react';
 import { Plus, Search, Filter, Download, Edit2, Trash2, ChevronUp, ChevronDown, SlidersHorizontal, X } from 'lucide-react';
 import { useExpenses } from '../context/ExpenseContext';
 import { useCategories } from '../context/CategoryContext';
@@ -7,6 +7,7 @@ import ExpenseModal from '../components/ExpenseModal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { useCurrency } from '../context/CurrencyContext';
 import { exportToCSV } from '../utils/csvExport';
 import { useDebounce } from '../hooks/useDebounce';
 
@@ -14,6 +15,7 @@ const PAGE_SIZE = 15;
 
 export default function Expenses() {
   const { expenses, filteredExpenses, loading, filters, setFilters, resetFilters, addExpense, updateExpense, deleteExpense } = useExpenses();
+  const { currency } = useCurrency();
   const { categories, getCategoryById } = useCategories();
   const { addToast } = useToast();
 
@@ -227,7 +229,7 @@ export default function Expenses() {
                   {/* Amount */}
                   <div className="sm:col-span-3">
                     <span className="text-sm font-bold text-gray-900 dark:text-white">
-                      {formatCurrency(expense.amount)}
+                      {formatCurrency(expense.amount, currency)}
                     </span>
                   </div>
                   {/* Actions */}

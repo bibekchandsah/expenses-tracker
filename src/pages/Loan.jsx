@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import {
   Wallet, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, CheckCircle2, AlertCircle, ChevronDown,
@@ -10,6 +10,7 @@ import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { useCurrency } from '../context/CurrencyContext';
 
 // ── Add / Edit Loan Modal ───────────────────────────────────────
 const EMPTY_FORM = {
@@ -188,6 +189,7 @@ function SortIcon({ col, sortCol, sortDir }) {
 // ── Main Loan Page ──────────────────────────────────────────────
 export default function Loan() {
   const { loans, loading, addLoan, updateLoan, deleteLoan } = useLoans();
+  const { currency } = useCurrency();
   const { lends } = useLends();
   const { addToast } = useToast();
 
@@ -315,15 +317,15 @@ export default function Loan() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Borrowed</p>
-          <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(stats.totalBorrowed)}</p>
+          <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(stats.totalBorrowed, currency)}</p>
         </div>
         <div className="bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-200 dark:border-green-800 p-4">
           <p className="text-xs text-green-700 dark:text-green-400 font-medium">Paid Back</p>
-          <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">{formatCurrency(stats.totalPaid)}</p>
+          <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">{formatCurrency(stats.totalPaid, currency)}</p>
         </div>
         <div className="bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-200 dark:border-red-800 p-4">
           <p className="text-xs text-red-700 dark:text-red-400 font-medium">To Pay</p>
-          <p className="text-lg font-bold text-red-700 dark:text-red-400 mt-1">{formatCurrency(stats.totalRemaining)}</p>
+          <p className="text-lg font-bold text-red-700 dark:text-red-400 mt-1">{formatCurrency(stats.totalRemaining, currency)}</p>
         </div>
         <div className="bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-200 dark:border-blue-800 p-4">
           <p className="text-xs text-blue-700 dark:text-blue-400 font-medium">Lenders</p>
@@ -432,7 +434,7 @@ export default function Loan() {
 
                       {/* Borrowed */}
                       <div className="lg:col-span-1 text-right">
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(loan.amount)}</span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(loan.amount, currency)}</span>
                       </div>
 
                       {/* Reason */}
@@ -443,7 +445,7 @@ export default function Loan() {
                       {/* Paid */}
                       <div className="lg:col-span-1 text-right">
                         {+loan.paidAmount > 0
-                          ? <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(loan.paidAmount)}</span>
+                          ? <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(loan.paidAmount, currency)}</span>
                           : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
                         }
                       </div>
@@ -452,7 +454,7 @@ export default function Loan() {
                       <div className="lg:col-span-1 text-right">
                         {isSettled
                           ? <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-green-600 dark:text-green-400"><CheckCircle2 className="w-3 h-3" /> Settled</span>
-                          : <span className="text-sm font-bold text-red-600 dark:text-red-400">{formatCurrency(remaining)}</span>
+                          : <span className="text-sm font-bold text-red-600 dark:text-red-400">{formatCurrency(remaining, currency)}</span>
                         }
                       </div>
 
@@ -548,12 +550,12 @@ export default function Loan() {
                           </span>
                         </div>
                         <div className="text-right">
-                          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{formatCurrency(person.totalBorrowed)}</span>
+                          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{formatCurrency(person.totalBorrowed, currency)}</span>
                         </div>
                         <div className="text-right">
                           {isSettled
                             ? <span className="text-xs font-semibold text-green-600 dark:text-green-400">Settled</span>
-                            : <span className="text-xs font-bold text-red-600 dark:text-red-400">{formatCurrency(person.remaining)}</span>
+                            : <span className="text-xs font-bold text-red-600 dark:text-red-400">{formatCurrency(person.remaining, currency)}</span>
                           }
                         </div>
                       </button>
@@ -561,8 +563,8 @@ export default function Loan() {
                   })}
                   <div className="grid grid-cols-4 gap-1 px-4 py-3 bg-gray-50 dark:bg-gray-700/40 text-xs font-black text-gray-700 dark:text-gray-200 uppercase">
                     <div className="col-span-2">Total</div>
-                    <div className="text-right">{formatCurrency(stats.totalBorrowed)}</div>
-                    <div className="text-right text-red-600 dark:text-red-400">{formatCurrency(stats.totalRemaining)}</div>
+                    <div className="text-right">{formatCurrency(stats.totalBorrowed, currency)}</div>
+                    <div className="text-right text-red-600 dark:text-red-400">{formatCurrency(stats.totalRemaining, currency)}</div>
                   </div>
                 </div>
               )}
@@ -604,7 +606,7 @@ export default function Loan() {
                           {person.name}
                         </span>
                         <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
-                          {formatCurrency(person.totalPaid)} / {formatCurrency(person.totalBorrowed)}
+                          {formatCurrency(person.totalPaid, currency)} / {formatCurrency(person.totalBorrowed, currency)}
                         </span>
                       </div>
                       <div className="w-full h-4 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden relative">
@@ -640,7 +642,7 @@ export default function Loan() {
       <ConfirmDialog
         isOpen={!!deleteTarget}
         title="Delete Record"
-        message={`Delete loan record for "${deleteTarget?.name}" (${formatCurrency(deleteTarget?.amount || 0)})? This cannot be undone.`}
+        message={`Delete loan record for "${deleteTarget?.name}" (${formatCurrency(deleteTarget?.amount || 0, currency)})? This cannot be undone.`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
         danger

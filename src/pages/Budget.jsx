@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import { Target, TrendingUp, AlertTriangle, Check } from 'lucide-react';
 import { useBudgets } from '../context/BudgetContext';
 import { useExpenses } from '../context/ExpenseContext';
@@ -6,11 +6,13 @@ import { useCategories } from '../context/CategoryContext';
 import { useToast } from '../components/ui/Toast';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, currentMonth, formatMonth } from '../utils/formatters';
+import { useCurrency } from '../context/CurrencyContext';
 
 function BudgetRow({ category, expenses, budget, month, onSave }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const { currency } = useCurrency();
 
   const spent = useMemo(() =>
     expenses.filter(e => e.category === category.id && e.date.startsWith(month))
@@ -47,7 +49,7 @@ function BudgetRow({ category, expenses, budget, month, onSave }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-gray-900 dark:text-white">{category.name}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Spent: {formatCurrency(spent)}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Spent: {formatCurrency(spent, currency)}</p>
         </div>
         {over && <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />}
         {warning && <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0" />}
@@ -59,7 +61,7 @@ function BudgetRow({ category, expenses, budget, month, onSave }) {
         <div className="mb-3">
           <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
             <span>{pct.toFixed(0)}% used</span>
-            <span>of {formatCurrency(budgetAmount)}</span>
+            <span>of {formatCurrency(budgetAmount, currency)}</span>
           </div>
           <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
@@ -69,7 +71,7 @@ function BudgetRow({ category, expenses, budget, month, onSave }) {
           </div>
           {over && (
             <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">
-              Over budget by {formatCurrency(spent - budgetAmount)}
+              Over budget by {formatCurrency(spent - budgetAmount, currency)}
             </p>
           )}
         </div>
@@ -109,6 +111,7 @@ function BudgetRow({ category, expenses, budget, month, onSave }) {
 
 export default function Budget() {
   const { budgets, loading: bLoading, setBudget, getBudget } = useBudgets();
+  const { currency } = useCurrency();
   const { expenses } = useExpenses();
   const { categories } = useCategories();
   const { addToast } = useToast();
@@ -160,16 +163,16 @@ export default function Budget() {
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 text-center">
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Budget</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(totalBudget)}</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(totalBudget, currency)}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 text-center">
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Spent</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(totalSpent)}</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(totalSpent, currency)}</p>
           </div>
           <div className={`rounded-2xl border p-4 text-center ${totalSpent > totalBudget ? 'border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/10' : 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/10'}`}>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Remaining</p>
             <p className={`text-lg font-bold ${totalSpent > totalBudget ? 'text-red-600' : 'text-green-600'}`}>
-              {formatCurrency(Math.abs(totalBudget - totalSpent))}
+              {formatCurrency(Math.abs(totalBudget - totalSpent), currency)}
               {totalSpent > totalBudget ? ' over' : ' left'}
             </p>
           </div>

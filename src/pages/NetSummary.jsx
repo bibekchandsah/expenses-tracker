@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import { ArrowUp, ArrowDown, ChevronsUpDown, BarChart3, TrendingUp, TrendingDown, Users } from 'lucide-react';
 import { useLends } from '../context/LendContext';
 import { useLoans } from '../context/LoanContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency } from '../utils/formatters';
+import { useCurrency } from '../context/CurrencyContext';
 
 function SortIcon({ col, sortCol, sortDir }) {
   if (sortCol !== col) return <ChevronsUpDown className="w-3 h-3 opacity-40" />;
@@ -12,6 +13,7 @@ function SortIcon({ col, sortCol, sortDir }) {
 
 export default function NetSummary() {
   const { lends, loading: lendLoading }  = useLends();
+  const { currency } = useCurrency();
   const { loans, loading: loanLoading }  = useLoans();
 
   const [sortCol, setSortCol] = useState('net');
@@ -114,19 +116,19 @@ export default function NetSummary() {
         </div>
         <div className="bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-200 dark:border-blue-800 p-4">
           <p className="text-xs text-blue-700 dark:text-blue-400 font-medium">Total Lent</p>
-          <p className="text-lg font-bold text-blue-700 dark:text-blue-400 mt-1">{formatCurrency(totals.lent)}</p>
+          <p className="text-lg font-bold text-blue-700 dark:text-blue-400 mt-1">{formatCurrency(totals.lent, currency)}</p>
         </div>
         <div className="bg-orange-50 dark:bg-orange-900/10 rounded-2xl border border-orange-200 dark:border-orange-800 p-4">
           <p className="text-xs text-orange-700 dark:text-orange-400 font-medium">Total Borrowed</p>
-          <p className="text-lg font-bold text-orange-700 dark:text-orange-400 mt-1">{formatCurrency(totals.borrowed)}</p>
+          <p className="text-lg font-bold text-orange-700 dark:text-orange-400 mt-1">{formatCurrency(totals.borrowed, currency)}</p>
         </div>
         <div className="bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-200 dark:border-green-800 p-4">
           <p className="text-xs text-green-700 dark:text-green-400 font-medium flex items-center gap-1"><TrendingUp className="w-3.5 h-3.5" /> To Receive</p>
-          <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">{formatCurrency(totals.netPositive)}</p>
+          <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">{formatCurrency(totals.netPositive, currency)}</p>
         </div>
         <div className="bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-200 dark:border-red-800 p-4">
           <p className="text-xs text-red-700 dark:text-red-400 font-medium flex items-center gap-1"><TrendingDown className="w-3.5 h-3.5" /> To Give</p>
-          <p className="text-lg font-bold text-red-700 dark:text-red-400 mt-1">{formatCurrency(totals.netNegative)}</p>
+          <p className="text-lg font-bold text-red-700 dark:text-red-400 mt-1">{formatCurrency(totals.netNegative, currency)}</p>
         </div>
       </div>
 
@@ -138,10 +140,10 @@ export default function NetSummary() {
         <div>
           <p className={`text-sm font-semibold ${totals.net >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
             {totals.net >= 0 ? 'You are net owed' : 'You net owe'}&nbsp;
-            <span className="text-base font-bold">{formatCurrency(Math.abs(totals.net))}</span>
+            <span className="text-base font-bold">{formatCurrency(Math.abs(totals.net), currency)}</span>
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Remaining to receive {formatCurrency(totals.toReceive)} − Remaining to give {formatCurrency(totals.toGive)}
+            Remaining to receive {formatCurrency(totals.toReceive, currency)} − Remaining to give {formatCurrency(totals.toGive, currency)}
           </p>
         </div>
       </div>
@@ -200,7 +202,7 @@ export default function NetSummary() {
                       <div className="xl:col-span-2 flex xl:block items-center justify-between xl:justify-end">
                         <span className="xl:hidden text-xs text-gray-400 font-medium">Borrowed</span>
                         <span className={`font-semibold ${row.borrowed > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 dark:text-gray-500'} xl:text-right block`}>
-                          {row.borrowed > 0 ? formatCurrency(row.borrowed) : '—'}
+                          {row.borrowed > 0 ? formatCurrency(row.borrowed, currency) : '—'}
                         </span>
                       </div>
 
@@ -208,7 +210,7 @@ export default function NetSummary() {
                       <div className="xl:col-span-2 flex xl:block items-center justify-between xl:justify-end">
                         <span className="xl:hidden text-xs text-gray-400 font-medium">To Give</span>
                         <span className={`font-semibold ${row.toGive > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'} xl:text-right block`}>
-                          {row.toGive > 0 ? formatCurrency(row.toGive) : '—'}
+                          {row.toGive > 0 ? formatCurrency(row.toGive, currency) : '—'}
                         </span>
                       </div>
 
@@ -216,7 +218,7 @@ export default function NetSummary() {
                       <div className="xl:col-span-2 flex xl:block items-center justify-between xl:justify-end">
                         <span className="xl:hidden text-xs text-gray-400 font-medium">Lent</span>
                         <span className={`font-semibold ${row.lent > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'} xl:text-right block`}>
-                          {row.lent > 0 ? formatCurrency(row.lent) : '—'}
+                          {row.lent > 0 ? formatCurrency(row.lent, currency) : '—'}
                         </span>
                       </div>
 
@@ -224,7 +226,7 @@ export default function NetSummary() {
                       <div className="xl:col-span-2 flex xl:block items-center justify-between xl:justify-end">
                         <span className="xl:hidden text-xs text-gray-400 font-medium">To Receive</span>
                         <span className={`font-semibold ${row.toReceive > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'} xl:text-right block`}>
-                          {row.toReceive > 0 ? formatCurrency(row.toReceive) : '—'}
+                          {row.toReceive > 0 ? formatCurrency(row.toReceive, currency) : '—'}
                         </span>
                       </div>
 
@@ -232,7 +234,7 @@ export default function NetSummary() {
                       <div className="xl:col-span-1 flex xl:block items-center justify-between xl:justify-end col-span-2">
                         <span className="xl:hidden text-xs text-gray-400 font-medium">Net</span>
                         <span className={`text-sm font-black xl:text-right block ${netPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                          {netPositive ? '+' : ''}{formatCurrency(row.net)}
+                          {netPositive ? '+' : ''}{formatCurrency(row.net, currency)}
                         </span>
                       </div>
                     </div>
