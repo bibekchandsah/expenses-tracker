@@ -2,7 +2,7 @@
 import {
   Heart, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, ChevronDown,
-  PanelRightClose, PanelRightOpen, Upload,
+  PanelRightClose, PanelRightOpen, Upload, Download,
 } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import { Timestamp } from 'firebase/firestore';
@@ -266,6 +266,22 @@ export default function ForMe() {
     addToast('Entry deleted');
   }
 
+  function handleExport() {
+    if (!filtered.length) { addToast('No records to export', 'info'); return; }
+    const headers = ['Name', 'Date', 'Amount', 'Description'];
+    const rows = filtered.map(e => [
+      `"${(e.name || '').replace(/"/g, '""')}"`,
+      e.date || '',
+      e.amount || 0,
+      `"${(e.description || '').replace(/"/g, '""')}"`,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    a.download = 'for-me.csv';
+    a.click();
+  }
+
   async function handleCSVImport(records) {
     for (const rec of records) {
       await addEntry({
@@ -301,18 +317,26 @@ export default function ForMe() {
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track people who owe you a treat or payment</p>
         </div>
-        <button
-          onClick={() => setImportOpen(true)}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors self-start sm:self-auto"
-        >
-          <Upload className="w-4 h-4" /> Import CSV
-        </button>
-        <button
-          onClick={() => { setEditingEntry(null); setModalOpen(true); }}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" /> Add Entry
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => setImportOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Upload className="w-4 h-4" /> Import CSV
+          </button>
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Download className="w-4 h-4" /> Export CSV
+          </button>
+          <button
+            onClick={() => { setEditingEntry(null); setModalOpen(true); }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Add Entry
+          </button>
+        </div>
       </div>
 
       {/* ── Stats strip ── */}

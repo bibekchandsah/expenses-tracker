@@ -400,6 +400,9 @@ Equation sub-line now shows:
 Active operator button highlights in brighter orange
 
 
+category editing bug fix don't show values of current selected category in the edit form to avoid confusion and accidental overwriting of existing data.
+
+
 
 
 

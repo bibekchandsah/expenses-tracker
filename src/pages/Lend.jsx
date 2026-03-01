@@ -2,7 +2,7 @@
 import {
   HandCoins, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, CheckCircle2, AlertCircle, ChevronDown,
-  PanelRightClose, PanelRightOpen, Upload,
+  PanelRightClose, PanelRightOpen, Upload, Download,
 } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import { useLends } from '../context/LendContext';
@@ -296,6 +296,25 @@ export default function Lend() {
     addToast('Record deleted');
   }
 
+  function handleExport() {
+    if (!filteredLends.length) { addToast('No records to export', 'info'); return; }
+    const headers = ['Name', 'Date', 'Amount Lent', 'Returned Amount', 'Outstanding', 'Reason', 'Description'];
+    const rows = filteredLends.map(l => [
+      `"${(l.name || '').replace(/"/g, '""')}"`,
+      l.date || '',
+      l.amount || 0,
+      l.returnedAmount || 0,
+      (+l.amount || 0) - (+l.returnedAmount || 0),
+      `"${(l.reason || '').replace(/"/g, '""')}"`,
+      `"${(l.description || '').replace(/"/g, '""')}"`,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    a.download = 'lends.csv';
+    a.click();
+  }
+
   async function handleCSVImport(records) {
     for (const rec of records) {
       await addLend({
@@ -333,18 +352,26 @@ export default function Lend() {
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track money you've lent and amounts received back</p>
         </div>
-        <button
-          onClick={() => setImportOpen(true)}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors self-start sm:self-auto"
-        >
-          <Upload className="w-4 h-4" /> Import CSV
-        </button>
-        <button
-          onClick={() => { setEditingLend(null); setModalOpen(true); }}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" /> New Lend
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => setImportOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Upload className="w-4 h-4" /> Import CSV
+          </button>
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Download className="w-4 h-4" /> Export CSV
+          </button>
+          <button
+            onClick={() => { setEditingLend(null); setModalOpen(true); }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors"
+          >
+            <Plus className="w-4 h-4" /> New Lend
+          </button>
+        </div>
       </div>
 
       {/* ── Stats strip ── */}

@@ -2,7 +2,7 @@
 import {
   PiggyBank, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown,
-  PanelRightClose, PanelRightOpen, Upload,
+  PanelRightClose, PanelRightOpen, Upload, Download,
 } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import { useSavings } from '../context/SavingContext';
@@ -257,6 +257,22 @@ export default function Saving() {
     addToast('Record deleted');
   }
 
+  function handleExport() {
+    if (!filteredSavings.length) { addToast('No records to export', 'info'); return; }
+    const headers = ['Date', 'Saved For', 'Amount', 'Description'];
+    const rows = filteredSavings.map(r => [
+      r.date || '',
+      `"${(r.expendOn || '').replace(/"/g, '""')}"`,
+      r.amount || 0,
+      `"${(r.description || '').replace(/"/g, '""')}"`,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    a.download = 'savings.csv';
+    a.click();
+  }
+
   async function handleCSVImport(records) {
     for (const rec of records) {
       await addSaving({
@@ -301,18 +317,26 @@ export default function Saving() {
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track savings and their sources</p>
         </div>
-        <button
-          onClick={() => setImportOpen(true)}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors self-start sm:self-auto"
-        >
-          <Upload className="w-4 h-4" /> Import CSV
-        </button>
-        <button
-          onClick={() => setSavingModal({ open: true, item: null })}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" /> New Saving
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => setImportOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Upload className="w-4 h-4" /> Import CSV
+          </button>
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Download className="w-4 h-4" /> Export CSV
+          </button>
+          <button
+            onClick={() => setSavingModal({ open: true, item: null })}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors"
+          >
+            <Plus className="w-4 h-4" /> New Saving
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
