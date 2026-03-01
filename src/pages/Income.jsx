@@ -104,20 +104,21 @@ export default function Income() {
 
   const totalPages = Math.ceil(searchFiltered.length / PAGE_SIZE);
 
-  // Stats
+  // Stats — all scoped to yearFilter
   const stats = useMemo(() => {
     const d = new Date();
-    const thisMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const total       = incomes.reduce((s, i) => s + (+i.amount || 0), 0);
-    const thisMonthAmt = incomes
+    const thisMonth = `${yearFilter}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const yearIncomes = incomes.filter(i => i.date?.startsWith(String(yearFilter)));
+    const total        = yearIncomes.reduce((s, i) => s + (+i.amount || 0), 0);
+    const thisMonthAmt = yearIncomes
       .filter(i => i.date?.startsWith(thisMonth))
       .reduce((s, i) => s + (+i.amount || 0), 0);
-    const avgMonthly  = (() => {
-      const months = new Set(incomes.map(i => i.date?.slice(0, 7)).filter(Boolean));
+    const avgMonthly = (() => {
+      const months = new Set(yearIncomes.map(i => i.date?.slice(0, 7)).filter(Boolean));
       return months.size ? total / months.size : 0;
     })();
-    return { total, thisMonthAmt, avgMonthly, count: incomes.length };
-  }, [incomes]);
+    return { total, thisMonthAmt, avgMonthly, count: yearIncomes.length };
+  }, [incomes, yearFilter]);
 
   // Monthly breakdown
   const monthlyBreakdown = useMemo(() => {

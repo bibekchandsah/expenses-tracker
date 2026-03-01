@@ -247,23 +247,28 @@ export default function ForMe() {
     });
   }, [entries, search, sortCol, sortDir, personFilter, yearFilter]);
 
-  // Per-person summary for right panel
+  // Per-person summary for right panel — scoped to yearFilter
   const personSummary = useMemo(() => {
+    const yearEntries = entries.filter(e => toInputDate(e.date).startsWith(String(yearFilter)));
     const map = {};
-    entries.forEach(e => {
+    yearEntries.forEach(e => {
       if (!map[e.name]) map[e.name] = { name: e.name, total: 0, count: 0 };
       map[e.name].total += +e.amount || 0;
       map[e.name].count += 1;
     });
     return Object.values(map).sort((a, b) => b.total - a.total);
-  }, [entries]);
+  }, [entries, yearFilter]);
 
-  const stats = useMemo(() => ({
-    total:   entries.reduce((s, e) => s + (+e.amount || 0), 0),
-    count:   entries.length,
-    people:  new Set(entries.map(e => e.name)).size,
-    highest: entries.reduce((mx, e) => Math.max(mx, +e.amount || 0), 0),
-  }), [entries]);
+  // Overall stats — scoped to yearFilter
+  const stats = useMemo(() => {
+    const yearEntries = entries.filter(e => toInputDate(e.date).startsWith(String(yearFilter)));
+    return {
+      total:   yearEntries.reduce((s, e) => s + (+e.amount || 0), 0),
+      count:   yearEntries.length,
+      people:  new Set(yearEntries.map(e => e.name)).size,
+      highest: yearEntries.reduce((mx, e) => Math.max(mx, +e.amount || 0), 0),
+    };
+  }, [entries, yearFilter]);
 
   const maxPersonTotal = useMemo(() => Math.max(...personSummary.map(p => p.total), 1), [personSummary]);
 

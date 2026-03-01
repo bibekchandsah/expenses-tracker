@@ -253,8 +253,10 @@ export default function Saving() {
     return rows;
   }, [savings, sortCol, sortDir, search, yearFilter]);
 
-  const totalSpent   = useMemo(() => savings.reduce((s, r) => s + (+r.amount || 0), 0), [savings]);
-  const totalSourced = useMemo(() => sources.reduce((s, r) => s + (+r.amount || 0), 0), [sources]);
+  const yearSavings  = useMemo(() => savings.filter(r => r.date?.startsWith(String(yearFilter))), [savings, yearFilter]);
+  const yearSources  = useMemo(() => sources.filter(r => r.date?.startsWith(String(yearFilter))), [sources, yearFilter]);
+  const totalSpent   = useMemo(() => yearSavings.reduce((s, r) => s + (+r.amount || 0), 0), [yearSavings]);
+  const totalSourced = useMemo(() => yearSources.reduce((s, r) => s + (+r.amount || 0), 0), [yearSources]);
   const netBalance   = totalSourced - totalSpent;
 
   async function handleSave(form) {
@@ -355,12 +357,12 @@ export default function Saving() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Spent</p>
           <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(totalSpent, currency)}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{savings.length} record{savings.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{yearSavings.length} record{yearSavings.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-200 dark:border-green-800 p-4">
           <p className="text-xs text-green-700 dark:text-green-400 font-medium">Total Sourced</p>
           <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">{formatCurrency(totalSourced, currency)}</p>
-          <p className="text-xs text-green-600/60 dark:text-green-600 mt-0.5">{sources.length} source{sources.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-green-600/60 dark:text-green-600 mt-0.5">{yearSources.length} source{yearSources.length !== 1 ? 's' : ''}</p>
         </div>
         <div className={`rounded-2xl border p-4 ${netBalance >= 0 ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800' : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'}`}>
           <p className={`text-xs font-medium ${netBalance >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-700 dark:text-red-400'}`}>Net Balance</p>
@@ -512,16 +514,16 @@ export default function Saving() {
                 ><Plus className="w-3.5 h-3.5" /></button>
               </div>
               <div className="px-4 py-2 bg-green-50 dark:bg-green-900/10 border-b border-green-100 dark:border-green-900/30 flex justify-between text-xs">
-                <span className="text-green-700 dark:text-green-400 font-medium">{sources.length} source{sources.length !== 1 ? 's' : ''}</span>
+                <span className="text-green-700 dark:text-green-400 font-medium">{yearSources.length} source{yearSources.length !== 1 ? 's' : ''}</span>
                 <span className="font-bold text-green-700 dark:text-green-400">{formatCurrency(totalSourced, currency)}</span>
               </div>
               <div className="divide-y divide-gray-100 dark:divide-gray-700/50 max-h-[520px] overflow-y-auto">
-                {sources.length === 0 ? (
+                {yearSources.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-center px-4">
-                    <p className="text-sm text-gray-400 dark:text-gray-500">No sources yet.</p>
-                    <button onClick={() => setSourceModal({ open: true, item: null })} className="mt-2 text-xs text-primary-600 hover:underline">Add your first source</button>
+                    <p className="text-sm text-gray-400 dark:text-gray-500">No sources for {yearFilter}.</p>
+                    <button onClick={() => setSourceModal({ open: true, item: null })} className="mt-2 text-xs text-primary-600 hover:underline">Add a source</button>
                   </div>
-                ) : sources.map(src => (
+                ) : yearSources.map(src => (
                   <div key={src.id} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 group transition-colors">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">

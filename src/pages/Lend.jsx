@@ -274,10 +274,11 @@ export default function Lend() {
     });
   }, [lends, search, sortCol, sortDir, personFilter, yearFilter]);
 
-  // Per-person summary (right panel)
+  // Per-person summary (right panel) — scoped to yearFilter
   const personSummary = useMemo(() => {
+    const yearLends = lends.filter(l => l.date?.startsWith(String(yearFilter)));
     const map = {};
-    lends.forEach(l => {
+    yearLends.forEach(l => {
       if (!map[l.name]) map[l.name] = { name: l.name, totalLent: 0, totalReturned: 0 };
       map[l.name].totalLent     += +l.amount          || 0;
       map[l.name].totalReturned += +l.returnedAmount  || 0;
@@ -285,15 +286,18 @@ export default function Lend() {
     return Object.values(map)
       .map(p => ({ ...p, remaining: p.totalLent - p.totalReturned }))
       .sort((a, b) => b.remaining - a.remaining);
-  }, [lends]);
+  }, [lends, yearFilter]);
 
-  // Overall stats
-  const stats = useMemo(() => ({
-    totalLent:     lends.reduce((s, l) => s + (+l.amount          || 0), 0),
-    totalReturned: lends.reduce((s, l) => s + (+l.returnedAmount  || 0), 0),
-    totalRemaining:lends.reduce((s, l) => s + ((+l.amount || 0) - (+l.returnedAmount || 0)), 0),
-    peopleCount:   new Set(lends.map(l => l.name)).size,
-  }), [lends]);
+  // Overall stats — scoped to yearFilter
+  const stats = useMemo(() => {
+    const yearLends = lends.filter(l => l.date?.startsWith(String(yearFilter)));
+    return {
+      totalLent:      yearLends.reduce((s, l) => s + (+l.amount          || 0), 0),
+      totalReturned:  yearLends.reduce((s, l) => s + (+l.returnedAmount  || 0), 0),
+      totalRemaining: yearLends.reduce((s, l) => s + ((+l.amount || 0) - (+l.returnedAmount || 0)), 0),
+      peopleCount:    new Set(yearLends.map(l => l.name)).size,
+    };
+  }, [lends, yearFilter]);
 
   async function handleSave(data) {
     if (editingLend) { await updateLend(editingLend.id, data); addToast('Record updated!'); }

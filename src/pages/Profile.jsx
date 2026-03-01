@@ -116,9 +116,14 @@ export default function Profile() {
     c.label.toLowerCase().includes(currencySearch.toLowerCase())
   );
 
-  const totalExpenses = expenses.reduce((s, e) => s + +e.amount, 0);
-  const thisMonthExp = expenses.filter(e => e.date.startsWith(new Date().toISOString().slice(0, 7)));
-  const thisMonthTotal = thisMonthExp.reduce((s, e) => s + +e.amount, 0);
+  const yearExpenses  = expenses.filter(e => e.date?.startsWith(String(activeYear)));
+  const totalExpenses  = yearExpenses.length;
+  const now            = new Date();
+  const displayMonth   = `${activeYear}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const thisMonthTotal = yearExpenses
+    .filter(e => e.date?.startsWith(displayMonth))
+    .reduce((s, e) => s + +e.amount, 0);
+  const yearTotal = yearExpenses.reduce((s, e) => s + +e.amount, 0);
 
   return (
     <div className="max-w-xl mx-auto space-y-6 animate-fade-in">
@@ -132,7 +137,7 @@ export default function Profile() {
         <div className="flex items-center gap-5">
           <div className="relative">
             {user?.photoURL ? (
-              <img src={user.photoURL} alt={user.displayName} className="w-20 h-20 rounded-2xl object-cover" />
+              <img src={user.photoURL} alt={user.displayName} referrerPolicy="no-referrer" className="w-20 h-20 rounded-2xl object-cover" />
             ) : (
               <div className="w-20 h-20 rounded-2xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-3xl font-bold text-primary-700 dark:text-primary-400">
                 {user?.displayName?.[0] || 'U'}
@@ -154,9 +159,9 @@ export default function Profile() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total Expenses', value: expenses.length },
+          { label: `${activeYear} Expenses`, value: totalExpenses },
           { label: 'This Month', value: formatCurrency(thisMonthTotal, activeCurrency) },
-          { label: 'All Time', value: formatCurrency(totalExpenses, activeCurrency) },
+          { label: `${activeYear} Total`, value: formatCurrency(yearTotal, activeCurrency) },
         ].map(s => (
           <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 text-center">
             <p className="text-lg font-bold text-gray-900 dark:text-white">{s.value}</p>

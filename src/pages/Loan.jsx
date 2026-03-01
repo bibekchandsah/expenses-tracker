@@ -272,10 +272,11 @@ export default function Loan() {
     });
   }, [loans, search, sortCol, sortDir, personFilter, yearFilter]);
 
-  // Per-lender summary (right panel)
+  // Per-lender summary (right panel) — scoped to yearFilter
   const lenderSummary = useMemo(() => {
+    const yearLoans = loans.filter(l => l.date?.startsWith(String(yearFilter)));
     const map = {};
-    loans.forEach(l => {
+    yearLoans.forEach(l => {
       if (!map[l.name]) map[l.name] = { name: l.name, totalBorrowed: 0, totalPaid: 0 };
       map[l.name].totalBorrowed += +l.amount     || 0;
       map[l.name].totalPaid     += +l.paidAmount || 0;
@@ -283,14 +284,18 @@ export default function Loan() {
     return Object.values(map)
       .map(p => ({ ...p, remaining: p.totalBorrowed - p.totalPaid }))
       .sort((a, b) => b.remaining - a.remaining);
-  }, [loans]);
+  }, [loans, yearFilter]);
 
-  const stats = useMemo(() => ({
-    totalBorrowed: loans.reduce((s, l) => s + (+l.amount     || 0), 0),
-    totalPaid:     loans.reduce((s, l) => s + (+l.paidAmount || 0), 0),
-    totalRemaining:loans.reduce((s, l) => s + ((+l.amount || 0) - (+l.paidAmount || 0)), 0),
-    lendersCount:  new Set(loans.map(l => l.name)).size,
-  }), [loans]);
+  // Overall stats — scoped to yearFilter
+  const stats = useMemo(() => {
+    const yearLoans = loans.filter(l => l.date?.startsWith(String(yearFilter)));
+    return {
+      totalBorrowed:  yearLoans.reduce((s, l) => s + (+l.amount     || 0), 0),
+      totalPaid:      yearLoans.reduce((s, l) => s + (+l.paidAmount || 0), 0),
+      totalRemaining: yearLoans.reduce((s, l) => s + ((+l.amount || 0) - (+l.paidAmount || 0)), 0),
+      lendersCount:   new Set(yearLoans.map(l => l.name)).size,
+    };
+  }, [loans, yearFilter]);
 
   async function handleSave(data) {
     if (editingLoan) { await updateLoan(editingLoan.id, data); addToast('Record updated!'); }

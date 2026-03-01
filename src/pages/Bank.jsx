@@ -375,15 +375,16 @@ export default function Bank() {
       .filter(month => month.entries.length > 0);
   }, [months, query, searchActive]);
 
-  // Bank stats
+  // Bank stats — scoped to yearFilter
   const stats = useMemo(() => {
-    const totalDeposit = entries.reduce((s, e) => s + (+e.deposit || 0), 0);
-    const totalWithdraw = entries.reduce((s, e) => s + (+e.withdraw || 0), 0);
-    const currentBalance = entries.length > 0
-      ? entries[entries.length - 1].closingBalance
+    const yearEntries = entries.filter(e => e.date?.startsWith(String(yearFilter)));
+    const totalDeposit  = yearEntries.reduce((s, e) => s + (+e.deposit  || 0), 0);
+    const totalWithdraw = yearEntries.reduce((s, e) => s + (+e.withdraw || 0), 0);
+    const currentBalance = yearEntries.length > 0
+      ? yearEntries[yearEntries.length - 1].closingBalance
       : (selectedBank?.openingBalance || 0);
     return { totalDeposit, totalWithdraw, currentBalance };
-  }, [entries, selectedBank]);
+  }, [entries, selectedBank, yearFilter]);
 
   async function handleSaveBank(data) {
     if (editingBank) { await updateBank(editingBank.id, { name: data.name, openingBalance: +data.openingBalance || 0 }); addToast('Bank updated!'); }
