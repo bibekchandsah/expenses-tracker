@@ -329,6 +329,13 @@ Dashboard page updates:
 Category Breakdown toggle — now defaults to Monthly with a Monthly / Yearly pill toggle in the top-right corner of the chart card. Switching to Yearly aggregates all expenses from the current year.
 Monthly Expenses showing current month — the root cause was a timezone bug: new Date().toISOString() converts to UTC, so in Nepal (UTC+5:45) "March 1 local" = "Feb 28 UTC", making March invisible. 
 The Spending Trend chart now has a 6 Months / 1 Year toggle in the top-right corner — defaults to 6 months, switching to 1 Year shows all 12 months.
+Bank Trend area chart now appears below Spending Trend with:
+    Green area — monthly deposit totals
+    Red area — monthly withdrawal totals
+    6 Months / 1 Year toggle (same as spending trend)
+    Title shows the currently selected bank name (e.g. "Bank Trend — My SBI Account")
+    Legend labels "Deposit" and "Withdraw"
+The Bank Trend card now shows a bank selector dropdown in the header when you have multiple banks — switching it instantly updates the chart without leaving the dashboard. If you only have one bank, the name is shown as plain text.
 
 recive amount page:
 Date l amount l name | description l returned amount l remark

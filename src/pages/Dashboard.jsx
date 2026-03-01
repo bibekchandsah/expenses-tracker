@@ -9,6 +9,7 @@ import { DollarSign, TrendingUp, ShoppingBag, Calendar, ArrowRight, Plus } from 
 import { useExpenses } from '../context/ExpenseContext';
 import { useCategories } from '../context/CategoryContext';
 import { useAuth } from '../context/AuthContext';
+import { useBanks } from '../context/BankContext';
 import StatsCard from '../components/ui/StatsCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, groupByMonth, groupByCategory, currentMonth, currentYear, last12Months } from '../utils/formatters';
@@ -19,12 +20,14 @@ export default function Dashboard() {
   const { currency } = useCurrency();
   const { categories, getCategoryById } = useCategories();
   const { user } = useAuth();
+  const { entries: bankEntries, selectedBank, banks, setSelectedBankId } = useBanks();
 
   const now = new Date();
   const thisMonth = currentMonth();
   const thisYear = currentYear();
   const [catPeriod, setCatPeriod] = useState('month');
   const [trendPeriod, setTrendPeriod] = useState('6m');
+  const [bankPeriod, setBankPeriod] = useState('6m');
 
   const stats = useMemo(() => {
     const monthExpenses = expenses.filter(e => e.date.startsWith(thisMonth));
@@ -70,6 +73,25 @@ export default function Dashboard() {
 
   // Line chart data (6 or 12 months)
   const trendData = trendPeriod === '12m' ? monthlyData : monthlyData.slice(-6);
+
+  // Bank deposit / withdraw trend
+  const bankTrendData = useMemo(() => {
+    const months = last12Months();
+    const map = {};
+    bankEntries.forEach(e => {
+      const m = e.date?.slice(0, 7);
+      if (!m) return;
+      if (!map[m]) map[m] = { deposit: 0, withdraw: 0 };
+      map[m].deposit  += +e.deposit  || 0;
+      map[m].withdraw += +e.withdraw || 0;
+    });
+    const all = months.map(m => ({
+      month: new Date(m + '-02').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+      deposit:  map[m]?.deposit  || 0,
+      withdraw: map[m]?.withdraw || 0,
+    }));
+    return bankPeriod === '12m' ? all : all.slice(-6);
+  }, [bankEntries, bankPeriod]);
 
   const recentExpenses = expenses.slice(0, 5);
 
@@ -242,6 +264,83 @@ export default function Dashboard() {
             <Area type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={2} fill="url(#areaGradient)" />
           </AreaChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* Bank Deposit / Withdraw Trend */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+        <div className="flex items-start sm:items-center justify-between gap-3 mb-4 flex-wrap">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Bank Trend</h2>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Deposits vs Withdrawals</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {banks.length > 1 && (
+              <select
+                value={selectedBank?.id || ''}
+                onChange={e => setSelectedBankId(e.target.value)}
+                className="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                {banks.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            )}
+            {banks.length === 1 && selectedBank && (
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{selectedBank.name}</span>
+            )}
+            <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 text-xs font-medium">
+              <button
+                onClick={() => setBankPeriod('6m')}
+                className={`px-3 py-1.5 transition-colors ${
+                  bankPeriod === '6m'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                }`}
+              >6 Months</button>
+              <button
+                onClick={() => setBankPeriod('12m')}
+                className={`px-3 py-1.5 transition-colors ${
+                  bankPeriod === '12m'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                }`}
+              >1 Year</button>
+            </div>
+          </div>
+        </div>
+        {bankEntries.length === 0 ? (
+          <div className="flex items-center justify-center h-48 text-gray-400 text-sm">No bank transactions yet</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={bankTrendData} margin={{ top: 5, right: 5, bottom: 5, left: -10 }}>
+              <defs>
+                <linearGradient id="depositGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="withdrawGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:stroke-gray-700" />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }}
+                tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}
+              />
+              <Tooltip
+                formatter={(v, name) => [formatCurrency(v, currency), name === 'deposit' ? 'Deposit' : 'Withdraw']}
+                contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
+              />
+              <Legend
+                formatter={v => v === 'deposit' ? 'Deposit' : 'Withdraw'}
+                wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
+              />
+              <Area type="monotone" dataKey="deposit"  stroke="#22c55e" strokeWidth={2} fill="url(#depositGradient)" />
+              <Area type="monotone" dataKey="withdraw" stroke="#ef4444" strokeWidth={2} fill="url(#withdrawGradient)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* Recent transactions */}
