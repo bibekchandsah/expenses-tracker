@@ -1,5 +1,6 @@
 ﻿import { useState, useCallback, useMemo } from 'react';
-import { Plus, Search, Filter, Download, Edit2, Trash2, ChevronUp, ChevronDown, SlidersHorizontal, X, BarChart2 } from 'lucide-react';
+import { Plus, Search, Filter, Download, Edit2, Trash2, ChevronUp, ChevronDown, SlidersHorizontal, X, BarChart2, Upload } from 'lucide-react';
+import CSVImportModal from '../components/CSVImportModal';
 import { useExpenses } from '../context/ExpenseContext';
 import { useCategories } from '../context/CategoryContext';
 import { useToast } from '../components/ui/Toast';
@@ -13,6 +14,19 @@ import { useDebounce } from '../hooks/useDebounce';
 
 const PAGE_SIZE = 30;
 
+const IMPORT_FIELDS = [
+  { key: 'title',       label: 'Title / Description',          required: true,  type: 'text'   },
+  { key: 'amount',      label: 'Amount',                        required: true,  type: 'number' },
+  { key: 'date',        label: 'Date',                          required: true,  type: 'date'   },
+  { key: 'category',    label: 'Category (name)',               required: false, type: 'text',    hint: 'Matched to existing category names; unmatched left blank' },
+  { key: 'description', label: 'Description',                   required: false, type: 'text'   },
+  { key: 'notes',       label: 'Notes',                         required: false, type: 'text'   },
+];
+
+function expenseKey(r) {
+  return `${String(r.title || '').toLowerCase()}|${r.date}|${r.amount}`;
+}
+
 export default function Expenses() {
   const { expenses, filteredExpenses, loading, filters, setFilters, resetFilters, addExpense, updateExpense, deleteExpense } = useExpenses();
   const { currency } = useCurrency();
@@ -20,6 +34,7 @@ export default function Expenses() {
   const { addToast } = useToast();
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -95,6 +110,23 @@ export default function Expenses() {
     await deleteExpense(deleteTarget.id);
     setDeleteTarget(null);
     addToast('Expense deleted', 'success');
+  }
+
+  async function handleCSVImport(records) {
+    for (const rec of records) {
+      const matched = categories.find(
+        c => c.name?.toLowerCase() === String(rec.category || '').toLowerCase()
+      );
+      await addExpense({
+        title:       rec.title,
+        amount:      +rec.amount,
+        date:        rec.date,
+        category:    matched?.id || '',
+        description: rec.description || '',
+        notes:       rec.notes || '',
+      });
+    }
+    addToast(`Imported ${records.length} expense${records.length !== 1 ? 's' : ''}!`, 'success');
   }
 
   function handleSort(field) {
@@ -194,6 +226,13 @@ export default function Expenses() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{searchFiltered.length} of {expenses.length} expenses</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setImportOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            <span className="hidden sm:inline">Import CSV</span>
+          </button>
           <button
             onClick={() => exportToCSV(filteredExpenses)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -422,6 +461,16 @@ export default function Expenses() {
         message={`Are you sure you want to delete "${deleteTarget?.title}"? This action cannot be undone.`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+      <CSVImportModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        entityName="Expense"
+        fields={IMPORT_FIELDS}
+        existingRecords={expenses}
+        duplicateKeyFn={expenseKey}
+        onImport={handleCSVImport}
+        accentColor="blue"
       />
     </div>
   );

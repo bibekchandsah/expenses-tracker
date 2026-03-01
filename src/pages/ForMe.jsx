@@ -2,8 +2,9 @@
 import {
   Heart, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, ChevronDown,
-  PanelRightClose, PanelRightOpen,
+  PanelRightClose, PanelRightOpen, Upload,
 } from 'lucide-react';
+import CSVImportModal from '../components/CSVImportModal';
 import { Timestamp } from 'firebase/firestore';
 import { useForMe } from '../context/ForMeContext';
 import { useToast } from '../components/ui/Toast';
@@ -171,13 +172,21 @@ function ForMeModal({ isOpen, entry, onClose, onSave, existingNames }) {
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────
+const IMPORT_FIELDS = [
+  { key: 'name',        label: 'Person / Name',          required: true,  type: 'text'   },
+  { key: 'amount',      label: 'Amount',                 required: true,  type: 'number' },
+  { key: 'date',        label: 'Date',                   required: true,  type: 'date'   },
+  { key: 'description', label: 'Description / Notes',   required: false, type: 'text'   },
+];
+function forMeKey(r) { return `${String(r.name || '').toLowerCase()}|${r.date}|${r.amount}`; }
 export default function ForMe() {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useForMe();
   const { currency } = useCurrency();
   const { addToast } = useToast();
 
   const [modalOpen,     setModalOpen]     = useState(false);
+  const [importOpen,    setImportOpen]    = useState(false);
   const [editingEntry,  setEditingEntry]  = useState(null);
   const [deleteTarget,  setDeleteTarget]  = useState(null);
   const [search,        setSearch]        = useState('');
@@ -257,6 +266,18 @@ export default function ForMe() {
     addToast('Entry deleted');
   }
 
+  async function handleCSVImport(records) {
+    for (const rec of records) {
+      await addEntry({
+        name:        rec.name,
+        amount:      +rec.amount,
+        date:        rec.date,
+        description: rec.description || '',
+      });
+    }
+    addToast(`Imported ${records.length} entr${records.length !== 1 ? 'ies' : 'y'}!`);
+  }
+
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
 
   const SortBtn = ({ col, label, align = 'left' }) => (
@@ -280,6 +301,12 @@ export default function ForMe() {
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track people who owe you a treat or payment</p>
         </div>
+        <button
+          onClick={() => setImportOpen(true)}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors self-start sm:self-auto"
+        >
+          <Upload className="w-4 h-4" /> Import CSV
+        </button>
         <button
           onClick={() => { setEditingEntry(null); setModalOpen(true); }}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors self-start sm:self-auto"
@@ -571,6 +598,16 @@ export default function ForMe() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
         danger
+      />
+      <CSVImportModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        entityName="For Me Entry"
+        fields={IMPORT_FIELDS}
+        existingRecords={entries}
+        duplicateKeyFn={forMeKey}
+        onImport={handleCSVImport}
+        accentColor="pink"
       />
     </div>
   );

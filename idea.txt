@@ -359,22 +359,22 @@ Month header band shows:
 Entries within each month group are sorted newest-first (same as the existing sort). The existing Monthly Breakdown summary table at the bottom still appears as before.
 
 
-add it (plus icon) to lent, expense and for me, bank -> choose bank, income,  entry form
-income ↔ bank(deposit) -> choose bank
-specific bank ↔ income 
-
-income, expenses, bank -> choose, lend, loan, saving, for me
-income table heading = title/date, amount, notes, description, source
-expense table heading = title/date, amount, note, description, category
-bank table heading = date, description, deposit, withdraw, closing balance
-lend table heading = date, name, lent, reason, returned, due, description
-loan table heading = date, name, borrowed, reason, paid, due, description
-saving table heading = date, amount, expend on, description
-for me table heading = date, amount, name, description
-
-
-
-import button to import from CSV file exported from other apps like Splitwise, Google Sheets, etc. with mapping of columns to date (supports YYYY-MM-DD, MM/DD/YYYY, all format), amount, source, description fields. this will make it easier for users to migrate their existing data into the app without having to manually enter each record. the import process should also handle duplicates gracefully (e.g. by skipping or updating existing records based on a unique identifier) and provide feedback on how many records were imported successfully vs skipped due to duplicates or errors. ask user to confirm the duplicate insertion before proceeding to avoid accidental overwrites.
+import button to (income, expenses, bank, lend, loan, saving, for me)pages to import from CSV file exported from other apps like Splitwise, Google Sheets, etc. with mapping of columns to date (supports YYYY-MM-DD, MM/DD/YYYY, all format), amount, source, description fields. this will make it easier for users to migrate their existing data into the app without having to manually enter each record. the import process should also handle duplicates gracefully (e.g. by skipping or updating existing records based on a unique identifier) and provide feedback on how many records were imported successfully vs skipped due to duplicates or errors. ask user to confirm the duplicate insertion before proceeding to avoid accidental overwrites.
+Upload — drag & drop or file picker, CSV validation
+Map Columns — auto-guesses column mapping, per-field dropdowns, date format selector (8 formats + auto-detect), 5-row preview table
+Review — new / duplicate / invalid counts; duplicate handling radio (skip or import anyway); expandable lists for duplicates and invalid rows
+Result — imported / skipped / failed summary
+Date formats supported: YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY, YYYY/MM/DD, MM-DD-YYYY, DD-MM-YYYY, D MMM YYYY, MMM D YYYY, plus JS Date.parse fallback.
+Import wired into all 7 pages:
+    Page	    Button	                                Duplicate key
+    Income	    Upload + green accent	                title|date|amount
+    Expenses	Upload + category name-matching	        title|date|amount
+    Bank	    Upload + CR/DR type column support	    description|date|deposit|withdraw
+    Lend	    Upload	                                name|date|amount
+    Loan	    Upload	                                name|date|amount
+    Saving	    Upload	                                expendOn|date|amount
+    For Me	    Upload + pink accent	                name|date|amount
+Bank entries support both split-column CSVs (separate deposit/withdraw) and single-amount-with-type-column CSVs (e.g. Splitwise, bank exports with CR/DR).
 
 
 add tools page with draggable & resizable calculator like ios support keyboard keys too, currency converter, loan calculator, etc.
@@ -400,5 +400,43 @@ Equation sub-line now shows:
 Active operator button highlights in brighter orange
 
 
+
+
+
+
+
+add it (plus icon) to income, expenses, bank, lend, loan, saving, for me pages to quickly add an entry to those pages without having to go through the full add entry modal. this quick-add clicks "Add", the entry should be created immediately and the form should reset for the next entry. this will allow users to quickly log their transactions on the go without interrupting their workflow or having to navigate away from the current page.
+
+income/loan/saving ↔ bank(deposit) -> choose bank
+expense/lend ↔ bank(withdraw) -> choose bank
+for expenses use title value as description in bank entry
+from any page if user want to insert it to bank then ask for which bank and then insert it in that bank
+
+pages = income, expenses, bank, lend, loan, saving, for me
+income table heading = title/date, amount, notes, description, source
+expense table heading = title/date, amount, note, description, category
+bank table heading = date, description, deposit, withdraw, closing balance
+lend table heading = date, name, lent, reason, returned, due, description
+loan table heading = date, name, borrowed, reason, paid, due, description
+saving table heading = date, amount, expend on, description
+for me table heading = date, amount, name, description
+if both page have same heading then insert data in same column otherwise use validation rule:
+
+valid
+----------
+expend on/ reason -> note/notes
+withdraw/deposit -> amount
+lent/borrowed -> amount
+name -> notes/note/description (whichever is empty, if not don't insert in notes/description to avoid overwriting existing data)
+
+not valid
+----------
+source != category of income & expense
+closing balance = don't use closing balance as it can be calculated from deposit and withdraw
+if one table has 5 columns and other has 4 columns then use the common columns to insert data and ignore the extra column in the table which has more columns to avoid overwriting existing data
+
+
 create a yearly summary page with total expenses, loans, savings, etc. and graphs
 user can choose the year in their profile settings and the dashboard and summary page will show data for that year by default so that in the future when they have multiple years of data, they can easily switch between years to see their financial history and progress over time. when user choose 2026 in profile settings, the dashboard and summary page will show data for 2026 by default. user can still change the year on the dashboard and summary page to view data for other years, but it will always default to the year they selected in their profile settings when they first visit those pages. this allows users to easily focus on their current year's financial data while still having access to their historical data when needed.
+
+delete/export data of selected year

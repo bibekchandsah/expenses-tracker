@@ -1,9 +1,10 @@
 ﻿import { useState, useMemo, useEffect } from 'react';
 import {
   Building2, Plus, Edit2, Trash2, X, ChevronDown,
-  ArrowDownCircle, ArrowUpCircle, Wallet, Download,
+  ArrowDownCircle, ArrowUpCircle, Wallet, Download, Upload,
   ChevronsUpDown, Check, Settings, Search, ArrowUp, ArrowDown,
 } from 'lucide-react';
+import CSVImportModal from '../components/CSVImportModal';
 import { useBanks } from '../context/BankContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -236,6 +237,19 @@ function EntryModal({ isOpen, entry, bankName, onClose, onSave }) {
   );
 }
 
+const IMPORT_FIELDS = [
+  { key: 'description', label: 'Description / Title',                   required: true,  type: 'text'   },
+  { key: 'date',        label: 'Date',                                   required: true,  type: 'date'   },
+  { key: 'deposit',     label: 'Deposit / Credit Amount',                required: false, type: 'number', hint: 'For CSVs with separate deposit & withdrawal columns' },
+  { key: 'withdraw',    label: 'Withdraw / Debit Amount',                required: false, type: 'number', hint: 'For CSVs with separate deposit & withdrawal columns' },
+  { key: '_amount',     label: 'Single Amount Column',                   required: false, type: 'number', hint: 'Use with Type Column below for single-amount CSVs' },
+  { key: '_type',       label: 'Type Column (CR/DR, Credit/Debit, +/-)', required: false, type: 'text',   hint: 'Column containing Credit/Debit indicator' },
+];
+
+function bankEntryKey(r) {
+  return `${String(r.description || '').toLowerCase()}|${r.date}|${r.deposit ?? 0}|${r.withdraw ?? 0}`;
+}
+
 // ── CSV Export ──────────────────────────────────────────────────
 function exportBankCSV(entries, bankName, openingBalance) {
   const headers = ['Date', 'Description', 'Deposit', 'Withdraw', 'Closing Balance'];
@@ -262,6 +276,7 @@ export default function Bank() {
   const [deleteBankTarget, setDeleteBankTarget] = useState(null);
 
   const [entryModalOpen, setEntryModalOpen] = useState(false);
+  const [importOpen, setImportOpen]          = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [deleteEntryTarget, setDeleteEntryTarget] = useState(null);
 
@@ -477,6 +492,15 @@ export default function Bank() {
             )}
 
             <div className="sm:ml-auto flex items-center gap-2">
+              {selectedBank && (
+                <button
+                  onClick={() => setImportOpen(true)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span className="hidden sm:inline">Import CSV</span>
+                </button>
+              )}
               {entries.length > 0 && (
                 <button
                   onClick={() => exportBankCSV(entries, selectedBank?.name || 'bank', selectedBank?.openingBalance || 0)}
@@ -761,6 +785,33 @@ export default function Bank() {
         message={`Delete "${deleteEntryTarget?.description}"? This will update the closing balances.`}
         onConfirm={handleDeleteEntry}
         onCancel={() => setDeleteEntryTarget(null)}
+      />
+      <CSVImportModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        entityName="Bank Entry"
+        fields={IMPORT_FIELDS}
+        existingRecords={entries}
+        duplicateKeyFn={bankEntryKey}
+        onImport={async (records) => {
+          for (const rec of records) {
+            let deposit  = rec.deposit  ? +rec.deposit  : 0;
+            let withdraw = rec.withdraw ? +rec.withdraw : 0;
+            if (rec._amount !== '' && rec._amount !== null && rec._amount !== undefined) {
+              const amt = +rec._amount;
+              if (rec._type) {
+                const t = String(rec._type).toLowerCase();
+                if (/credit|cr|\+|deposit|receiv/i.test(t)) deposit  = Math.abs(amt);
+                else                                          withdraw = Math.abs(amt);
+              } else {
+                if (amt >= 0) deposit  =  amt;
+                else          withdraw = -amt;
+              }
+            }
+            await addEntry({ description: rec.description, date: rec.date, deposit, withdraw });
+          }
+        }}
+        accentColor="blue"
       />
     </div>
   );

@@ -2,8 +2,9 @@
 import {
   PiggyBank, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown,
-  PanelRightClose, PanelRightOpen,
+  PanelRightClose, PanelRightOpen, Upload,
 } from 'lucide-react';
+import CSVImportModal from '../components/CSVImportModal';
 import { useSavings } from '../context/SavingContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -188,12 +189,21 @@ function SourceModal({ isOpen, source, onClose, onSave }) {
   );
 }
 
+const IMPORT_FIELDS = [
+  { key: 'expendOn',    label: 'Saved For / Purpose',  required: false, type: 'text'   },
+  { key: 'amount',      label: 'Amount',               required: true,  type: 'number' },
+  { key: 'date',        label: 'Date',                 required: true,  type: 'date'   },
+  { key: 'description', label: 'Description / Notes', required: false, type: 'text'   },
+];
+function savingKey(r) { return `${String(r.expendOn || '').toLowerCase()}|${r.date}|${r.amount}`; }
+
 export default function Saving() {
   const { savings, sources, loading, addSaving, updateSaving, deleteSaving, addSource, updateSource, deleteSource } = useSavings();
   const { currency } = useCurrency();
   const { addToast } = useToast();
 
   const [showSidePanel, setShowSidePanel] = useState(true);
+  const [importOpen, setImportOpen]        = useState(false);
   const [savingModal, setSavingModal]     = useState({ open: false, item: null });
   const [deleteTarget, setDeleteTarget]   = useState(null);
   const [sourceModal, setSourceModal]     = useState({ open: false, item: null });
@@ -246,6 +256,18 @@ export default function Saving() {
     setDeleteTarget(null);
     addToast('Record deleted');
   }
+
+  async function handleCSVImport(records) {
+    for (const rec of records) {
+      await addSaving({
+        expendOn:    rec.expendOn || '',
+        amount:      +rec.amount,
+        date:        rec.date,
+        description: rec.description || '',
+      });
+    }
+    addToast(`Imported ${records.length} saving record${records.length !== 1 ? 's' : ''}!`);
+  }
   async function handleSaveSource(form) {
     if (sourceModal.item) { await updateSource(sourceModal.item.id, form); addToast('Source updated!'); }
     else                  { await addSource(form);                         addToast('Source added!');   }
@@ -279,6 +301,12 @@ export default function Saving() {
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track savings and their sources</p>
         </div>
+        <button
+          onClick={() => setImportOpen(true)}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors self-start sm:self-auto"
+        >
+          <Upload className="w-4 h-4" /> Import CSV
+        </button>
         <button
           onClick={() => setSavingModal({ open: true, item: null })}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors self-start sm:self-auto"
@@ -509,6 +537,16 @@ export default function Saving() {
         message={deleteSourceTarget ? `Amount: ${formatCurrency(deleteSourceTarget.amount, currency)} on ${formatDate(deleteSourceTarget.date)}` : ''}
         onConfirm={handleDeleteSource}
         onCancel={() => setDeleteSourceTarget(null)}
+      />
+      <CSVImportModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        entityName="Saving Record"
+        fields={IMPORT_FIELDS}
+        existingRecords={savings}
+        duplicateKeyFn={savingKey}
+        onImport={handleCSVImport}
+        accentColor="blue"
       />
     </div>
   );

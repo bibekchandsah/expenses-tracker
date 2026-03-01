@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, SlidersHorizontal, X, Download, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, SlidersHorizontal, X, Download, Edit2, Trash2, Upload } from 'lucide-react';
+import CSVImportModal from '../components/CSVImportModal';
 import { useIncomes } from '../context/IncomeContext';
 import { useToast } from '../components/ui/Toast';
 import IncomeModal, { INCOME_SOURCES } from '../components/IncomeModal';
@@ -10,6 +11,19 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useDebounce } from '../hooks/useDebounce';
 
 const PAGE_SIZE = 30;
+
+const IMPORT_FIELDS = [
+  { key: 'title',       label: 'Title / Description',         required: true,  type: 'text'   },
+  { key: 'amount',      label: 'Amount',                       required: true,  type: 'number' },
+  { key: 'date',        label: 'Date',                         required: true,  type: 'date'   },
+  { key: 'source',      label: 'Source (Salary, Freelance…)',  required: false, type: 'text',  hint: 'Matched to known sources; unrecognised left as-is' },
+  { key: 'description', label: 'Description',                  required: false, type: 'text'   },
+  { key: 'notes',       label: 'Notes',                        required: false, type: 'text'   },
+];
+
+function incomeKey(r) {
+  return `${String(r.title || '').toLowerCase()}|${r.date}|${r.amount}`;
+}
 
 const SOURCE_COLORS = {
   Salary:     'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
@@ -36,6 +50,7 @@ export default function Income() {
   const { addToast } = useToast();
 
   const [modalOpen, setModalOpen]       = useState(false);
+  const [importOpen, setImportOpen]      = useState(false);
   const [editingIncome, setEditingIncome] = useState(null);
   const [deleteTarget, setDeleteTarget]  = useState(null);
   const [showFilters, setShowFilters]    = useState(false);
@@ -123,6 +138,20 @@ export default function Income() {
     await deleteIncome(deleteTarget.id);
     setDeleteTarget(null);
     addToast('Income deleted', 'success');
+  }
+
+  async function handleCSVImport(records) {
+    for (const rec of records) {
+      await addIncome({
+        title:       rec.title,
+        amount:      +rec.amount,
+        date:        rec.date,
+        source:      rec.source || 'Other',
+        description: rec.description || '',
+        notes:       rec.notes || '',
+      });
+    }
+    addToast(`Imported ${records.length} income record${records.length !== 1 ? 's' : ''}!`, 'success');
   }
 
   function handleSort(field) {
@@ -225,6 +254,12 @@ export default function Income() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setImportOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Upload className="w-4 h-4" /> Import
+          </button>
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -467,6 +502,16 @@ export default function Income() {
         message={`Delete "${deleteTarget?.title}"? This cannot be undone.`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+      <CSVImportModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        entityName="Income"
+        fields={IMPORT_FIELDS}
+        existingRecords={incomes}
+        duplicateKeyFn={incomeKey}
+        onImport={handleCSVImport}
+        accentColor="green"
       />
     </div>
   );

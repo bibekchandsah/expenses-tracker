@@ -2,8 +2,9 @@
 import {
   Wallet, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, CheckCircle2, AlertCircle, ChevronDown,
-  PanelRightClose, PanelRightOpen,
+  PanelRightClose, PanelRightOpen, Upload,
 } from 'lucide-react';
+import CSVImportModal from '../components/CSVImportModal';
 import { useLoans } from '../context/LoanContext';
 import { useLends } from '../context/LendContext';
 import { useToast } from '../components/ui/Toast';
@@ -186,7 +187,16 @@ function SortIcon({ col, sortCol, sortDir }) {
     : <ArrowDown className="w-3 h-3 text-primary-500 flex-shrink-0" />;
 }
 
-// ── Main Loan Page ──────────────────────────────────────────────
+// ── Main Loan Page ─────────────────────────────────────────────
+const IMPORT_FIELDS = [
+  { key: 'name',        label: 'Person / Lender Name',   required: true,  type: 'text'   },
+  { key: 'amount',      label: 'Amount Borrowed',        required: true,  type: 'number' },
+  { key: 'date',        label: 'Date',                   required: true,  type: 'date'   },
+  { key: 'reason',      label: 'Reason / Purpose',       required: false, type: 'text'   },
+  { key: 'paidAmount',  label: 'Paid Back Amount',       required: false, type: 'number' },
+  { key: 'description', label: 'Description / Notes',   required: false, type: 'text'   },
+];
+function loanKey(r) { return `${String(r.name || '').toLowerCase()}|${r.date}|${r.amount}`; }
 export default function Loan() {
   const { loans, loading, addLoan, updateLoan, deleteLoan } = useLoans();
   const { currency } = useCurrency();
@@ -194,6 +204,7 @@ export default function Loan() {
   const { addToast } = useToast();
 
   const [modalOpen, setModalOpen]         = useState(false);
+  const [importOpen, setImportOpen]        = useState(false);
   const [editingLoan, setEditingLoan]     = useState(null);
   const [deleteTarget, setDeleteTarget]   = useState(null);
   const [search, setSearch]               = useState('');
@@ -282,6 +293,20 @@ export default function Loan() {
     addToast('Record deleted');
   }
 
+  async function handleCSVImport(records) {
+    for (const rec of records) {
+      await addLoan({
+        name:        rec.name,
+        amount:      +rec.amount,
+        date:        rec.date,
+        reason:      rec.reason || '',
+        paidAmount:  rec.paidAmount ? +rec.paidAmount : 0,
+        description: rec.description || '',
+      });
+    }
+    addToast(`Imported ${records.length} loan record${records.length !== 1 ? 's' : ''}!`);
+  }
+
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
 
   const SortBtn = ({ col, label, align = 'left' }) => (
@@ -305,6 +330,12 @@ export default function Loan() {
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track money you've borrowed and amounts paid back</p>
         </div>
+        <button
+          onClick={() => setImportOpen(true)}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors self-start sm:self-auto"
+        >
+          <Upload className="w-4 h-4" /> Import CSV
+        </button>
         <button
           onClick={() => { setEditingLoan(null); setModalOpen(true); }}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors self-start sm:self-auto"
@@ -646,6 +677,16 @@ export default function Loan() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
         danger
+      />
+      <CSVImportModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        entityName="Loan Record"
+        fields={IMPORT_FIELDS}
+        existingRecords={loans}
+        duplicateKeyFn={loanKey}
+        onImport={handleCSVImport}
+        accentColor="blue"
       />
     </div>
   );

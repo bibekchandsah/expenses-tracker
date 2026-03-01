@@ -2,8 +2,9 @@
 import {
   HandCoins, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, CheckCircle2, AlertCircle, ChevronDown,
-  PanelRightClose, PanelRightOpen,
+  PanelRightClose, PanelRightOpen, Upload,
 } from 'lucide-react';
+import CSVImportModal from '../components/CSVImportModal';
 import { useLends } from '../context/LendContext';
 import { useLoans } from '../context/LoanContext';
 import { useToast } from '../components/ui/Toast';
@@ -186,7 +187,16 @@ function SortIcon({ col, sortCol, sortDir }) {
     : <ArrowDown className="w-3 h-3 text-primary-500 flex-shrink-0" />;
 }
 
-// ── Main Lend Page ──────────────────────────────────────────────
+// ── Main Lend Page ─────────────────────────────────────────────
+const IMPORT_FIELDS = [
+  { key: 'name',           label: 'Person / Name',           required: true,  type: 'text'   },
+  { key: 'amount',         label: 'Amount Lent',             required: true,  type: 'number' },
+  { key: 'date',           label: 'Date',                    required: true,  type: 'date'   },
+  { key: 'reason',         label: 'Reason / Purpose',        required: false, type: 'text'   },
+  { key: 'returnedAmount', label: 'Returned Amount',         required: false, type: 'number' },
+  { key: 'description',   label: 'Description / Notes',     required: false, type: 'text'   },
+];
+function lendKey(r) { return `${String(r.name || '').toLowerCase()}|${r.date}|${r.amount}`; }
 export default function Lend() {
   const { lends, loading, addLend, updateLend, deleteLend } = useLends();
   const { currency } = useCurrency();
@@ -194,6 +204,7 @@ export default function Lend() {
   const { addToast } = useToast();
 
   const [modalOpen, setModalOpen]         = useState(false);
+  const [importOpen, setImportOpen]        = useState(false);
   const [editingLend, setEditingLend]     = useState(null);
   const [deleteTarget, setDeleteTarget]   = useState(null);
   const [search, setSearch]               = useState('');
@@ -285,6 +296,20 @@ export default function Lend() {
     addToast('Record deleted');
   }
 
+  async function handleCSVImport(records) {
+    for (const rec of records) {
+      await addLend({
+        name:           rec.name,
+        amount:         +rec.amount,
+        date:           rec.date,
+        reason:         rec.reason || '',
+        returnedAmount: rec.returnedAmount ? +rec.returnedAmount : 0,
+        description:    rec.description || '',
+      });
+    }
+    addToast(`Imported ${records.length} lend record${records.length !== 1 ? 's' : ''}!`);
+  }
+
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
 
   const SortBtn = ({ col, label, align = 'left' }) => (
@@ -308,6 +333,12 @@ export default function Lend() {
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track money you've lent and amounts received back</p>
         </div>
+        <button
+          onClick={() => setImportOpen(true)}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors self-start sm:self-auto"
+        >
+          <Upload className="w-4 h-4" /> Import CSV
+        </button>
         <button
           onClick={() => { setEditingLend(null); setModalOpen(true); }}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors self-start sm:self-auto"
@@ -652,6 +683,16 @@ export default function Lend() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
         danger
+      />
+      <CSVImportModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        entityName="Lend Record"
+        fields={IMPORT_FIELDS}
+        existingRecords={lends}
+        duplicateKeyFn={lendKey}
+        onImport={handleCSVImport}
+        accentColor="blue"
       />
     </div>
   );
