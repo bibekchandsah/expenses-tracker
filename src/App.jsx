@@ -10,6 +10,7 @@ import { LendProvider } from './context/LendContext';
 import { LoanProvider } from './context/LoanContext';
 import { SavingProvider } from './context/SavingContext';
 import { NoteProvider } from './context/NoteContext';
+import { ForMeProvider } from './context/ForMeContext';
 import { ToastProvider } from './components/ui/Toast';
 import PrivateRoute from './routes/PrivateRoute';
 import Layout from './components/Layout';
@@ -27,6 +28,7 @@ const Lend = lazy(() => import('./pages/Lend'));
 const Loan = lazy(() => import('./pages/Loan'));
 const Saving = lazy(() => import('./pages/Saving'));
 const Note   = lazy(() => import('./pages/Note'));
+const ForMe  = lazy(() => import('./pages/ForMe'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-64">
@@ -48,6 +50,7 @@ export default function App() {
                   <LoanProvider>
                   <SavingProvider>
                   <NoteProvider>
+                  <ForMeProvider>
                   <Suspense fallback={<PageLoader />}>
                     <Routes>
                       <Route path="/login" element={<Login />} />
@@ -63,12 +66,14 @@ export default function App() {
                           <Route path="/lend" element={<Lend />} />
                           <Route path="/loan" element={<Loan />} />
                           <Route path="/saving" element={<Saving />} />
-                          <Route path="/note"   element={<Note />} />
+                          <Route path="/note"    element={<Note />} />
+                          <Route path="/for-me"  element={<ForMe />} />
                         </Route>
                       </Route>
                       <Route path="*" element={<Navigate to="/dashboard" replace />} />
                     </Routes>
                   </Suspense>
+                  </ForMeProvider>
                   </NoteProvider>
                   </SavingProvider>
                   </LoanProvider>

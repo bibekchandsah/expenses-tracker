@@ -34,7 +34,7 @@ Date l amount l name | description l returned amount l remark
 In tabular view name l amount l remaining 
 
 For me
-Date l amount l name l expend on 
+Date l amount l name l description
 In tabular view name l loan amount l given amount l remaining amount to receive L remaining amount to give L whatsapp message 
 
 Bank (done)
@@ -52,7 +52,7 @@ show user profile picture in sidebar
 add logout button in sidebar
 add tools page with calculator, currency converter, loan calculator, etc.
 
-add it to loan, expense and given entry form
+add it to lent, expense and for me entry form
 add search functionality to expenses, loans and bank entries
 create a yearly summary page with total expenses, loans, savings, etc. and graphs
 user can choose the year in their profile settings and the dashboard and summary page will show data for that year by default so that in the future when they have multiple years of data, they can easily switch between years to see their financial history and progress over time. when user choose 2026 in profile settings, the dashboard and summary page will show data for 2026 by default. user can still change the year on the dashboard and summary page to view data for other years, but it will always default to the year they selected in their profile settings when they first visit those pages. this allows users to easily focus on their current year's financial data while still having access to their historical data when needed.
