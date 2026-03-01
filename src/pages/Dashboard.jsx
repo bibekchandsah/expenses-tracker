@@ -10,6 +10,7 @@ import { useExpenses } from '../context/ExpenseContext';
 import { useCategories } from '../context/CategoryContext';
 import { useAuth } from '../context/AuthContext';
 import { useBanks } from '../context/BankContext';
+import { useIncomes } from '../context/IncomeContext';
 import StatsCard from '../components/ui/StatsCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, groupByMonth, groupByCategory, currentMonth, currentYear, last12Months } from '../utils/formatters';
@@ -21,12 +22,14 @@ export default function Dashboard() {
   const { categories, getCategoryById } = useCategories();
   const { user } = useAuth();
   const { entries: bankEntries, selectedBank, banks, setSelectedBankId } = useBanks();
+  const { incomes } = useIncomes();
 
   const now = new Date();
   const thisMonth = currentMonth();
   const thisYear = currentYear();
   const [catPeriod, setCatPeriod] = useState('month');
   const [trendPeriod, setTrendPeriod] = useState('6m');
+  const [incomeTrendPeriod, setIncomeTrendPeriod] = useState('6m');
   const [bankPeriod, setBankPeriod] = useState('6m');
 
   const stats = useMemo(() => {
@@ -73,6 +76,21 @@ export default function Dashboard() {
 
   // Line chart data (6 or 12 months)
   const trendData = trendPeriod === '12m' ? monthlyData : monthlyData.slice(-6);
+
+  // Income trend data (6 or 12 months)
+  const incomeTrendData = useMemo(() => {
+    const months = last12Months();
+    const map = {};
+    incomes.forEach(i => {
+      const m = i.date?.slice(0, 7);
+      if (m) map[m] = (map[m] || 0) + (+i.amount || 0);
+    });
+    const all = months.map(m => ({
+      month: new Date(m + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+      amount: map[m] || 0,
+    }));
+    return incomeTrendPeriod === '12m' ? all : all.slice(-6);
+  }, [incomes, incomeTrendPeriod]);
 
   // Bank deposit / withdraw trend
   const bankTrendData = useMemo(() => {
@@ -222,6 +240,52 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Income Trend */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+            Income Trend (Last {incomeTrendPeriod === '12m' ? '12 Months' : '6 Months'})
+          </h2>
+          <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 text-xs font-medium">
+            <button
+              onClick={() => setIncomeTrendPeriod('6m')}
+              className={`px-3 py-1.5 transition-colors ${
+                incomeTrendPeriod === '6m'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+              }`}
+            >6 Months</button>
+            <button
+              onClick={() => setIncomeTrendPeriod('12m')}
+              className={`px-3 py-1.5 transition-colors ${
+                incomeTrendPeriod === '12m'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+              }`}
+            >1 Year</button>
+          </div>
+        </div>
+        {incomes.length === 0 ? (
+          <div className="flex items-center justify-center h-[180px] text-gray-400 text-sm">No income data yet</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={incomeTrendData} margin={{ top: 5, right: 5, bottom: 5, left: -10 }}>
+              <defs>
+                <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:stroke-gray-700" />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(v) => [formatCurrency(v, currency), 'Income']} contentStyle={{ borderRadius: 12, border: 'none' }} />
+              <Area type="monotone" dataKey="amount" stroke="#22c55e" strokeWidth={2} fill="url(#incomeGradient)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* Trend line */}
