@@ -19,11 +19,15 @@ import {
   PanelLeftOpen,
   LogOut,
   ChevronUp,
+  ChevronDown,
   Sun,
   Moon,
+  Wrench,
+  Calculator as CalculatorIcon,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import Calculator from './ui/Calculator';
 
 const navItems = [
   { to: '/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
@@ -86,7 +90,10 @@ export default function Sidebar({ open, onClose }) {
     try { return localStorage.getItem('sidebarCollapsed') === 'true'; } catch { return false; }
   });
   const [profileOpen, setProfileOpen] = useState(false);
+  const [toolsOpen,   setToolsOpen]   = useState(false);
+  const [showCalc,    setShowCalc]    = useState(false);
   const profileRef = useRef(null);
+  const toolsRef   = useRef(null);
 
   function toggleCollapsed() {
     setCollapsed(c => {
@@ -96,12 +103,11 @@ export default function Sidebar({ open, onClose }) {
     });
   }
 
-  // Close profile dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     function handler(e) {
-      if (profileRef.current && !profileRef.current.contains(e.target)) {
-        setProfileOpen(false);
-      }
+      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
+      if (toolsRef.current   && !toolsRef.current.contains(e.target))   setToolsOpen(false);
     }
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -189,6 +195,64 @@ export default function Sidebar({ open, onClose }) {
             <NavItem key={item.to} {...item} collapsed={collapsed} onClose={onClose} />
           ))}
         </nav>
+
+        {/* ── Tools section ───────────────────────────────────────── */}
+        <div
+          className={`border-t border-gray-200 dark:border-gray-800 ${
+            collapsed ? 'px-1.5 py-2' : 'px-3 py-2'
+          }`}
+          ref={toolsRef}
+        >
+          <div className="relative group">
+            <button
+              onClick={() => setToolsOpen(o => !o)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all
+                          text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800
+                          hover:text-gray-900 dark:hover:text-white
+                          ${collapsed ? 'justify-center' : ''}`}
+            >
+              <Wrench className="w-5 h-5 flex-shrink-0" />
+              {!collapsed && (
+                <>
+                  <span className="flex-1 text-left">Tools</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`} />
+                </>
+              )}
+            </button>
+
+            {/* Tooltip in collapsed mode */}
+            {collapsed && (
+              <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 z-50
+                              opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                <div className="bg-gray-900 dark:bg-gray-700 text-white text-xs font-medium px-2.5 py-1.5
+                                rounded-lg whitespace-nowrap shadow-lg">
+                  Tools
+                  <div className="absolute right-full top-1/2 -translate-y-1/2
+                                  border-4 border-transparent border-r-gray-900 dark:border-r-gray-700" />
+                </div>
+              </div>
+            )}
+
+            {/* Tools dropdown */}
+            {toolsOpen && (
+              <div className={`absolute bottom-full mb-2 z-50 bg-white dark:bg-gray-800
+                              border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden
+                              ${ collapsed ? 'left-full ml-2 bottom-0 mb-0 w-44' : 'left-0 right-0 w-full' }`}>
+                <button
+                  onClick={() => { setShowCalc(true); setToolsOpen(false); }}
+                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200
+                             hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <CalculatorIcon className="w-4 h-4 text-gray-400" />
+                  Calculator
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Calculator overlay */}
+        {showCalc && <Calculator onClose={() => setShowCalc(false)} />}
 
         {/* Theme toggle */}
         <div className={`border-t border-gray-200 dark:border-gray-800 ${

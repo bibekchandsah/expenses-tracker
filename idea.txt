@@ -359,11 +359,46 @@ Month header band shows:
 Entries within each month group are sorted newest-first (same as the existing sort). The existing Monthly Breakdown summary table at the bottom still appears as before.
 
 
-add it to lent, expense and for me entry form
+add it (plus icon) to lent, expense and for me, bank -> choose bank, income,  entry form
+income ↔ bank(deposit) -> choose bank
+specific bank ↔ income 
+
+income, expenses, bank -> choose, lend, loan, saving, for me
+income table heading = title/date, amount, notes, description, source
+expense table heading = title/date, amount, note, description, category
+bank table heading = date, description, deposit, withdraw, closing balance
+lend table heading = date, name, lent, reason, returned, due, description
+loan table heading = date, name, borrowed, reason, paid, due, description
+saving table heading = date, amount, expend on, description
+for me table heading = date, amount, name, description
+
+
 
 import button to import from CSV file exported from other apps like Splitwise, Google Sheets, etc. with mapping of columns to date (supports YYYY-MM-DD, MM/DD/YYYY, all format), amount, source, description fields. this will make it easier for users to migrate their existing data into the app without having to manually enter each record. the import process should also handle duplicates gracefully (e.g. by skipping or updating existing records based on a unique identifier) and provide feedback on how many records were imported successfully vs skipped due to duplicates or errors. ask user to confirm the duplicate insertion before proceeding to avoid accidental overwrites.
 
-add tools page with draggable & resizable calculator like ios, currency converter, loan calculator, etc.
+
+add tools page with draggable & resizable calculator like ios support keyboard keys too, currency converter, loan calculator, etc.
+Calculator
+iOS-style dark design (#1C1C1E background, orange operators, gray function keys)
+Draggable — grab the header bar and drag anywhere on screen
+Resizable — drag the bottom-right corner handle (min 280×440, max 560×900)
+Rendered via createPortal to document.body so it floats above everything
+Keyboard support (only when no text input is focused):
+    Key	        Action
+    0–9	        digit input
+    .	        decimal
+    + - * /	    operator
+    Enter / =	equals
+    Backspace	delete last digit
+    Escape	    clear (AC)
+    %	        percent
+    ⌫          backspace
+Equation sub-line now shows:
+    While typing: 77 + (left operand + operator)
+    After pressing =: the full equation 77 + 77 = (exactly like the image), then the result 154 on the main display
+    Sub-line clears when you start a new calculation
+Active operator button highlights in brighter orange
+
 
 create a yearly summary page with total expenses, loans, savings, etc. and graphs
 user can choose the year in their profile settings and the dashboard and summary page will show data for that year by default so that in the future when they have multiple years of data, they can easily switch between years to see their financial history and progress over time. when user choose 2026 in profile settings, the dashboard and summary page will show data for 2026 by default. user can still change the year on the dashboard and summary page to view data for other years, but it will always default to the year they selected in their profile settings when they first visit those pages. this allows users to easily focus on their current year's financial data while still having access to their historical data when needed.
