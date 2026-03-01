@@ -34,7 +34,7 @@ Loan (done)
 Date l amount l name | description l returned amount l remark
 In tabular view name l amount l remaining 
 
-For me
+For me (done)
 Date l amount l name l description
 In tabular view name l loan amount l given amount l remaining amount to receive L remaining amount to give L whatsapp message 
 
@@ -234,3 +234,24 @@ Name autocomplete in the add/edit modal
 Light pink bar (full width) = grand total (Rs 170) — acts as the reference/background
 Dark pink bar (proportional fill) = each person's share (Ram Rs 150 → ~88% wide, Shyam Rs 20 → ~12% wide)
 A Grand Total reference row at the top showing the full light pink bar
+
+
+Net Summary page is live at /net-summary in the sidebar.
+What it shows per person:
+    Column	    Source	                Meaning
+    Borrowed	Loan page	            Total you borrowed from this person
+    Lent	    Lend page	            Total you lent to this person
+    To Receive	Lend remaining	        What this person still owes you
+    To Give	    Loan remaining	        What you still owe this person
+    Net	        To Receive − To Give	+green = they net owe you / red = you net owe them
+Top stat cards: People · Total Lent · Total Borrowed · To Receive · To Give
+A banner showing your overall net position (e.g. "You are net owed Rs X")
+Sortable columns + name search + footer row totals
+To Receive card = sum of net values where net > 0 (people who owe you more than you owe them)
+To Give card = sum of absolute net values where net < 0 (people you owe more than they owe you)
+1st click → descending ↓ (column turns blue)
+2nd click → ascending ↑
+3rd click → resets to natural order ⇅ (column returns to grey)
+
+
+link lender name & person name in loan and lend page that is if in lender name is Ram then it should show suggestion of Ram in person name and vice versa. if user click on that suggestion then it should fill the name in the form. this will make it easier for user to fill the form and also it will maintain consistency in naming. this feature is implemented in both loan and lend page.

@@ -28,7 +28,8 @@ const Lend = lazy(() => import('./pages/Lend'));
 const Loan = lazy(() => import('./pages/Loan'));
 const Saving = lazy(() => import('./pages/Saving'));
 const Note   = lazy(() => import('./pages/Note'));
-const ForMe  = lazy(() => import('./pages/ForMe'));
+const ForMe      = lazy(() => import('./pages/ForMe'));
+const NetSummary = lazy(() => import('./pages/NetSummary'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-64">
@@ -67,7 +68,8 @@ export default function App() {
                           <Route path="/loan" element={<Loan />} />
                           <Route path="/saving" element={<Saving />} />
                           <Route path="/note"    element={<Note />} />
-                          <Route path="/for-me"  element={<ForMe />} />
+                          <Route path="/for-me"      element={<ForMe />} />
+                          <Route path="/net-summary" element={<NetSummary />} />
                         </Route>
                       </Route>
                       <Route path="*" element={<Navigate to="/dashboard" replace />} />

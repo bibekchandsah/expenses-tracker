@@ -13,6 +13,7 @@ import {
   PiggyBank,
   StickyNote,
   Heart,
+  BarChart3,
 } from 'lucide-react';
 
 const navItems = [
@@ -26,7 +27,8 @@ const navItems = [
   { to: '/loan', label: 'Loan', icon: Wallet },
   { to: '/saving', label: 'Saving', icon: PiggyBank },
   { to: '/note',   label: 'Note',   icon: StickyNote },
-  { to: '/for-me', label: 'For Me', icon: Heart },
+  { to: '/for-me',     label: 'For Me',      icon: Heart     },
+  { to: '/net-summary', label: 'Net Summary', icon: BarChart3 },
 ];
 
 export default function Sidebar({ open, onClose }) {
