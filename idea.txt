@@ -41,9 +41,9 @@ Bank (done)
 Dropdoen of multiple bank and user can add name of it
 Date l description l deposit l withdraw l closing amount 
 
-Discussion or note page 
+Discussion or note page (done)
 
-Graph showing how much u take and what percentage I returned dual data in same bar
+Graph showing how much u take and what percentage I returned dual data in same bar (done)
 
 
 show/hide sidebar
@@ -167,12 +167,14 @@ The bar chart is now rendered below the Person Summary panel with:
     Clicking any bar also filters the main table by that person (same behavior as the summary panel above)
 Toggle button (PanelRightClose / PanelRightOpen) now sits at the right end of the search bar. Clicking it hides the entire right panel and the main table expands to full width, click again to bring it back.
 
+
 Loan feature is now fully implemented with the following features:
 Stats: Total Borrowed / Paid Back / To Pay / Lenders count
 Table: Date | Name | Borrowed | Reason | Paid | Due | Description | Actions
 Lender Summary panel (right): grouped by lender name, showing total borrowed, due, settled status
 Borrowed vs Paid bar chart: same light/dark purple bars
 All features: sort, search, person filter, side panel toggle, autocomplete, confirm delete
+
 
 Features on the Saving page:
 Stats strip: Total Spent, Total Sourced, Net Balance, Savings Rate %
@@ -193,4 +195,23 @@ Empty state with centered search icon
 Uses shared formatCurrency / formatDate utilities
 Proper validation errors in modals with ConfirmDialog component (same as Loan)
 Toast notifications on add/update/delete
-Live at https://meroexpensetracker.vercel.
+
+
+Note page features:
+Quick-add bar — click "Take a note..." to expand inline; auto-saves on close
+Google Keep-style masonry grid with pin/archive/delete/color-change actions appearing on hover
+9 color themes — default, red, orange, yellow, green, teal, blue, purple, pink
+Pin/Unpin — pinned notes float to a separate "Pinned" section
+Archive — archive removes notes from main view; toggle Archive button reveals them separately
+Search — real-time filter by title + content
+Sort — Last edited / Date created / Title A→Z dropdown
+Grid ↔ List view toggle
+Edit modal — click any card to open full-screen edit with color picker + pin toggle
+Delete with confirmation dialog
+Toast notifications on all actions
+Firestore rule added for notes/{noteId}, NoteProvider wired in App.jsx, "Note" nav item in Sidebar
+Cancel button → always calls reset() — discards without saving
+Escape key → same, discards without saving
+Clicking outside → still auto-saves (intentional)
+
+Live at https://meroexpensetracker.vercel
