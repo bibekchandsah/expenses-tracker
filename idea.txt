@@ -465,4 +465,13 @@ ForMe — YearSelector in header; filtered scoped to year (uses toInputDate() fo
 NetSummary — YearSelector in header; lend/loan rows, monthly chart, and category breakdown all scoped to year
 Every page initializes its local year from the activeYear context (the profile setting) and syncs on change, but the user can freely override it per-page.
 
-delete/export data of selected year
+delete/export data of selected year in json and excel format
+Export {year} Data
+Downloads a JSON file named expense-tracker-2025.json (or whatever year is active)
+Includes all expenses, income, lends, loans, savings, saving sources, and for-me, all banks records for that year
+
+Delete {year} Data
+Shows an inline confirmation panel with a clear warning before doing anything
+On confirm, deletes all records across all 7 data types in parallel
+Shows "Deleting..." state on the button while in progress
+Toast on success or failure

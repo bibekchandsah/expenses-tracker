@@ -1,12 +1,27 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Globe, Save, Check, CalendarRange } from 'lucide-react';
+import { User, Mail, Globe, Save, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useActiveYear } from '../context/ActiveYearContext';
 import { useToast } from '../components/ui/Toast';
 import { getUserProfile, updateUserProfile } from '../services/profileService';
 import { useExpenses } from '../context/ExpenseContext';
+import { useIncomes } from '../context/IncomeContext';
+import { useLends } from '../context/LendContext';
+import { useLoans } from '../context/LoanContext';
+import { useSavings } from '../context/SavingContext';
+import { useForMe } from '../context/ForMeContext';
+import { useBanks } from '../context/BankContext';
+import { getBankEntriesOnce } from '../services/bankService';
+import { useCategories } from '../context/CategoryContext';
+import { INCOME_SOURCES } from '../components/IncomeModal';
 import { formatCurrency } from '../utils/formatters';
+
+function toDateStr(d) {
+  if (!d) return '';
+  const dt = d instanceof Date ? d : d.toDate?.() ?? new Date(d);
+  return dt.toISOString().slice(0, 10);
+}
 
 const CURRENCIES = [
   { code: 'USD', label: 'US Dollar',              symbol: '$'  },
@@ -54,11 +69,21 @@ export default function Profile() {
   const { user } = useAuth();
   const { currency: activeCurrency, updateCurrency } = useCurrency();
   const { activeYear, updateActiveYear } = useActiveYear();
-  const { expenses } = useExpenses();
+  const { expenses, deleteExpense } = useExpenses();
+  const { incomes, deleteIncome } = useIncomes();
+  const { lends, deleteLend } = useLends();
+  const { loans, deleteLoan } = useLoans();
+  const { savings, sources, deleteSaving, deleteSource } = useSavings();
+  const { entries: forMeEntries, deleteEntry } = useForMe();
+  const { banks } = useBanks();
+  const { getCategoryById } = useCategories();
   const { addToast } = useToast();
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({ displayName: '' });
   const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Currency picker state
   const [currencySearch, setCurrencySearch] = useState('');
@@ -115,6 +140,162 @@ export default function Profile() {
     c.code.toLowerCase().includes(currencySearch.toLowerCase()) ||
     c.label.toLowerCase().includes(currencySearch.toLowerCase())
   );
+
+  async function handleExportYear(format) {
+    setExporting(true);
+    try {
+      const yr = String(activeYear);
+
+      // Fetch all bank entries for all banks (one-time reads)
+      const bankData = await Promise.all(
+        banks.map(async bank => {
+          const all = await getBankEntriesOnce(user.uid, bank.id);
+          return { bank, entries: all.filter(e => e.date?.startsWith(yr)) };
+        })
+      );
+
+      const yearExpenses = expenses.filter(e => e.date?.startsWith(yr));
+      const yearIncomes  = incomes.filter(i => i.date?.startsWith(yr));
+      const yearLends    = lends.filter(l => l.date?.startsWith(yr));
+      const yearLoans    = loans.filter(l => l.date?.startsWith(yr));
+      const yearSavings  = savings.filter(s => s.date?.startsWith(yr));
+      const yearSources  = sources.filter(s => s.date?.startsWith(yr));
+      const yearForMe    = forMeEntries
+        .filter(e => toDateStr(e.date).startsWith(yr))
+        .map(e => ({ ...e, date: toDateStr(e.date) }));
+
+      if (format === 'json') {
+        const data = {
+          year: activeYear,
+          exportedAt: new Date().toISOString(),
+          expenses: yearExpenses,
+          incomes:  yearIncomes,
+          lends:    yearLends,
+          loans:    yearLoans,
+          savings:  yearSavings,
+          savingSources: yearSources,
+          forMe: yearForMe,
+          banks: bankData.map(({ bank, entries }) => ({
+            bank: { id: bank.id, name: bank.name, openingBalance: bank.openingBalance },
+            entries,
+          })),
+        };
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+        a.download = `expense-tracker-${activeYear}.json`;
+        a.click();
+      } else {
+        const XLSX = await import('xlsx');
+        const wb = XLSX.utils.book_new();
+        let sheetCount = 0;
+
+        function addSheet(name, rows) {
+          if (!rows.length) return;
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), name.slice(0, 31));
+          sheetCount++;
+        }
+
+        addSheet('Income', yearIncomes.map(i => ({
+          'Date':        i.date,
+          'Title':       i.title || '',
+          'Amount':      +i.amount,
+          'Source':      INCOME_SOURCES.find(s => s.value === i.source)?.label || i.source || '',
+          'Notes':       i.notes || '',
+          'Description': i.description || '',
+        })));
+        addSheet('Expenses', yearExpenses.map(e => ({
+          'Date':        e.date,
+          'Title':       e.title || '',
+          'Amount':      +e.amount,
+          'Category':    getCategoryById(e.category)?.name || e.category || '',
+          'Notes':       e.notes || '',
+          'Description': e.description || '',
+        })));
+        addSheet('Lends', yearLends.map(l => ({
+          'Date':        l.date,
+          'Name':        l.name || '',
+          'Lent':        +l.amount,
+          'Reason':      l.reason || '',
+          'Returned':    +l.returnedAmount || 0,
+          'Due':         (+l.amount || 0) - (+l.returnedAmount || 0),
+          'Description': l.description || '',
+        })));
+        addSheet('Loans', yearLoans.map(l => ({
+          'Date':        l.date,
+          'Name':        l.name || '',
+          'Borrowed':    +l.amount,
+          'Reason':      l.reason || '',
+          'Paid':        +l.paidAmount || 0,
+          'Due':         (+l.amount || 0) - (+l.paidAmount || 0),
+          'Description': l.description || '',
+        })));
+        addSheet('Savings', yearSavings.map(s => ({
+          'Date':        s.date,
+          'Amount':      +s.amount,
+          'Expend On':   s.expendOn || '',
+          'Description': s.description || '',
+        })));
+        addSheet('Saving Sources', yearSources.map(s => ({
+          'Date':        s.date,
+          'Amount':      +s.amount,
+          'Description': s.description || '',
+        })));
+        addSheet('For Me', yearForMe.map(e => ({
+          'Date':        e.date,
+          'Name':        e.name || '',
+          'Amount':      +e.amount,
+          'Description': e.description || '',
+        })));
+        bankData.forEach(({ bank, entries }) => {
+          let balance = bank.openingBalance || 0;
+          addSheet(`Bank - ${bank.name}`, entries.map(e => {
+            balance += (+e.deposit || 0) - (+e.withdraw || 0);
+            return {
+              'Date':            e.date,
+              'Description':     e.description || '',
+              'Deposit':         +e.deposit || 0,
+              'Withdraw':        +e.withdraw || 0,
+              'Closing Balance': balance,
+            };
+          }));
+        });
+
+        if (sheetCount === 0) {
+          addToast(`No data found for ${activeYear}`, 'info');
+          return;
+        }
+
+        XLSX.writeFile(wb, `expense-tracker-${activeYear}.xlsx`);
+      }
+    } catch (err) {
+      console.error(err);
+      addToast('Export failed', 'error');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleDeleteYear() {
+    setDeleting(true);
+    const yr = String(activeYear);
+    try {
+      await Promise.all([
+        ...expenses.filter(e => e.date?.startsWith(yr)).map(e => deleteExpense(e.id)),
+        ...incomes.filter(i => i.date?.startsWith(yr)).map(i => deleteIncome(i.id)),
+        ...lends.filter(l => l.date?.startsWith(yr)).map(l => deleteLend(l.id)),
+        ...loans.filter(l => l.date?.startsWith(yr)).map(l => deleteLoan(l.id)),
+        ...savings.filter(s => s.date?.startsWith(yr)).map(s => deleteSaving(s.id)),
+        ...sources.filter(s => s.date?.startsWith(yr)).map(s => deleteSource(s.id)),
+        ...forMeEntries.filter(e => toDateStr(e.date).startsWith(yr)).map(e => deleteEntry(e.id)),
+      ]);
+      addToast(`All ${activeYear} data deleted successfully`, 'success');
+      setDeleteConfirm(false);
+    } catch {
+      addToast('Some items failed to delete', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const yearExpenses  = expenses.filter(e => e.date?.startsWith(String(activeYear)));
   const totalExpenses  = yearExpenses.length;
@@ -275,6 +456,68 @@ export default function Profile() {
             </form>
           )}
         </div>
+      </div>
+
+      {/* Export & Delete Year Data */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
+          <Download className="w-4 h-4 text-primary-500" /> Year Data Management
+        </h2>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+          Export or permanently delete all your data for <span className="font-semibold text-gray-700 dark:text-gray-300">{activeYear}</span>. Includes expenses, income, lends, loans, savings, for-me and all bank records.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+          <button
+            onClick={() => handleExportYear('xlsx')}
+            disabled={exporting}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/40 disabled:opacity-60 transition-colors"
+          >
+            <FileSpreadsheet className="w-4 h-4" /> {exporting ? 'Exporting...' : `Export ${activeYear} as Excel`}
+          </button>
+          <button
+            onClick={() => handleExportYear('json')}
+            disabled={exporting}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl hover:bg-primary-100 dark:hover:bg-primary-900/40 disabled:opacity-60 transition-colors"
+          >
+            <FileJson className="w-4 h-4" /> {exporting ? 'Exporting...' : `Export ${activeYear} as JSON`}
+          </button>
+          <button
+            onClick={() => setDeleteConfirm(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" /> Delete {activeYear} Data
+          </button>
+        </div>
+
+        {deleteConfirm && (
+          <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-800">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-700 dark:text-red-400">Delete all {activeYear} data?</p>
+                <p className="text-xs text-red-600/80 dark:text-red-500 mt-1">
+                  This will permanently delete all expenses, income, lends, loans, savings and for-me records from {activeYear}. This cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={handleDeleteYear}
+                disabled={deleting}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 rounded-xl transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> {deleting ? 'Deleting...' : `Yes, Delete All ${activeYear} Data`}
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                disabled={deleting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-60 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Active Year Picker */}

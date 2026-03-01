@@ -9,6 +9,7 @@ import {
   onSnapshot,
   serverTimestamp,
   Timestamp,
+  getDocs,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
@@ -89,4 +90,17 @@ export async function updateBankEntry(uid, bankId, entryId, entry) {
 
 export async function deleteBankEntry(uid, bankId, entryId) {
   return deleteDoc(doc(db, 'users', uid, 'banks', bankId, 'entries', entryId));
+}
+
+// One-time fetch of all entries for a bank (used for export)
+export async function getBankEntriesOnce(uid, bankId) {
+  const q = query(entriesRef(uid, bankId), orderBy('date', 'asc'), orderBy('createdAt', 'asc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({
+    id: d.id,
+    ...d.data(),
+    date: d.data().date?.toDate
+      ? d.data().date.toDate().toISOString().split('T')[0]
+      : d.data().date,
+  }));
 }
