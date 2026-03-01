@@ -16,10 +16,10 @@ Expense tracker
 Country wise date selection 
 Date l amount l expend on l note l description l amount expend on
 Bar graph and pie chart of expense category
+Filter record by month, year, amount expend on category, start date and end date, search by note and description
+Show in table of individual category and amount expend on it and remaining amount for the month
 
-
-Filter record by month, year, amount expend on category, start date and end date, 
-Show bar graph of monthly expend
+(done) Show bar graph of monthly expend
 
 Given amount (done)
 Date l amount l name l reason l returned amount l description 
@@ -258,6 +258,10 @@ To Give card = sum of absolute net values where net < 0 (people you owe more tha
 1st click → descending ↓ (column turns blue)
 2nd click → ascending ↑
 3rd click → resets to natural order ⇅ (column returns to grey)
+below summary table:
+    Left — scrollable table listing each month with its total expense, newest first. Sticky header & footer total row. Current month row is subtly highlighted.
+    Right — bar chart of the same data (last 12 months). Light indigo bars for past months, darker indigo for the current month. Y-axis auto-abbreviates large numbers (e.g. 1k, 50k). Hover tooltip shows formatted amount in your selected currency.
+    Responsive: stacks vertically on small screens, side-by-side on lg+.
 
 
 Collapse/Expand sidebar toggle

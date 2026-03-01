@@ -1,10 +1,14 @@
 ﻿import { useState, useMemo } from 'react';
-import { ArrowUp, ArrowDown, ChevronsUpDown, BarChart3, TrendingUp, TrendingDown, Users } from 'lucide-react';
+import { ArrowUp, ArrowDown, ChevronsUpDown, BarChart3, TrendingUp, TrendingDown, Users, Calendar } from 'lucide-react';
 import { useLends } from '../context/LendContext';
 import { useLoans } from '../context/LoanContext';
+import { useExpenses } from '../context/ExpenseContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+} from 'recharts';
 
 function SortIcon({ col, sortCol, sortDir }) {
   if (sortCol !== col) return <ChevronsUpDown className="w-3 h-3 opacity-40" />;
@@ -15,6 +19,7 @@ export default function NetSummary() {
   const { lends, loading: lendLoading }  = useLends();
   const { currency } = useCurrency();
   const { loans, loading: loanLoading }  = useLoans();
+  const { expenses } = useExpenses();
 
   const [sortCol, setSortCol] = useState('net');
   const [sortDir, setSortDir] = useState('desc');
@@ -80,10 +85,28 @@ export default function NetSummary() {
     toReceive:   rows.reduce((s, r) => s + r.toReceive, 0),
     toGive:      rows.reduce((s, r) => s + r.toGive, 0),
     net:         rows.reduce((s, r) => s + r.net, 0),
-    netPositive: rows.reduce((s, r) => s + (r.net > 0 ? r.net : 0), 0),  // sum of positive nets
-    netNegative: rows.reduce((s, r) => s + (r.net < 0 ? Math.abs(r.net) : 0), 0), // sum of negative nets
+    netPositive: rows.reduce((s, r) => s + (r.net > 0 ? r.net : 0), 0),
+    netNegative: rows.reduce((s, r) => s + (r.net < 0 ? Math.abs(r.net) : 0), 0),
     people:      rows.length,
   }), [rows]);
+
+  // Monthly expense breakdown (last 12 months)
+  const monthlyData = useMemo(() => {
+    const map = {};
+    expenses.forEach(e => {
+      const m = e.date?.slice(0, 7);
+      if (!m) return;
+      map[m] = (map[m] || 0) + (+e.amount || 0);
+    });
+    return Object.entries(map)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-12)
+      .map(([month, total]) => ({
+        month,
+        label: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        total,
+      }));
+  }, [expenses]);
 
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
 
@@ -266,6 +289,99 @@ export default function NetSummary() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Monthly Expense Breakdown */}
+      {monthlyData.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-primary-500" />
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Monthly Expenses</h2>
+            <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">Last {monthlyData.length} months</span>
+          </div>
+
+          <div className="flex flex-col lg:flex-row">
+            {/* Table — left */}
+            <div className="lg:w-64 xl:w-72 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-gray-700 overflow-y-auto max-h-72">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-gray-50 dark:bg-gray-700/60">
+                  <tr>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Month</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                  {[...monthlyData].reverse().map((m, i) => (
+                    <tr key={m.month} className={`hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${i === 0 ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''}`}>
+                      <td className="px-4 py-2.5 font-medium text-gray-700 dark:text-gray-300">{m.label}</td>
+                      <td className="px-4 py-2.5 text-right font-semibold text-gray-900 dark:text-white tabular-nums">
+                        {formatCurrency(m.total, currency)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="sticky bottom-0 bg-gray-50 dark:bg-gray-700/60 border-t-2 border-gray-200 dark:border-gray-700">
+                  <tr>
+                    <td className="px-4 py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Total</td>
+                    <td className="px-4 py-2.5 text-right text-xs font-black text-primary-600 dark:text-primary-400 tabular-nums">
+                      {formatCurrency(monthlyData.reduce((s, m) => s + m.total, 0), currency)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Bar chart — right */}
+            <div className="flex-1 p-4 min-h-64">
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={monthlyData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="30%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 11, fill: '#9ca3af' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: '#9ca3af' }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={v => {
+                      if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+                      if (v >= 1_000) return `${(v / 1_000).toFixed(0)}k`;
+                      return v;
+                    }}
+                    width={45}
+                  />
+                  <Tooltip
+                    formatter={v => [formatCurrency(v, currency), 'Expense']}
+                    contentStyle={{
+                      borderRadius: 12,
+                      border: 'none',
+                      boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+                      fontSize: 13,
+                    }}
+                    cursor={{ fill: 'rgba(99,102,241,0.06)' }}
+                  />
+                  <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+                    {monthlyData.map((entry, index) => {
+                      const isLatest = index === monthlyData.length - 1;
+                      return (
+                        <Cell
+                          key={entry.month}
+                          fill={isLatest ? '#6366f1' : '#a5b4fc'}
+                        />
+                      );
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-1">
+                Darker bar = current month
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>
