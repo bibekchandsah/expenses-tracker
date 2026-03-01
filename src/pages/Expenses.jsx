@@ -25,18 +25,32 @@ export default function Expenses() {
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
 
-  const [searchInput, setSearchInput] = useState(filters.search);
+  const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebounce(searchInput, 300);
 
-  // Sync debounced search to context filters
-  useMemo(() => setFilters({ search: debouncedSearch }), [debouncedSearch]);
+  // Full-text search across all visible fields
+  const searchFiltered = useMemo(() => {
+    if (!debouncedSearch.trim()) return filteredExpenses;
+    const q = debouncedSearch.toLowerCase();
+    return filteredExpenses.filter(e => {
+      const cat = getCategoryById(e.category);
+      return (
+        e.title?.toLowerCase().includes(q) ||
+        e.date?.toLowerCase().includes(q) ||
+        String(e.amount).includes(q) ||
+        e.notes?.toLowerCase().includes(q) ||
+        e.description?.toLowerCase().includes(q) ||
+        cat?.name?.toLowerCase().includes(q)
+      );
+    });
+  }, [filteredExpenses, debouncedSearch, getCategoryById]);
 
   const paginated = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
-    return filteredExpenses.slice(start, start + PAGE_SIZE);
-  }, [filteredExpenses, page]);
+    return searchFiltered.slice(start, start + PAGE_SIZE);
+  }, [searchFiltered, page]);
 
-  const totalPages = Math.ceil(filteredExpenses.length / PAGE_SIZE);
+  const totalPages = Math.ceil(searchFiltered.length / PAGE_SIZE);
 
   function openAdd() { setEditingExpense(null); setModalOpen(true); }
   function openEdit(exp) { setEditingExpense(exp); setModalOpen(true); }
@@ -58,20 +72,27 @@ export default function Expenses() {
   }
 
   function handleSort(field) {
-    if (filters.sortBy === field) {
-      setFilters({ sortDir: filters.sortDir === 'asc' ? 'desc' : 'asc' });
-    } else {
+    if (filters.sortBy !== field) {
+      // 1st click on a new column → descending
       setFilters({ sortBy: field, sortDir: 'desc' });
+    } else if (filters.sortDir === 'desc') {
+      // 2nd click → ascending
+      setFilters({ sortDir: 'asc' });
+    } else {
+      // 3rd click → reset to natural order
+      setFilters({ sortBy: '', sortDir: 'desc' });
     }
     setPage(1);
   }
 
   function SortIcon({ field }) {
-    if (filters.sortBy !== field) return null;
-    return filters.sortDir === 'asc' ? <ChevronUp className="w-3.5 h-3.5 inline ml-0.5" /> : <ChevronDown className="w-3.5 h-3.5 inline ml-0.5" />;
+    if (filters.sortBy !== field) return <span className="inline ml-0.5 text-gray-300 dark:text-gray-600">&#8693;</span>;
+    return filters.sortDir === 'asc'
+      ? <ChevronUp className="w-3.5 h-3.5 inline ml-0.5 text-primary-500" />
+      : <ChevronDown className="w-3.5 h-3.5 inline ml-0.5 text-primary-500" />;
   }
 
-  const hasActiveFilters = filters.category || filters.startDate || filters.endDate;
+  const hasActiveFilters = filters.category || filters.month || filters.startDate || filters.endDate;
 
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
 
@@ -81,7 +102,7 @@ export default function Expenses() {
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Expenses</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{filteredExpenses.length} of {expenses.length} expenses</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{searchFiltered.length} of {expenses.length} expenses</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -111,7 +132,7 @@ export default function Expenses() {
               type="text"
               value={searchInput}
               onChange={e => { setSearchInput(e.target.value); setPage(1); }}
-              placeholder="Search expenses..."
+              placeholder="Search by expenses, date (YYYY-MM-DD), note, description, category, amount..."
               className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
             />
           </div>
@@ -139,7 +160,7 @@ export default function Expenses() {
 
         {/* Expanded filters */}
         {showFilters && (
-          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-400 mb-1">Category</label>
               <select
@@ -150,6 +171,15 @@ export default function Expenses() {
                 <option value="">All categories</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
               </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-400 mb-1">Month</label>
+              <input
+                type="month"
+                value={filters.month}
+                onChange={e => { setFilters({ month: e.target.value }); setPage(1); }}
+                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-400 mb-1">From</label>
@@ -177,16 +207,18 @@ export default function Expenses() {
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Table header */}
         <div className="hidden sm:grid grid-cols-12 gap-3 px-5 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-          <div className="col-span-4 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors" onClick={() => handleSort('date')}>
+          <div className="col-span-3 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors" onClick={() => handleSort('date')}>
             Title / Date <SortIcon field="date" />
           </div>
+          <div className="col-span-2 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors" onClick={() => handleSort('amount')}>
+            Amount <SortIcon field="amount" />
+          </div>
+          <div className="col-span-2">Note</div>
+          <div className="col-span-2">Description</div>
           <div className="col-span-2 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors" onClick={() => handleSort('category')}>
             Category <SortIcon field="category" />
           </div>
-          <div className="col-span-3 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors" onClick={() => handleSort('amount')}>
-            Amount <SortIcon field="amount" />
-          </div>
-          <div className="col-span-3">Actions</div>
+          <div className="col-span-1">Actions</div>
         </div>
 
         {paginated.length === 0 ? (
@@ -207,7 +239,7 @@ export default function Expenses() {
               return (
                 <div key={expense.id} className="grid grid-cols-1 sm:grid-cols-12 gap-3 px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors items-center">
                   {/* Title + date */}
-                  <div className="sm:col-span-4 flex items-center gap-3">
+                  <div className="sm:col-span-3 flex items-center gap-3">
                     <div
                       className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
                       style={{ background: (cat?.color || '#6b7280') + '20' }}
@@ -219,6 +251,32 @@ export default function Expenses() {
                       <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(expense.date)}</p>
                     </div>
                   </div>
+                  {/* Amount */}
+                  <div className="sm:col-span-2">
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                      {formatCurrency(expense.amount, currency)}
+                    </span>
+                  </div>
+                  {/* Note */}
+                  <div className="sm:col-span-2">
+                    {expense.notes ? (
+                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={expense.notes}>
+                        {expense.notes}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                    )}
+                  </div>
+                  {/* Description */}
+                  <div className="sm:col-span-2">
+                    {expense.description ? (
+                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={expense.description}>
+                        {expense.description}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                    )}
+                  </div>
                   {/* Category */}
                   <div className="sm:col-span-2">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium"
@@ -226,14 +284,8 @@ export default function Expenses() {
                       {cat?.name || expense.category}
                     </span>
                   </div>
-                  {/* Amount */}
-                  <div className="sm:col-span-3">
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">
-                      {formatCurrency(expense.amount, currency)}
-                    </span>
-                  </div>
                   {/* Actions */}
-                  <div className="sm:col-span-3 flex items-center gap-2">
+                  <div className="sm:col-span-1 flex items-center gap-1">
                     <button
                       onClick={() => openEdit(expense)}
                       className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
@@ -246,11 +298,6 @@ export default function Expenses() {
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
-                    {expense.notes && (
-                      <span className="text-xs text-gray-400 dark:text-gray-500 truncate max-w-[100px]" title={expense.notes}>
-                        {expense.notes}
-                      </span>
-                    )}
                   </div>
                 </div>
               );

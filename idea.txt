@@ -1,4 +1,5 @@
 npm run dev
+echo y | vercel --prod 
 Live at https://meroexpensetracker.vercel
 # Install Firebase CLI
 npm install -g firebase-tools
@@ -15,8 +16,9 @@ firebase deploy --only firestore:rules
 Expense tracker
 Country wise date selection 
 Date l amount l expend on l note l description l category | actions
-Bar graph and pie chart of expense category
-Filter record by month, year, amount expend on category, start date and end date, search by note and description
+Filter record by month, year, amount expend on category, start date and end date, 
+search & sort by note and description
+Bar graph and pie chart of expense category wise distribution
 Show in table of individual category and amount expend on it and remaining amount for the month
 
 (done) Show bar graph of monthly expend
@@ -299,4 +301,16 @@ Color picker:
     20 preset color swatches (expanded from 10)
     A + dashed-circle button at the end opens the native OS color wheel for any custom color
     A small hex code text field below so you can type a precise hex value like #ff6b35
+
+
+Title/Date(4) | Amount(2) | Category(2) | Note(2) | Actions(2)
+The 12-column grid is currently full (4+2+2+2+2). I'll compress Title/Date to 3 and Actions to 1 to make room for a Description column.
+Title / Date → Amount → Note → Description → Category → Actions
+The filter panel now has 4 fields: Category → Month → From → To. Selecting a month (e.g. 2026-03) instantly narrows results to that month, and it works alongside the other filters. The month filter also activates the blue dot indicator and the
+The search box now matches against all of: title, date, amount, note, description, and category name. The results count in the header also updates accordingly.
+Column sort now follows the 3-click cycle:
+    Click	State	        Icon
+    1st	    Descending ↓	↓ (blue)
+    2nd	    Ascending ↑	    ↑ (blue)
+    3rd	    Reset	        ⇅ (grey)
 

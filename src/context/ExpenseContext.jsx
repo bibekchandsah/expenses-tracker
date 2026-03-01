@@ -16,9 +16,10 @@ const initialState = {
   filters: {
     search: '',
     category: '',
+    month: '',
     startDate: '',
     endDate: '',
-    sortBy: 'date',
+    sortBy: '',
     sortDir: 'desc',
   },
 };
@@ -88,12 +89,13 @@ export function ExpenseProvider({ children }) {
 
   // Filtered + sorted expenses
   const filteredExpenses = state.expenses.filter(e => {
-    if (state.filters.search && !e.title.toLowerCase().includes(state.filters.search.toLowerCase())) return false;
     if (state.filters.category && e.category !== state.filters.category) return false;
+    if (state.filters.month && !e.date.startsWith(state.filters.month)) return false;
     if (state.filters.startDate && e.date < state.filters.startDate) return false;
     if (state.filters.endDate && e.date > state.filters.endDate) return false;
     return true;
   }).sort((a, b) => {
+    if (!state.filters.sortBy) return 0; // natural Firestore order
     const dir = state.filters.sortDir === 'asc' ? 1 : -1;
     if (state.filters.sortBy === 'amount') return (a.amount - b.amount) * dir;
     if (state.filters.sortBy === 'category') return a.category.localeCompare(b.category) * dir;

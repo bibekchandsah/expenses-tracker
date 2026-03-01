@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, DollarSign, Calendar, Tag, FileText, AlignLeft } from 'lucide-react';
 import { useCategories } from '../context/CategoryContext';
 
-const EMPTY = { title: '', amount: '', category: '', date: '', notes: '' };
+const EMPTY = { title: '', amount: '', category: '', date: '', description: '', notes: '' };
 
 export default function ExpenseModal({ isOpen, expense, onClose, onSave }) {
   const { categories } = useCategories();
@@ -17,6 +17,7 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave }) {
         amount: String(expense.amount),
         category: expense.category,
         date: expense.date,
+        description: expense.description || '',
         notes: expense.notes || '',
       } : { ...EMPTY, date: new Date().toISOString().split('T')[0] });
       setErrors({});
@@ -147,20 +148,37 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave }) {
             {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
           </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Notes <span className="text-gray-400 font-normal">(optional)</span>
-            </label>
-            <div className="relative">
-              <AlignLeft className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-              <textarea
-                value={form.notes}
-                onChange={e => change('notes', e.target.value)}
-                rows={3}
-                placeholder="Add any notes..."
-                className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none transition-colors"
-              />
+          {/* Description & Notes side by side */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Description <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <div className="relative">
+                <AlignLeft className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <textarea
+                  value={form.description}
+                  onChange={e => change('description', e.target.value)}
+                  rows={3}
+                  placeholder="Add a description..."
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none transition-colors"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Notes <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <div className="relative">
+                <AlignLeft className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <textarea
+                  value={form.notes}
+                  onChange={e => change('notes', e.target.value)}
+                  rows={3}
+                  placeholder="Add any notes..."
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none transition-colors"
+                />
+              </div>
             </div>
           </div>
 
