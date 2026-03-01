@@ -24,6 +24,7 @@ export default function Dashboard() {
   const thisMonth = currentMonth();
   const thisYear = currentYear();
   const [catPeriod, setCatPeriod] = useState('month');
+  const [trendPeriod, setTrendPeriod] = useState('6m');
 
   const stats = useMemo(() => {
     const monthExpenses = expenses.filter(e => e.date.startsWith(thisMonth));
@@ -67,8 +68,8 @@ export default function Dashboard() {
     }));
   }, [expenses]);
 
-  // Line chart data (last 6 months)
-  const trendData = monthlyData.slice(-6);
+  // Line chart data (6 or 12 months)
+  const trendData = trendPeriod === '12m' ? monthlyData : monthlyData.slice(-6);
 
   const recentExpenses = expenses.slice(0, 5);
 
@@ -203,7 +204,29 @@ export default function Dashboard() {
 
       {/* Trend line */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Spending Trend (Last 6 Months)</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+            Spending Trend (Last {trendPeriod === '12m' ? '12 Months' : '6 Months'})
+          </h2>
+          <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 text-xs font-medium">
+            <button
+              onClick={() => setTrendPeriod('6m')}
+              className={`px-3 py-1.5 transition-colors ${
+                trendPeriod === '6m'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+              }`}
+            >6 Months</button>
+            <button
+              onClick={() => setTrendPeriod('12m')}
+              className={`px-3 py-1.5 transition-colors ${
+                trendPeriod === '12m'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+              }`}
+            >1 Year</button>
+          </div>
+        </div>
         <ResponsiveContainer width="100%" height={180}>
           <AreaChart data={trendData} margin={{ top: 5, right: 5, bottom: 5, left: -10 }}>
             <defs>

@@ -317,8 +317,18 @@ Column sort now follows the 3-click cycle:
 "Expenses by Category" section now appears in Net Summary (above the monthly breakdown), with:
 Left: scrollable table showing each category's icon, name, and total spent — plus a grand total row in the footer
 Right: horizontal bar chart with each bar colored using the category's own color, sized dynamically to fit all categories
+A Monthly Breakdown table now appears below the expense list with:
+    Month column — current month has a blue dot indicator
+    Transactions column — count of entries for that month
+    Total column — sum for that month
+    Total row in the footer — grand total of transactions and amount across all shown months
+The table respects whatever filters/search are active, so filtering by category or date range will update the breakdown accordingly. Most recent month is shown first.
 
 
 Dashboard page updates:
 Category Breakdown toggle — now defaults to Monthly with a Monthly / Yearly pill toggle in the top-right corner of the chart card. Switching to Yearly aggregates all expenses from the current year.
 Monthly Expenses showing current month — the root cause was a timezone bug: new Date().toISOString() converts to UTC, so in Nepal (UTC+5:45) "March 1 local" = "Feb 28 UTC", making March invisible. 
+The Spending Trend chart now has a 6 Months / 1 Year toggle in the top-right corner — defaults to 6 months, switching to 1 Year shows all 12 months.
+
+recive amount page:
+Date l amount l name | description l returned amount l remark

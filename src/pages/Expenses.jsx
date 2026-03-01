@@ -1,5 +1,5 @@
 ﻿import { useState, useCallback, useMemo } from 'react';
-import { Plus, Search, Filter, Download, Edit2, Trash2, ChevronUp, ChevronDown, SlidersHorizontal, X } from 'lucide-react';
+import { Plus, Search, Filter, Download, Edit2, Trash2, ChevronUp, ChevronDown, SlidersHorizontal, X, BarChart2 } from 'lucide-react';
 import { useExpenses } from '../context/ExpenseContext';
 import { useCategories } from '../context/CategoryContext';
 import { useToast } from '../components/ui/Toast';
@@ -51,6 +51,19 @@ export default function Expenses() {
   }, [searchFiltered, page]);
 
   const totalPages = Math.ceil(searchFiltered.length / PAGE_SIZE);
+
+  // Monthly breakdown (based on current filters + search)
+  const monthlyBreakdown = useMemo(() => {
+    const map = {};
+    searchFiltered.forEach(e => {
+      const m = e.date?.slice(0, 7);
+      if (!m) return;
+      if (!map[m]) map[m] = { month: m, total: 0, count: 0 };
+      map[m].total += +e.amount || 0;
+      map[m].count += 1;
+    });
+    return Object.values(map).sort((a, b) => b.month.localeCompare(a.month));
+  }, [searchFiltered]);
 
   function openAdd() { setEditingExpense(null); setModalOpen(true); }
   function openEdit(exp) { setEditingExpense(exp); setModalOpen(true); }
@@ -326,6 +339,53 @@ export default function Expenses() {
           </div>
         )}
       </div>
+
+      {/* Monthly Breakdown */}
+      {monthlyBreakdown.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+            <BarChart2 className="w-4 h-4 text-primary-500" />
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Monthly Breakdown</h2>
+            <span className="text-xs text-gray-400 ml-1">{monthlyBreakdown.length} month{monthlyBreakdown.length !== 1 ? 's' : ''}</span>
+          </div>
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 dark:bg-gray-700/50">
+              <tr className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <th className="px-5 py-3 text-left">Month</th>
+                <th className="px-5 py-3 text-center">Transactions</th>
+                <th className="px-5 py-3 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              {monthlyBreakdown.map((row, i) => {
+                const label = new Date(row.month + '-02').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                const isCurrentMonth = row.month === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+                return (
+                  <tr key={row.month} className={`hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${isCurrentMonth ? 'bg-primary-50/40 dark:bg-primary-900/10' : ''}`}>
+                    <td className="px-5 py-3 font-medium text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                      {isCurrentMonth && <span className="w-1.5 h-1.5 rounded-full bg-primary-500 inline-block flex-shrink-0" />}
+                      {label}
+                    </td>
+                    <td className="px-5 py-3 text-center text-gray-500 dark:text-gray-400 tabular-nums">{row.count}</td>
+                    <td className="px-5 py-3 text-right font-semibold text-gray-900 dark:text-white tabular-nums">{formatCurrency(row.total, currency)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot className="border-t-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50">
+              <tr>
+                <td className="px-5 py-3 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total</td>
+                <td className="px-5 py-3 text-center text-sm font-bold text-gray-700 dark:text-gray-300 tabular-nums">
+                  {monthlyBreakdown.reduce((s, r) => s + r.count, 0)}
+                </td>
+                <td className="px-5 py-3 text-right text-sm font-black text-primary-600 dark:text-primary-400 tabular-nums">
+                  {formatCurrency(monthlyBreakdown.reduce((s, r) => s + r.total, 0), currency)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
 
       {/* Modals */}
       <ExpenseModal
