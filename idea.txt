@@ -14,7 +14,7 @@ firebase deploy --only firestore:rules
 
 Expense tracker
 Country wise date selection 
-Date l amount l expend on l note l description l amount expend on
+Date l amount l expend on l note l description l category | actions
 Bar graph and pie chart of expense category
 Filter record by month, year, amount expend on category, start date and end date, search by note and description
 Show in table of individual category and amount expend on it and remaining amount for the month
@@ -289,4 +289,14 @@ INR → ₹ 1,234.00
 USD → $ 100.00
 etc...
 
+
+Categories modal:
+Emoji picker:
+    8 category tabs (Money & Finance, Food & Drink, Travel, Home & Life, Health, Entertainment, Tech & Work, People & Care) — tap a tab to switch
+    8-column grid showing 12 emojis per group (96 total)
+    "Paste any emoji…" text input + Use button at the bottom — any emoji from your keyboard, clipboard, or system picker works
+Color picker:
+    20 preset color swatches (expanded from 10)
+    A + dashed-circle button at the end opens the native OS color wheel for any custom color
+    A small hex code text field below so you can type a precise hex value like #ff6b35
 
