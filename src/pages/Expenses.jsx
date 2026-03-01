@@ -11,7 +11,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { exportToCSV } from '../utils/csvExport';
 import { useDebounce } from '../hooks/useDebounce';
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 30;
 
 export default function Expenses() {
   const { expenses, filteredExpenses, loading, filters, setFilters, resetFilters, addExpense, updateExpense, deleteExpense } = useExpenses();
@@ -45,10 +45,23 @@ export default function Expenses() {
     });
   }, [filteredExpenses, debouncedSearch, getCategoryById]);
 
+  const useMonthView = searchFiltered.length > 30;
+
+  const groupedByMonth = useMemo(() => {
+    const map = {};
+    searchFiltered.forEach(e => {
+      const m = e.date?.slice(0, 7) ?? 'Unknown';
+      if (!map[m]) map[m] = [];
+      map[m].push(e);
+    });
+    return Object.entries(map).sort(([a], [b]) => b.localeCompare(a));
+  }, [searchFiltered]);
+
   const paginated = useMemo(() => {
+    if (useMonthView) return [];
     const start = (page - 1) * PAGE_SIZE;
     return searchFiltered.slice(start, start + PAGE_SIZE);
-  }, [searchFiltered, page]);
+  }, [searchFiltered, page, useMonthView]);
 
   const totalPages = Math.ceil(searchFiltered.length / PAGE_SIZE);
 
@@ -107,6 +120,69 @@ export default function Expenses() {
 
   const hasActiveFilters = filters.category || filters.month || filters.startDate || filters.endDate;
 
+  const renderExpenseRow = (expense) => {
+    const cat = getCategoryById(expense.category);
+    return (
+      <div key={expense.id} className="grid grid-cols-1 sm:grid-cols-12 gap-3 px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors items-center">
+        <div className="sm:col-span-3 flex items-center gap-3">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
+            style={{ background: (cat?.color || '#6b7280') + '20' }}
+          >
+            {cat?.icon || '📦'}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{expense.title}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(expense.date)}</p>
+          </div>
+        </div>
+        <div className="sm:col-span-2">
+          <span className="text-sm font-bold text-gray-900 dark:text-white">
+            {formatCurrency(expense.amount, currency)}
+          </span>
+        </div>
+        <div className="sm:col-span-2">
+          {expense.notes ? (
+            <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={expense.notes}>
+              {expense.notes}
+            </span>
+          ) : (
+            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+          )}
+        </div>
+        <div className="sm:col-span-2">
+          {expense.description ? (
+            <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={expense.description}>
+              {expense.description}
+            </span>
+          ) : (
+            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+          )}
+        </div>
+        <div className="sm:col-span-2">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium"
+            style={{ background: (cat?.color || '#6b7280') + '20', color: cat?.color || '#6b7280' }}>
+            {cat?.name || expense.category}
+          </span>
+        </div>
+        <div className="sm:col-span-1 flex items-center gap-1">
+          <button
+            onClick={() => openEdit(expense)}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setDeleteTarget(expense)}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
 
   return (
@@ -145,7 +221,7 @@ export default function Expenses() {
               type="text"
               value={searchInput}
               onChange={e => { setSearchInput(e.target.value); setPage(1); }}
-              placeholder="Search by expenses, date (YYYY-MM-DD), note, description, category, amount..."
+              placeholder="Search by title, date (YYYY-MM-DD), note, description, category, amount..."
               className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
             />
           </div>
@@ -234,7 +310,7 @@ export default function Expenses() {
           <div className="col-span-1">Actions</div>
         </div>
 
-        {paginated.length === 0 ? (
+        {searchFiltered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <p className="text-gray-400 dark:text-gray-500 text-sm mb-3">
               {expenses.length === 0 ? 'No expenses yet' : 'No expenses match your filters'}
@@ -247,79 +323,25 @@ export default function Expenses() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
-            {paginated.map(expense => {
-              const cat = getCategoryById(expense.category);
-              return (
-                <div key={expense.id} className="grid grid-cols-1 sm:grid-cols-12 gap-3 px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors items-center">
-                  {/* Title + date */}
-                  <div className="sm:col-span-3 flex items-center gap-3">
-                    <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
-                      style={{ background: (cat?.color || '#6b7280') + '20' }}
-                    >
-                      {cat?.icon || '📦'}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{expense.title}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(expense.date)}</p>
-                    </div>
-                  </div>
-                  {/* Amount */}
-                  <div className="sm:col-span-2">
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">
-                      {formatCurrency(expense.amount, currency)}
+            {useMonthView
+              ? groupedByMonth.flatMap(([month, items]) => [
+                  <div key={`mh-${month}`} className="px-5 py-2 bg-gray-50 dark:bg-gray-700/70 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                      {new Date(month + '-02').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                     </span>
-                  </div>
-                  {/* Note */}
-                  <div className="sm:col-span-2">
-                    {expense.notes ? (
-                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={expense.notes}>
-                        {expense.notes}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
-                    )}
-                  </div>
-                  {/* Description */}
-                  <div className="sm:col-span-2">
-                    {expense.description ? (
-                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={expense.description}>
-                        {expense.description}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
-                    )}
-                  </div>
-                  {/* Category */}
-                  <div className="sm:col-span-2">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium"
-                      style={{ background: (cat?.color || '#6b7280') + '20', color: cat?.color || '#6b7280' }}>
-                      {cat?.name || expense.category}
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      {items.length} {items.length === 1 ? 'expense' : 'expenses'} · {formatCurrency(items.reduce((s, e) => s + (+e.amount || 0), 0), currency)}
                     </span>
-                  </div>
-                  {/* Actions */}
-                  <div className="sm:col-span-1 flex items-center gap-1">
-                    <button
-                      onClick={() => openEdit(expense)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteTarget(expense)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                  </div>,
+                  ...items.map(renderExpenseRow)
+                ])
+              : paginated.map(renderExpenseRow)
+            }
           </div>
         )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
+        {/* Pagination — only in non-grouped mode */}
+        {!useMonthView && totalPages > 1 && (
           <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200 dark:border-gray-700">
             <p className="text-xs text-gray-500 dark:text-gray-400">
               Page {page} of {totalPages}

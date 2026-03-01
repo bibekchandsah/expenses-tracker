@@ -13,7 +13,7 @@ firebase deploy --only firestore:rules
 
 (done) all user should be able to login their account and see their profile and edit it if they want to. They should also be able to see their expenses and add new expenses. They can also see their budget and how much they have left for the month. They can set goals for their savings and track their progress. They can also see tips and advice on how to save money and manage their finances better.
 
-Expense tracker
+Expense tracker (done)
 Country wise date selection 
 Date l amount l expend on l note l description l category | actions
 Filter record by month, year, amount expend on category, start date and end date, 
@@ -55,12 +55,6 @@ show user profile picture and name in sidebar bottom add a dropdown menu with op
 add logout button in sidebar
 add search functionality to expenses, loans and bank entries
 custom scrollbar
-
-add tools page with draggable & resizable calculator like ios, currency converter, loan calculator, etc.
-add it to lent, expense and for me entry form
-
-create a yearly summary page with total expenses, loans, savings, etc. and graphs
-user can choose the year in their profile settings and the dashboard and summary page will show data for that year by default so that in the future when they have multiple years of data, they can easily switch between years to see their financial history and progress over time. when user choose 2026 in profile settings, the dashboard and summary page will show data for 2026 by default. user can still change the year on the dashboard and summary page to view data for other years, but it will always default to the year they selected in their profile settings when they first visit those pages. this allows users to easily focus on their current year's financial data while still having access to their historical data when needed.
 
 (done) show the user selected currency type in the profile page and use it throughout the app for displaying amounts. user can choose from a list of common currencies (USD, EUR, INR, NPR, THB, IDR, BTN, LKR, MVR, GBP, etc.) or enter a custom currency code. the selected currency will be saved in their profile and used as the default currency for all financial data displayed in the app, including expenses, budgets, bank entries, etc. this way users can see their financial data in their preferred currency format and easily track their finances without having to manually convert amounts.
 
@@ -336,6 +330,39 @@ Bank Trend area chart now appears below Spending Trend with:
     Title shows the currently selected bank name (e.g. "Bank Trend — My SBI Account")
     Legend labels "Deposit" and "Withdraw"
 The Bank Trend card now shows a bank selector dropdown in the header when you have multiple banks — switching it instantly updates the chart without leaving the dashboard. If you only have one bank, the name is shown as plain text.
+income trend line chart added below the bank trend with:
+    Green line — monthly income totals
+    6 Months / 1 Year toggle (same as spending trend)
+    Title "Income Trend"
+    Legend label "Income"
 
-recive amount page:
-Date l amount l name | description l returned amount l remark
+
+Income page features:
+4 stat cards: Total Income, This Month, Avg/Month, Entry count
+Table with sortable columns: Title/Date, Amount, Notes, Description, Source, Actions
+3-state sort cycle (↓ → ↑ → reset), same as Expenses
+Filters: Source, Month, From, To with active indicator
+Full-text search across all fields
+Color-coded source badges (Salary, Freelance, Business, Investment, Rental, Gift, Other)
+Monthly breakdown table at the bottom (bank-statement style, current month highlighted in green)
+CSV export
+Pagination (30 per page) > per month if more than 30 entries
+
+
+Expenses and Income pages:
+Behavior logic (PAGE_SIZE raised from 15 → 30):
+    ≤ 30 entries → normal pagination (Prev / Next, 30 per page)
+    30 entries → pagination disappears; rows are grouped under month header bands
+Month header band shows:
+    Month name (e.g. March 2026)
+    Entry count and total amount for that month (right-aligned)
+Entries within each month group are sorted newest-first (same as the existing sort). The existing Monthly Breakdown summary table at the bottom still appears as before.
+
+
+import button to import from CSV file exported from other apps like Splitwise, Google Sheets, etc. with mapping of columns to date (supports YYYY-MM-DD, MM/DD/YYYY, all format), amount, source, description fields. this will make it easier for users to migrate their existing data into the app without having to manually enter each record. the import process should also handle duplicates gracefully (e.g. by skipping or updating existing records based on a unique identifier) and provide feedback on how many records were imported successfully vs skipped due to duplicates or errors. ask user to confirm the duplicate insertion before proceeding to avoid accidental overwrites.
+
+add tools page with draggable & resizable calculator like ios, currency converter, loan calculator, etc.
+add it to lent, expense and for me entry form
+
+create a yearly summary page with total expenses, loans, savings, etc. and graphs
+user can choose the year in their profile settings and the dashboard and summary page will show data for that year by default so that in the future when they have multiple years of data, they can easily switch between years to see their financial history and progress over time. when user choose 2026 in profile settings, the dashboard and summary page will show data for 2026 by default. user can still change the year on the dashboard and summary page to view data for other years, but it will always default to the year they selected in their profile settings when they first visit those pages. this allows users to easily focus on their current year's financial data while still having access to their historical data when needed.

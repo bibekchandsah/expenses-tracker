@@ -12,6 +12,7 @@ import { LoanProvider } from './context/LoanContext';
 import { SavingProvider } from './context/SavingContext';
 import { NoteProvider } from './context/NoteContext';
 import { ForMeProvider } from './context/ForMeContext';
+import { IncomeProvider } from './context/IncomeContext';
 import { ToastProvider } from './components/ui/Toast';
 import PrivateRoute from './routes/PrivateRoute';
 import Layout from './components/Layout';
@@ -31,6 +32,7 @@ const Saving = lazy(() => import('./pages/Saving'));
 const Note   = lazy(() => import('./pages/Note'));
 const ForMe      = lazy(() => import('./pages/ForMe'));
 const NetSummary = lazy(() => import('./pages/NetSummary'));
+const Income     = lazy(() => import('./pages/Income'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-64">
@@ -54,6 +56,7 @@ export default function App() {
                   <SavingProvider>
                   <NoteProvider>
                   <ForMeProvider>
+                  <IncomeProvider>
                   <Suspense fallback={<PageLoader />}>
                     <Routes>
                       <Route path="/login" element={<Login />} />
@@ -61,6 +64,7 @@ export default function App() {
                         <Route element={<Layout />}>
                           <Route index element={<Navigate to="/dashboard" replace />} />
                           <Route path="/dashboard" element={<Dashboard />} />
+                          <Route path="/income" element={<Income />} />
                           <Route path="/expenses" element={<Expenses />} />
                           <Route path="/categories" element={<Categories />} />
                           <Route path="/budget" element={<Budget />} />
@@ -77,6 +81,7 @@ export default function App() {
                       <Route path="*" element={<Navigate to="/dashboard" replace />} />
                     </Routes>
                   </Suspense>
+                  </IncomeProvider>
                   </ForMeProvider>
                   </NoteProvider>
                   </SavingProvider>

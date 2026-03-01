@@ -27,6 +27,7 @@ import { useTheme } from '../context/ThemeContext';
 
 const navItems = [
   { to: '/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
+  { to: '/income',      label: 'Income',       icon: TrendingUp },
   { to: '/expenses',    label: 'Expenses',     icon: Receipt },
   { to: '/categories',  label: 'Categories',   icon: Tag },
   { to: '/budget',      label: 'Budget',       icon: Target },
