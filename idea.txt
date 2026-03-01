@@ -52,6 +52,7 @@ show tooltip on hover of sidebar icons
 show user profile picture and name in sidebar bottom add a dropdown menu with options to view profile and logout
 add logout button in sidebar
 add search functionality to expenses, loans and bank entries
+custom scrollbar
 
 add tools page with draggable & resizable calculator like ios, currency converter, loan calculator, etc.
 add it to lent, expense and for me entry form

@@ -119,7 +119,7 @@ export default function Profile() {
   const thisMonthTotal = thisMonthExp.reduce((s, e) => s + +e.amount, 0);
 
   return (
-    <div className="max-w-xl space-y-6 animate-fade-in">
+    <div className="max-w-xl mx-auto space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Profile</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage your account settings</p>

@@ -141,7 +141,7 @@ export default function Budget() {
   if (bLoading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
 
   return (
-    <div className="max-w-2xl space-y-6 animate-fade-in">
+    <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Budget Planner</h1>
