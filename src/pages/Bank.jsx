@@ -2,9 +2,10 @@
 import {
   Building2, Plus, Edit2, Trash2, X, ChevronDown,
   ArrowDownCircle, ArrowUpCircle, Wallet, Download, Upload,
-  ChevronsUpDown, Check, Settings, Search, ArrowUp, ArrowDown,
+  ChevronsUpDown, Check, Settings, Search, ArrowUp, ArrowDown, Zap,
 } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
+import QuickAddModal from '../components/QuickAddModal';
 import { useBanks } from '../context/BankContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -276,6 +277,7 @@ export default function Bank() {
   const [deleteBankTarget, setDeleteBankTarget] = useState(null);
 
   const [entryModalOpen, setEntryModalOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen]       = useState({ open: false, row: null });
   const [importOpen, setImportOpen]          = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [deleteEntryTarget, setDeleteEntryTarget] = useState(null);
@@ -692,6 +694,13 @@ export default function Bank() {
                       {/* Actions */}
                       <div className="sm:col-span-1 flex items-center gap-1 sm:justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
+                          onClick={() => setQuickAddOpen({ open: true, row: entry })}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
+                          title="Quick Add"
+                        >
+                          <Zap className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => { setEditingEntry(entry); setEntryModalOpen(true); }}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
                           title="Edit"
@@ -778,6 +787,12 @@ export default function Bank() {
         message={`Delete "${deleteBankTarget?.name}" and ALL its transactions? This action cannot be undone.`}
         onConfirm={handleDeleteBank}
         onCancel={() => setDeleteBankTarget(null)}
+      />
+      <QuickAddModal
+        isOpen={quickAddOpen.open}
+        onClose={() => setQuickAddOpen({ open: false, row: null })}
+        sourcePage="bank"
+        sourceRow={quickAddOpen.row}
       />
       <ConfirmDialog
         isOpen={!!deleteEntryTarget}

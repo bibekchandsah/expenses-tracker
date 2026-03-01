@@ -2,9 +2,11 @@
 import {
   Heart, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, ChevronDown,
-  PanelRightClose, PanelRightOpen, Upload, Download,
+  PanelRightClose, PanelRightOpen, Upload, Download, Zap,
 } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
+import QuickAddModal from '../components/QuickAddModal';
+import { useBanks } from '../context/BankContext';
 import { Timestamp } from 'firebase/firestore';
 import { useForMe } from '../context/ForMeContext';
 import { useToast } from '../components/ui/Toast';
@@ -184,9 +186,11 @@ export default function ForMe() {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useForMe();
   const { currency } = useCurrency();
   const { addToast } = useToast();
+  const { banks, selectedBankId } = useBanks();
 
   const [modalOpen,     setModalOpen]     = useState(false);
   const [importOpen,    setImportOpen]    = useState(false);
+  const [quickAddOpen,  setQuickAddOpen]  = useState({ open: false, row: null });
   const [editingEntry,  setEditingEntry]  = useState(null);
   const [deleteTarget,  setDeleteTarget]  = useState(null);
   const [search,        setSearch]        = useState('');
@@ -466,6 +470,11 @@ export default function ForMe() {
                     {/* Actions */}
                     <div className="lg:col-span-1 flex items-center gap-1 justify-start lg:justify-end opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
+                        onClick={() => setQuickAddOpen({ open: true, row: entry })}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
+                        title="Quick Add"
+                      ><Zap className="w-3.5 h-3.5" /></button>
+                      <button
                         onClick={() => { setEditingEntry(entry); setModalOpen(true); }}
                         className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
                         title="Edit"
@@ -622,6 +631,12 @@ export default function ForMe() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
         danger
+      />
+      <QuickAddModal
+        isOpen={quickAddOpen.open}
+        onClose={() => setQuickAddOpen({ open: false, row: null })}
+        sourcePage="forMe"
+        sourceRow={quickAddOpen.row}
       />
       <CSVImportModal
         isOpen={importOpen}

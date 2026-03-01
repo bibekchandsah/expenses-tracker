@@ -1,4 +1,5 @@
 npm run dev
+npm run build
 echo y | vercel --prod 
 Live at https://meroexpensetracker.vercel
 # Install Firebase CLI
@@ -409,7 +410,7 @@ Active operator button highlights in brighter orange
 
 
 
-add it (plus icon) to income, expenses, bank, lend, loan, saving, for me pages to quickly add an entry to those pages without having to go through the full add entry modal. this quick-add clicks "Add", the entry should be created immediately and the form should reset for the next entry. this will allow users to quickly log their transactions on the go without interrupting their workflow or having to navigate away from the current page.
+add (plus icon) in the actions column of income, expenses, bank, lend, loan, saving, for me pages to quickly add an entry to those pages without having to go through the full add entry modal. this quick-add clicks "Add", the entry should be created immediately and the form should reset for the next entry. this will allow users to quickly log their transactions on the go without interrupting their workflow or having to navigate away from the current page.
 
 income/loan/saving ↔ bank(deposit) -> choose bank
 expense/lend ↔ bank(withdraw) -> choose bank
@@ -438,6 +439,22 @@ not valid
 source != category of income & expense
 closing balance = don't use closing balance as it can be calculated from deposit and withdraw
 if one table has 5 columns and other has 4 columns then use the common columns to insert data and ignore the extra column in the table which has more columns to avoid overwriting existing data
+
+for example if user is adding expense and want to insert it in bank (choose bank) then use date, amount (in withdraw), description (expenses title) from expense and insert it in selected bank and ignore note, description, category column of expense and closing balance column of bank to avoid overwriting existing data in those columns. so that they don't have to fill the same data twice and also it will maintain consistency in data across different pages. this feature will make it easier for users to log their transactions and keep their financial data organized without having to manually enter the same information multiple times.
+
+quick add button in the actions column of each page has to quickly add an entry to user selected pages (income, expenses, bank, lend, loan, saving, for me) without having to go through individual pages and add entry. for example i am in expenses page and i have to click quick_add then it will show the dropdown of all pages where user can select a page to quickly add an entry to that page. Suppose user selected "loan" then it will populate a modal containing current selected row value to the loan entry value to add an entry to loan page. this will allow users to quickly log their transactions on the go without interrupting their workflow or having to navigate away from the current page.
+
+
+New ⚡ Quick Add flow:
+Click ⚡ on any row → modal opens with a page picker grid showing all 7 pages (Income, Expenses, Bank, Lend, Loan, Saving, For Me) each with their color/icon
+The picker shows a pre-fill preview summarizing the row's date, amount, and name so you know what will be carried over
+Click a target page → form opens pre-filled from the current row:
+    date + amount always carried over
+    name/title/expendOn → mapped to the target's name-like field
+    description, reason, notes, person → mapped where applicable
+Click Add → entry saved, form re-prefills from original row (ready for another add to the same page)
+Click Back → return to the page picker to choose a different target
+Bank sync toggle still available (except when adding to Bank itself)
 
 
 create a yearly summary page with total expenses, loans, savings, etc. and graphs

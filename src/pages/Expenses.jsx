@@ -1,8 +1,10 @@
 ﻿import { useState, useCallback, useMemo } from 'react';
-import { Plus, Search, Filter, Download, Edit2, Trash2, ChevronUp, ChevronDown, SlidersHorizontal, X, BarChart2, Upload } from 'lucide-react';
+import { Plus, Search, Filter, Download, Edit2, Trash2, ChevronUp, ChevronDown, SlidersHorizontal, X, BarChart2, Upload, Zap } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
+import QuickAddModal from '../components/QuickAddModal';
 import { useExpenses } from '../context/ExpenseContext';
 import { useCategories } from '../context/CategoryContext';
+import { useBanks } from '../context/BankContext';
 import { useToast } from '../components/ui/Toast';
 import ExpenseModal from '../components/ExpenseModal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -31,12 +33,14 @@ export default function Expenses() {
   const { expenses, filteredExpenses, loading, filters, setFilters, resetFilters, addExpense, updateExpense, deleteExpense } = useExpenses();
   const { currency } = useCurrency();
   const { categories, getCategoryById } = useCategories();
+  const { banks, selectedBankId } = useBanks();
   const { addToast } = useToast();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [quickAddOpen, setQuickAddOpen] = useState({ open: false, row: null });
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -198,6 +202,13 @@ export default function Expenses() {
           </span>
         </div>
         <div className="sm:col-span-1 flex items-center gap-1">
+          <button
+            onClick={() => setQuickAddOpen({ open: true, row: expense })}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
+            title="Quick Add"
+          >
+            <Zap className="w-4 h-4" />
+          </button>
           <button
             onClick={() => openEdit(expense)}
             className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
@@ -461,6 +472,12 @@ export default function Expenses() {
         message={`Are you sure you want to delete "${deleteTarget?.title}"? This action cannot be undone.`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+      <QuickAddModal
+        isOpen={quickAddOpen.open}
+        onClose={() => setQuickAddOpen({ open: false, row: null })}
+        sourcePage="expenses"
+        sourceRow={quickAddOpen.row}
       />
       <CSVImportModal
         isOpen={importOpen}

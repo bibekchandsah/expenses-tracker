@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, SlidersHorizontal, X, Download, Edit2, Trash2, Upload } from 'lucide-react';
+import { Plus, Search, SlidersHorizontal, X, Download, Edit2, Trash2, Upload, Zap } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
+import QuickAddModal from '../components/QuickAddModal';
 import { useIncomes } from '../context/IncomeContext';
+import { useBanks } from '../context/BankContext';
 import { useToast } from '../components/ui/Toast';
 import IncomeModal, { INCOME_SOURCES } from '../components/IncomeModal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -48,8 +50,10 @@ export default function Income() {
   const { incomes, filteredIncomes, loading, filters, setFilters, resetFilters, addIncome, updateIncome, deleteIncome } = useIncomes();
   const { currency } = useCurrency();
   const { addToast } = useToast();
+  const { banks, selectedBankId } = useBanks();
 
   const [modalOpen, setModalOpen]       = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState({ open: false, row: null });
   const [importOpen, setImportOpen]      = useState(false);
   const [editingIncome, setEditingIncome] = useState(null);
   const [deleteTarget, setDeleteTarget]  = useState(null);
@@ -223,6 +227,13 @@ export default function Income() {
         )}
       </div>
       <div className="col-span-1 flex items-center justify-end gap-1">
+        <button
+          onClick={() => setQuickAddOpen({ open: true, row: inc })}
+          className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-lg transition-colors"
+          title="Quick Add"
+        >
+          <Zap className="w-3.5 h-3.5" />
+        </button>
         <button
           onClick={() => openEdit(inc)}
           className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
@@ -502,6 +513,12 @@ export default function Income() {
         message={`Delete "${deleteTarget?.title}"? This cannot be undone.`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+      <QuickAddModal
+        isOpen={quickAddOpen.open}
+        onClose={() => setQuickAddOpen({ open: false, row: null })}
+        sourcePage="income"
+        sourceRow={quickAddOpen.row}
       />
       <CSVImportModal
         isOpen={importOpen}

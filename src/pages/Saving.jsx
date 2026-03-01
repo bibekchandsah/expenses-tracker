@@ -2,9 +2,11 @@
 import {
   PiggyBank, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown,
-  PanelRightClose, PanelRightOpen, Upload, Download,
+  PanelRightClose, PanelRightOpen, Upload, Download, Zap,
 } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
+import QuickAddModal from '../components/QuickAddModal';
+import { useBanks } from '../context/BankContext';
 import { useSavings } from '../context/SavingContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -201,9 +203,11 @@ export default function Saving() {
   const { savings, sources, loading, addSaving, updateSaving, deleteSaving, addSource, updateSource, deleteSource } = useSavings();
   const { currency } = useCurrency();
   const { addToast } = useToast();
+  const { banks, selectedBankId } = useBanks();
 
   const [showSidePanel, setShowSidePanel] = useState(true);
   const [importOpen, setImportOpen]        = useState(false);
+  const [quickAddOpen, setQuickAddOpen]   = useState({ open: false, row: null });
   const [savingModal, setSavingModal]     = useState({ open: false, item: null });
   const [deleteTarget, setDeleteTarget]   = useState(null);
   const [sourceModal, setSourceModal]     = useState({ open: false, item: null });
@@ -454,6 +458,11 @@ export default function Saving() {
                     </div>
                     <div className="lg:col-span-1 flex items-center gap-1 justify-start lg:justify-end opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
+                        onClick={() => setQuickAddOpen({ open: true, row: row })}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
+                        title="Quick Add"
+                      ><Zap className="w-3.5 h-3.5" /></button>
+                      <button
                         onClick={() => setSavingModal({ open: true, item: row })}
                         className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
                         title="Edit"
@@ -561,6 +570,12 @@ export default function Saving() {
         message={deleteSourceTarget ? `Amount: ${formatCurrency(deleteSourceTarget.amount, currency)} on ${formatDate(deleteSourceTarget.date)}` : ''}
         onConfirm={handleDeleteSource}
         onCancel={() => setDeleteSourceTarget(null)}
+      />
+      <QuickAddModal
+        isOpen={quickAddOpen.open}
+        onClose={() => setQuickAddOpen({ open: false, row: null })}
+        sourcePage="saving"
+        sourceRow={quickAddOpen.row}
       />
       <CSVImportModal
         isOpen={importOpen}
