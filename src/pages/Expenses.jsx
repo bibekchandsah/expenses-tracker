@@ -166,69 +166,70 @@ export default function Expenses() {
   const renderExpenseRow = (expense) => {
     const cat = getCategoryById(expense.category);
     return (
-      <div key={expense.id} className="grid grid-cols-1 sm:grid-cols-12 gap-3 px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors items-center">
-        <div className="sm:col-span-3 flex items-center gap-3">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
-            style={{ background: (cat?.color || '#6b7280') + '20' }}
-          >
-            {cat?.icon || '📦'}
+      <div key={expense.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
+
+        {/* ── Mobile card (< sm) ── */}
+        <div className="sm:hidden px-4 py-3">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0 mt-0.5" style={{ background: (cat?.color || '#6b7280') + '20' }}>
+              {cat?.icon || '📦'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{expense.title}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(expense.date)}</p>
+                </div>
+                <span className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0">{formatCurrency(expense.amount, currency)}</span>
+              </div>
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: (cat?.color || '#6b7280') + '20', color: cat?.color || '#6b7280' }}>
+                  {cat?.name || expense.category}
+                </span>
+                {expense.notes && <span className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Note:</span> {expense.notes}</span>}
+                {expense.description && <span className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Desc:</span> {expense.description}</span>}
+              </div>
+              <div className="flex items-center gap-1 mt-1.5">
+                <button onClick={() => setQuickAddOpen({ open: true, row: expense })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-4 h-4" /></button>
+                <button onClick={() => openEdit(expense)} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"><Edit2 className="w-4 h-4" /></button>
+                <button onClick={() => setDeleteTarget(expense)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-4 h-4" /></button>
+              </div>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{expense.title}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(expense.date)}</p>
+        </div>
+
+        {/* ── Desktop row (sm+) ── */}
+        <div className="hidden sm:grid grid-cols-12 gap-3 px-5 py-4 items-center">
+          <div className="col-span-3 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0" style={{ background: (cat?.color || '#6b7280') + '20' }}>
+              {cat?.icon || '📦'}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{expense.title}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(expense.date)}</p>
+            </div>
+          </div>
+          <div className="col-span-2">
+            <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(expense.amount, currency)}</span>
+          </div>
+          <div className="col-span-2">
+            {expense.notes ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={expense.notes}>{expense.notes}</span> : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
+          </div>
+          <div className="col-span-2">
+            {expense.description ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={expense.description}>{expense.description}</span> : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
+          </div>
+          <div className="col-span-2">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: (cat?.color || '#6b7280') + '20', color: cat?.color || '#6b7280' }}>
+              {cat?.name || expense.category}
+            </span>
+          </div>
+          <div className="col-span-1 flex items-center gap-1">
+            <button onClick={() => setQuickAddOpen({ open: true, row: expense })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-4 h-4" /></button>
+            <button onClick={() => openEdit(expense)} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"><Edit2 className="w-4 h-4" /></button>
+            <button onClick={() => setDeleteTarget(expense)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-4 h-4" /></button>
           </div>
         </div>
-        <div className="sm:col-span-2">
-          <span className="text-sm font-bold text-gray-900 dark:text-white">
-            {formatCurrency(expense.amount, currency)}
-          </span>
-        </div>
-        <div className="sm:col-span-2">
-          {expense.notes ? (
-            <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={expense.notes}>
-              {expense.notes}
-            </span>
-          ) : (
-            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
-          )}
-        </div>
-        <div className="sm:col-span-2">
-          {expense.description ? (
-            <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={expense.description}>
-              {expense.description}
-            </span>
-          ) : (
-            <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
-          )}
-        </div>
-        <div className="sm:col-span-2">
-          <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium"
-            style={{ background: (cat?.color || '#6b7280') + '20', color: cat?.color || '#6b7280' }}>
-            {cat?.name || expense.category}
-          </span>
-        </div>
-        <div className="sm:col-span-1 flex items-center gap-1">
-          <button
-            onClick={() => setQuickAddOpen({ open: true, row: expense })}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
-            title="Quick Add"
-          >
-            <Zap className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => openEdit(expense)}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setDeleteTarget(expense)}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
+
       </div>
     );
   };

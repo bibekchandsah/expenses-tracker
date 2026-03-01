@@ -392,7 +392,7 @@ export default function ForMe() {
           </button>
         </div>
       ) : (
-        <div className="flex flex-col lg:flex-row gap-4 items-start">
+        <div className="flex flex-col lg:flex-row gap-4 lg:items-start">
 
           {/* ── Left: Main Table ── */}
           <div className="flex-1 min-w-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -451,54 +451,56 @@ export default function ForMe() {
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
                 {filtered.map(entry => (
-                  <div key={entry.id}
-                    className="grid grid-cols-1 lg:grid-cols-12 gap-1 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors items-center group">
+                  <div key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
 
-                    {/* Date */}
-                    <div className="lg:col-span-2 text-xs text-gray-500 dark:text-gray-400">{formatDate(toInputDate(entry.date))}</div>
-
-                    {/* Amount */}
-                    <div className="lg:col-span-2 text-right">
-                      <span className="text-sm font-bold text-pink-600 dark:text-pink-400">{formatCurrency(entry.amount, currency)}</span>
+                    {/* ── Mobile card (< lg) ── */}
+                    <div className="lg:hidden px-4 py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <button
+                            onClick={() => { setPersonFilter(p => p === entry.name ? null : entry.name); setSearch(''); }}
+                            className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline text-left"
+                          >{entry.name}</button>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatDate(toInputDate(entry.date))}</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-sm font-bold text-pink-600 dark:text-pink-400">{formatCurrency(entry.amount, currency)}</span>
+                          <button onClick={() => setQuickAddOpen({ open: true, row: entry })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => { setEditingEntry(entry); setModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setDeleteTarget(entry)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                      </div>
+                      {entry.description && (
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{entry.description}</p>
+                      )}
                     </div>
 
-                    {/* Name */}
-                    <div className="lg:col-span-3">
-                      <button
-                        onClick={() => { setPersonFilter(p => p === entry.name ? null : entry.name); setSearch(''); }}
-                        className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline truncate max-w-full text-left"
-                        title={`Filter by ${entry.name}`}
-                      >
-                        {entry.name}
-                      </button>
+                    {/* ── Desktop row (lg+) ── */}
+                    <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-3.5 items-center">
+                      <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">{formatDate(toInputDate(entry.date))}</div>
+                      <div className="col-span-2 text-right">
+                        <span className="text-sm font-bold text-pink-600 dark:text-pink-400">{formatCurrency(entry.amount, currency)}</span>
+                      </div>
+                      <div className="col-span-3">
+                        <button
+                          onClick={() => { setPersonFilter(p => p === entry.name ? null : entry.name); setSearch(''); }}
+                          className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline truncate max-w-full text-left"
+                          title={`Filter by ${entry.name}`}
+                        >{entry.name}</button>
+                      </div>
+                      <div className="col-span-4 pl-1">
+                        {entry.description
+                          ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={entry.description}>{entry.description}</span>
+                          : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
+                        }
+                      </div>
+                      <div className="col-span-1 flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setQuickAddOpen({ open: true, row: entry })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => { setEditingEntry(entry); setModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setDeleteTarget(entry)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
                     </div>
 
-                    {/* Description */}
-                    <div className="lg:col-span-4 pl-0 lg:pl-1">
-                      {entry.description
-                        ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={entry.description}>{entry.description}</span>
-                        : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
-                      }
-                    </div>
-
-                    {/* Actions */}
-                    <div className="lg:col-span-1 flex items-center gap-1 justify-start lg:justify-end opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => setQuickAddOpen({ open: true, row: entry })}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
-                        title="Quick Add"
-                      ><Zap className="w-3.5 h-3.5" /></button>
-                      <button
-                        onClick={() => { setEditingEntry(entry); setModalOpen(true); }}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                        title="Edit"
-                      ><Edit2 className="w-3.5 h-3.5" /></button>
-                      <button
-                        onClick={() => setDeleteTarget(entry)}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        title="Delete"
-                      ><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
                   </div>
                 ))}
               </div>

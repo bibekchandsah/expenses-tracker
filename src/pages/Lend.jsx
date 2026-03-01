@@ -424,7 +424,7 @@ export default function Lend() {
           </button>
         </div>
       ) : (
-        <div className="flex flex-col lg:flex-row gap-4 items-start">
+        <div className="flex flex-col lg:flex-row gap-4 lg:items-start">
 
           {/* ── Left: Main Table ── */}
           <div className="flex-1 min-w-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -491,75 +491,93 @@ export default function Lend() {
                   const remaining = (+lend.amount || 0) - (+lend.returnedAmount || 0);
                   const isSettled = remaining <= 0;
                   return (
-                    <div key={lend.id}
-                      className="grid grid-cols-1 lg:grid-cols-12 gap-1 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors items-center group">
+                    <div key={lend.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
 
-                      {/* Date */}
-                      <div className="lg:col-span-2 text-xs text-gray-500 dark:text-gray-400">{formatDate(lend.date)}</div>
-
-                      {/* Name */}
-                      <div className="lg:col-span-2">
-                        <button
-                          onClick={() => { setPersonFilter(p => p === lend.name ? null : lend.name); setSearch(''); }}
-                          className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline truncate max-w-full text-left"
-                          title={`Filter by ${lend.name}`}
-                        >
-                          {lend.name}
-                        </button>
+                      {/* ── Mobile card (< lg) ── */}
+                      <div className="lg:hidden px-4 py-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <button
+                              onClick={() => { setPersonFilter(p => p === lend.name ? null : lend.name); setSearch(''); }}
+                              className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline text-left"
+                            >{lend.name}</button>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatDate(lend.date)}</p>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button onClick={() => setQuickAddOpen({ open: true, row: lend })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => { setEditingLend(lend); setModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => setDeleteTarget(lend)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 mt-2">
+                          <div>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Lent</p>
+                            <p className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(lend.amount, currency)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Returned</p>
+                            {+lend.returnedAmount > 0
+                              ? <p className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(lend.returnedAmount, currency)}</p>
+                              : <p className="text-sm text-gray-300 dark:text-gray-600">—</p>
+                            }
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Due</p>
+                            {isSettled
+                              ? <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-green-600 dark:text-green-400"><CheckCircle2 className="w-3 h-3" /> Settled</span>
+                              : <p className="text-sm font-bold text-red-600 dark:text-red-400">{formatCurrency(remaining, currency)}</p>
+                            }
+                          </div>
+                        </div>
+                        {(lend.reason || lend.description) && (
+                          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5">
+                            {lend.reason && <p className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Reason:</span> {lend.reason}</p>}
+                            {lend.description && <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1"><span className="text-gray-400 dark:text-gray-500">Note:</span> {lend.description}</p>}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Lent */}
-                      <div className="lg:col-span-1 text-right">
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(lend.amount, currency)}</span>
+                      {/* ── Desktop row (lg+) ── */}
+                      <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-3.5 items-center">
+                        <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">{formatDate(lend.date)}</div>
+                        <div className="col-span-2">
+                          <button
+                            onClick={() => { setPersonFilter(p => p === lend.name ? null : lend.name); setSearch(''); }}
+                            className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline truncate max-w-full text-left"
+                            title={`Filter by ${lend.name}`}
+                          >{lend.name}</button>
+                        </div>
+                        <div className="col-span-1 text-right">
+                          <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(lend.amount, currency)}</span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-sm text-gray-600 dark:text-gray-400 truncate block" title={lend.reason}>{lend.reason || '—'}</span>
+                        </div>
+                        <div className="col-span-1 text-right">
+                          {+lend.returnedAmount > 0
+                            ? <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(lend.returnedAmount, currency)}</span>
+                            : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
+                          }
+                        </div>
+                        <div className="col-span-1 text-right">
+                          {isSettled
+                            ? <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-green-600 dark:text-green-400"><CheckCircle2 className="w-3 h-3" /> Settled</span>
+                            : <span className="text-sm font-bold text-red-600 dark:text-red-400">{formatCurrency(remaining, currency)}</span>
+                          }
+                        </div>
+                        <div className="col-span-2 pl-1">
+                          {lend.description
+                            ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={lend.description}>{lend.description}</span>
+                            : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
+                          }
+                        </div>
+                        <div className="col-span-1 flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setQuickAddOpen({ open: true, row: lend })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => { setEditingLend(lend); setModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setDeleteTarget(lend)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
                       </div>
 
-                      {/* Reason */}
-                      <div className="lg:col-span-2">
-                        <span className="text-sm text-gray-600 dark:text-gray-400 truncate block" title={lend.reason}>{lend.reason || '—'}</span>
-                      </div>
-
-                      {/* Returned */}
-                      <div className="lg:col-span-1 text-right">
-                        {+lend.returnedAmount > 0
-                          ? <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(lend.returnedAmount, currency)}</span>
-                          : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
-                        }
-                      </div>
-
-                      {/* Remaining / Due */}
-                      <div className="lg:col-span-1 text-right">
-                        {isSettled
-                          ? <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-green-600 dark:text-green-400"><CheckCircle2 className="w-3 h-3" /> Settled</span>
-                          : <span className="text-sm font-bold text-red-600 dark:text-red-400">{formatCurrency(remaining, currency)}</span>
-                        }
-                      </div>
-
-                      {/* Description */}
-                      <div className="lg:col-span-2 pl-0 lg:pl-1">
-                        {lend.description
-                          ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={lend.description}>{lend.description}</span>
-                          : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
-                        }
-                      </div>
-
-                      {/* Actions */}
-                      <div className="lg:col-span-1 flex items-center gap-1 justify-start lg:justify-end opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => setQuickAddOpen({ open: true, row: lend })}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
-                          title="Quick Add"
-                        ><Zap className="w-3.5 h-3.5" /></button>
-                        <button
-                          onClick={() => { setEditingLend(lend); setModalOpen(true); }}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                          title="Edit"
-                        ><Edit2 className="w-3.5 h-3.5" /></button>
-                        <button
-                          onClick={() => setDeleteTarget(lend)}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                          title="Delete"
-                        ><Trash2 className="w-3.5 h-3.5" /></button>
-                      </div>
                     </div>
                   );
                 })}

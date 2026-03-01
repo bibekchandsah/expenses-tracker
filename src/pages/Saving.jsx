@@ -393,7 +393,7 @@ export default function Saving() {
           </button>
         </div>
       ) : (
-        <div className="flex flex-col lg:flex-row gap-4 items-start">
+        <div className="flex flex-col lg:flex-row gap-4 lg:items-start">
 
           {/* Main Table */}
           <div className="flex-1 min-w-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -447,41 +447,56 @@ export default function Saving() {
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
                 {filteredSavings.map(row => (
-                  <div key={row.id}
-                    className="grid grid-cols-1 lg:grid-cols-12 gap-1 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors items-center group">
-                    <div className="lg:col-span-2 text-xs text-gray-500 dark:text-gray-400">{formatDate(row.date)}</div>
-                    <div className="lg:col-span-2 text-right">
-                      <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount, currency)}</span>
+                  <div key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
+
+                    {/* ── Mobile card (< lg) ── */}
+                    <div className="lg:hidden px-4 py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount, currency)}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatDate(row.date)}</p>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button onClick={() => setQuickAddOpen({ open: true, row: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setSavingModal({ open: true, item: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setDeleteTarget(row)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                      </div>
+                      {row.expendOn && (
+                        <div className="mt-1.5">
+                          <span className="inline-block px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs">{row.expendOn}</span>
+                        </div>
+                      )}
+                      {row.description && (
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{row.description}</p>
+                      )}
                     </div>
-                    <div className="lg:col-span-3">
-                      {row.expendOn
-                        ? <span className="inline-block px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs truncate max-w-full" title={row.expendOn}>{row.expendOn}</span>
-                        : <span className="text-gray-300 dark:text-gray-600 text-sm">-</span>
-                      }
+
+                    {/* ── Desktop row (lg+) ── */}
+                    <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-3.5 items-center">
+                      <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">{formatDate(row.date)}</div>
+                      <div className="col-span-2 text-right">
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount, currency)}</span>
+                      </div>
+                      <div className="col-span-3">
+                        {row.expendOn
+                          ? <span className="inline-block px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs truncate max-w-full" title={row.expendOn}>{row.expendOn}</span>
+                          : <span className="text-gray-300 dark:text-gray-600 text-sm">-</span>
+                        }
+                      </div>
+                      <div className="col-span-4 pl-1">
+                        {row.description
+                          ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={row.description}>{row.description}</span>
+                          : <span className="text-gray-300 dark:text-gray-600 text-sm">-</span>
+                        }
+                      </div>
+                      <div className="col-span-1 flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setQuickAddOpen({ open: true, row: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setSavingModal({ open: true, item: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setDeleteTarget(row)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
                     </div>
-                    <div className="lg:col-span-4 pl-0 lg:pl-1">
-                      {row.description
-                        ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={row.description}>{row.description}</span>
-                        : <span className="text-gray-300 dark:text-gray-600 text-sm">-</span>
-                      }
-                    </div>
-                    <div className="lg:col-span-1 flex items-center gap-1 justify-start lg:justify-end opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => setQuickAddOpen({ open: true, row: row })}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
-                        title="Quick Add"
-                      ><Zap className="w-3.5 h-3.5" /></button>
-                      <button
-                        onClick={() => setSavingModal({ open: true, item: row })}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                        title="Edit"
-                      ><Edit2 className="w-3.5 h-3.5" /></button>
-                      <button
-                        onClick={() => setDeleteTarget(row)}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        title="Delete"
-                      ><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
+
                   </div>
                 ))}
               </div>

@@ -202,61 +202,70 @@ export default function Income() {
   const thisMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
   const renderRow = (inc) => (
-    <div
-      key={inc.id}
-      className="grid grid-cols-12 gap-0 px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors items-center"
-    >
-      <div className="col-span-3">
-        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{inc.title}</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatDate(inc.date)}</p>
+    <div key={inc.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors group">
+
+      {/* ── Mobile card (< sm) ── */}
+      <div className="sm:hidden px-4 py-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{inc.title}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatDate(inc.date)}</p>
+          </div>
+          <span className="text-sm font-semibold text-green-600 dark:text-green-400 flex-shrink-0">{formatCurrency(inc.amount, currency)}</span>
+        </div>
+        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+          {inc.source && (
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SOURCE_COLORS[inc.source] ?? SOURCE_COLORS.Other}`}>
+              {sourceLabel(inc.source)}
+            </span>
+          )}
+          {inc.notes && <p className="text-xs text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">Notes:</span> {inc.notes}</p>}
+          {inc.description && <p className="text-xs text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">Desc:</span> {inc.description}</p>}
+        </div>
+        <div className="flex items-center gap-1 mt-1.5">
+          <button onClick={() => setQuickAddOpen({ open: true, row: inc })} className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-lg transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+          <button onClick={() => openEdit(inc)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+          <button onClick={() => setDeleteTarget(inc)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+        </div>
       </div>
-      <div className="col-span-2">
-        <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-          {formatCurrency(inc.amount, currency)}
-        </span>
-      </div>
-      <div className="col-span-2">
-        <p className="text-sm text-gray-600 dark:text-gray-300 truncate max-w-[140px]" title={inc.notes || ''}>
-          {inc.notes || <span className="text-gray-300 dark:text-gray-600">—</span>}
-        </p>
-      </div>
-      <div className="col-span-2">
-        <p className="text-sm text-gray-600 dark:text-gray-300 truncate max-w-[140px]" title={inc.description || ''}>
-          {inc.description || <span className="text-gray-300 dark:text-gray-600">—</span>}
-        </p>
-      </div>
-      <div className="col-span-2">
-        {inc.source ? (
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SOURCE_COLORS[inc.source] ?? SOURCE_COLORS.Other}`}>
-            {sourceLabel(inc.source)}
+
+      {/* ── Desktop row (sm+) ── */}
+      <div className="hidden sm:grid grid-cols-12 gap-0 px-4 py-3 items-center">
+        <div className="col-span-3">
+          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{inc.title}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatDate(inc.date)}</p>
+        </div>
+        <div className="col-span-2">
+          <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+            {formatCurrency(inc.amount, currency)}
           </span>
-        ) : (
-          <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
-        )}
+        </div>
+        <div className="col-span-2">
+          <p className="text-sm text-gray-600 dark:text-gray-300 truncate max-w-[140px]" title={inc.notes || ''}>
+            {inc.notes || <span className="text-gray-300 dark:text-gray-600">—</span>}
+          </p>
+        </div>
+        <div className="col-span-2">
+          <p className="text-sm text-gray-600 dark:text-gray-300 truncate max-w-[140px]" title={inc.description || ''}>
+            {inc.description || <span className="text-gray-300 dark:text-gray-600">—</span>}
+          </p>
+        </div>
+        <div className="col-span-2">
+          {inc.source ? (
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SOURCE_COLORS[inc.source] ?? SOURCE_COLORS.Other}`}>
+              {sourceLabel(inc.source)}
+            </span>
+          ) : (
+            <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
+          )}
+        </div>
+        <div className="col-span-1 flex items-center justify-end gap-1">
+          <button onClick={() => setQuickAddOpen({ open: true, row: inc })} className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-lg transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+          <button onClick={() => openEdit(inc)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+          <button onClick={() => setDeleteTarget(inc)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+        </div>
       </div>
-      <div className="col-span-1 flex items-center justify-end gap-1">
-        <button
-          onClick={() => setQuickAddOpen({ open: true, row: inc })}
-          className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-lg transition-colors"
-          title="Quick Add"
-        >
-          <Zap className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => openEdit(inc)}
-          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-          title="Edit"
-        >
-          <Edit2 className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => setDeleteTarget(inc)}
-          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-          title="Delete"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
-      </div>
+
     </div>
   );
 
@@ -402,7 +411,7 @@ export default function Income() {
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Header */}
-        <div className="grid grid-cols-12 gap-0 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700">
+        <div className="hidden sm:grid grid-cols-12 gap-0 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700">
           <div className="col-span-3 cursor-pointer select-none flex items-center" onClick={() => handleSort('title')}>
             Title / Date <SortIcon field="title" sortBy={filters.sortBy} sortDir={filters.sortDir} />
           </div>
