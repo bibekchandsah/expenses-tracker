@@ -13,7 +13,7 @@ import { useLoans } from '../context/LoanContext';
 import { useSavings } from '../context/SavingContext';
 import { useForMe } from '../context/ForMeContext';
 import { useBanks } from '../context/BankContext';
-import { getBankEntriesOnce, getAllBankEntriesOnce, deleteBankEntry, deleteBank as deleteBankSvc } from '../services/bankService';
+import { getBankEntriesOnce, getAllBankEntriesOnce, deleteBankEntry } from '../services/bankService';
 import { useCategories } from '../context/CategoryContext';
 import { INCOME_SOURCES } from '../components/IncomeModal';
 import { formatCurrency } from '../utils/formatters';
@@ -404,24 +404,13 @@ export default function Profile() {
         });
       });
 
-      // Run all entry/record deletes first, log any individual failures
+      // Run all entry/record deletes, log any individual failures
       const results = await Promise.allSettled(tasks.map(fn => fn()));
       let failCount = 0;
       results.forEach((r, i) => {
         if (r.status === 'rejected') {
           failCount++;
           console.error(`[Delete] Failed to delete ${labels[i]}:`, r.reason);
-        }
-      });
-
-      // Delete bank accounts themselves (name + opening balance)
-      const bankDelResults = await Promise.allSettled(
-        banks.map(b => deleteBankSvc(user.uid, b.id))
-      );
-      bankDelResults.forEach((r, i) => {
-        if (r.status === 'rejected') {
-          failCount++;
-          console.error(`[Delete] Failed to delete bank ${banks[i]?.id}:`, r.reason);
         }
       });
 
