@@ -359,6 +359,12 @@ A Monthly Breakdown table now appears below the expense list with:
 The table respects whatever filters/search are active, so filtering by category or date range will update the breakdown accordingly. Most recent month is shown first.
 
 
+Budget page updates:
+Added a Remove button (with a trash icon) next to "Edit budget" — it only appears when a budget is already set for that category/month.
+Clicking it calls deleteBudget from the context (which removes the Firestore document), then shows a "Budget removed." toast.
+The page works normally as before when no budget is set.
+
+
 Dashboard page updates:
 Category Breakdown toggle — now defaults to Monthly with a Monthly / Yearly pill toggle in the top-right corner of the chart card. Switching to Yearly aggregates all expenses from the current year.
 Monthly Expenses showing current month — the root cause was a timezone bug: new Date().toISOString() converts to UTC, so in Nepal (UTC+5:45) "March 1 local" = "Feb 28 UTC", making March invisible. 

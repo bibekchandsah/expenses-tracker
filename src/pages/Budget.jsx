@@ -1,5 +1,5 @@
 ﻿import { useState, useMemo } from 'react';
-import { Target, TrendingUp, AlertTriangle, Check } from 'lucide-react';
+import { Target, TrendingUp, AlertTriangle, Check, Trash2 } from 'lucide-react';
 import { useBudgets } from '../context/BudgetContext';
 import { useExpenses } from '../context/ExpenseContext';
 import { useCategories } from '../context/CategoryContext';
@@ -9,10 +9,11 @@ import { formatCurrency, currentMonth, formatMonth } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
 
-function BudgetRow({ category, expenses, budget, month, onSave }) {
+function BudgetRow({ category, expenses, budget, month, onSave, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const { currency } = useCurrency();
 
   const spent = useMemo(() =>
@@ -35,6 +36,15 @@ function BudgetRow({ category, expenses, budget, month, onSave }) {
       setEditing(false);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await onDelete(category.id, month);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -99,19 +109,31 @@ function BudgetRow({ category, expenses, budget, month, onSave }) {
           </button>
         </div>
       ) : (
-        <button
-          onClick={() => { setValue(budgetAmount ? String(budgetAmount) : ''); setEditing(true); }}
-          className="text-xs text-primary-600 dark:text-primary-400 hover:underline font-medium"
-        >
-          {budgetAmount > 0 ? 'Edit budget' : 'Set budget'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => { setValue(budgetAmount ? String(budgetAmount) : ''); setEditing(true); }}
+            className="text-xs text-primary-600 dark:text-primary-400 hover:underline font-medium"
+          >
+            {budgetAmount > 0 ? 'Edit budget' : 'Set budget'}
+          </button>
+          {budgetAmount > 0 && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="text-xs text-red-500 dark:text-red-400 hover:underline font-medium flex items-center gap-1 disabled:opacity-50"
+            >
+              <Trash2 className="w-3 h-3" />
+              {deleting ? 'Removing...' : 'Remove'}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
 export default function Budget() {
-  const { budgets, loading: bLoading, setBudget, getBudget } = useBudgets();
+  const { budgets, loading: bLoading, setBudget, deleteBudget, getBudget } = useBudgets();
   const { currency } = useCurrency();
   const { monthLabel } = useCalendar();
   const { expenses } = useExpenses();
@@ -132,6 +154,11 @@ export default function Budget() {
   async function handleSaveBudget(categoryId, m, amount) {
     await setBudget(categoryId, m, amount);
     addToast('Budget saved!', 'success');
+  }
+
+  async function handleDeleteBudget(categoryId, m) {
+    await deleteBudget(`${m}_${categoryId}`);
+    addToast('Budget removed.', 'success');
   }
 
   const totalBudget = categories.reduce((s, c) => {
@@ -191,6 +218,7 @@ export default function Budget() {
             budget={getBudget(cat.id, month)}
             month={month}
             onSave={handleSaveBudget}
+            onDelete={handleDeleteBudget}
           />
         ))}
       </div>

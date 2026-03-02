@@ -10,6 +10,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
+import { getBSYearRange, adDateToBSMonthKey, getBSMonthLabel } from '../utils/calendarUtils';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
@@ -22,7 +23,7 @@ function SortIcon({ col, sortCol, sortDir }) {
 export default function NetSummary() {
   const { lends, loading: lendLoading }  = useLends();
   const { currency } = useCurrency();
-  const { monthLabel } = useCalendar();
+  const { monthLabel, calendar } = useCalendar();
   const { loans, loading: loanLoading }  = useLoans();
   const { expenses } = useExpenses();
   const { getCategoryById } = useCategories();
@@ -30,10 +31,13 @@ export default function NetSummary() {
   const [sortCol, setSortCol] = useState('net');
   const [sortDir, setSortDir] = useState('desc');
   const [search,  setSearch]  = useState('');
-  const { activeYear } = useActiveYear();
-  const [yearFilter, setYearFilter] = useState(() => activeYear);
+  const { activeYear, bsActiveYear } = useActiveYear();
+  const isBS = calendar === 'bs';
+  const [yearFilter, setYearFilter] = useState(() => isBS ? bsActiveYear : activeYear);
 
-  useEffect(() => { setYearFilter(activeYear); }, [activeYear]);
+  useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
+
+  const bsYearRange = useMemo(() => isBS ? getBSYearRange(yearFilter) : null, [isBS, yearFilter]);
 
   const loading = lendLoading || loanLoading;
 
@@ -54,16 +58,19 @@ export default function NetSummary() {
   // Build combined per-person map
   const rows = useMemo(() => {
     const map = {};
-    const yearStr = String(yearFilter);
 
-    lends.filter(l => l.date?.startsWith(yearStr)).forEach(l => {
+    const filterByYear = arr => isBS
+      ? arr.filter(l => l.date && bsYearRange && l.date >= bsYearRange.start && l.date <= bsYearRange.end)
+      : arr.filter(l => l.date?.startsWith(String(yearFilter)));
+
+    filterByYear(lends).forEach(l => {
       const k = l.name;
       if (!map[k]) map[k] = { name: k, lent: 0, returned: 0, borrowed: 0, paid: 0 };
       map[k].lent     += +l.amount         || 0;
       map[k].returned += +l.returnedAmount || 0;
     });
 
-    loans.filter(l => l.date?.startsWith(yearStr)).forEach(l => {
+    filterByYear(loans).forEach(l => {
       const k = l.name;
       if (!map[k]) map[k] = { name: k, lent: 0, returned: 0, borrowed: 0, paid: 0 };
       map[k].borrowed += +l.amount     || 0;
@@ -76,7 +83,7 @@ export default function NetSummary() {
       toGive:    p.borrowed - p.paid,
       net:       (p.lent - p.returned) - (p.borrowed - p.paid),
     }));
-  }, [lends, loans, yearFilter]);
+  }, [lends, loans, yearFilter, isBS, bsYearRange]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -103,10 +110,12 @@ export default function NetSummary() {
 
   // Monthly expense breakdown for selected year
   const monthlyData = useMemo(() => {
-    const yearStr = String(yearFilter);
+    const filtered = isBS
+      ? expenses.filter(e => e.date && bsYearRange && e.date >= bsYearRange.start && e.date <= bsYearRange.end)
+      : expenses.filter(e => e.date?.startsWith(String(yearFilter)));
     const map = {};
-    expenses.filter(e => e.date?.startsWith(yearStr)).forEach(e => {
-      const m = e.date?.slice(0, 7);
+    filtered.forEach(e => {
+      const m = isBS ? adDateToBSMonthKey(e.date) : e.date?.slice(0, 7);
       if (!m) return;
       map[m] = (map[m] || 0) + (+e.amount || 0);
     });
@@ -114,16 +123,18 @@ export default function NetSummary() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([month, total]) => ({
         month,
-        label: monthLabel(month, 'short'),
+        label: isBS ? getBSMonthLabel(month, 'short') : monthLabel(month, 'short'),
         total,
       }));
-  }, [expenses, yearFilter, monthLabel]);
+  }, [expenses, yearFilter, monthLabel, isBS, bsYearRange]);
 
   // Per-category expense breakdown
   const categoryData = useMemo(() => {
-    const yearStr = String(yearFilter);
     const map = {};
-    expenses.filter(e => e.date?.startsWith(yearStr)).forEach(e => {
+    const catFiltered = isBS
+      ? expenses.filter(e => e.date && bsYearRange && e.date >= bsYearRange.start && e.date <= bsYearRange.end)
+      : expenses.filter(e => e.date?.startsWith(String(yearFilter)));
+    catFiltered.forEach(e => {
       const id = e.category;
       if (!id) return;
       map[id] = (map[id] || 0) + (+e.amount || 0);
@@ -134,7 +145,7 @@ export default function NetSummary() {
         return { id, total, name: cat?.name || id, icon: cat?.icon || '📦', color: cat?.color || '#6366f1' };
       })
       .sort((a, b) => b.total - a.total);
-  }, [expenses, getCategoryById, yearFilter]);
+  }, [expenses, getCategoryById, yearFilter, isBS, bsYearRange]);
 
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
 
@@ -159,7 +170,7 @@ export default function NetSummary() {
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Combined view of all lend &amp; loan transactions per person</p>
         </div>
-        <YearSelector year={yearFilter} onChange={yr => setYearFilter(yr)} />
+        <YearSelector year={yearFilter} calendar={calendar} onChange={yr => setYearFilter(yr)} />
       </div>
 
       {/* Stat cards */}
