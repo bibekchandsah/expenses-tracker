@@ -14,8 +14,11 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useCalendar } from '../context/CalendarContext';
+import { safeADToBS } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
+import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
 
 // ── helpers ──────────────────────────────────────────────────────
 function toInputDate(date) {
@@ -43,6 +46,7 @@ function SortIcon({ col, sortCol, sortDir }) {
 
 // ── Modal ─────────────────────────────────────────────────────────
 function ForMeModal({ isOpen, entry, onClose, onSave, existingNames }) {
+  const { calendar } = useCalendar();
   const [form,        setForm]        = useState(EMPTY_FORM);
   const [errors,      setErrors]      = useState({});
   const [saving,      setSaving]      = useState(false);
@@ -118,7 +122,17 @@ function ForMeModal({ isOpen, entry, onClose, onSave, existingNames }) {
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           {errors.global && <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">{errors.global}</p>}
 
-          {field('date', 'Date', 'date', '', true)}
+          {calendar === 'bs' ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date <span className="text-red-400">*</span></label>
+              <NepaliDatePickerInput
+                value={form.date}
+                onChange={adDate => { setForm(f => ({ ...f, date: adDate })); setErrors(er => ({ ...er, date: '' })); }}
+                className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
+              />
+              {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
+            </div>
+          ) : field('date', 'Date', 'date', '', true)}
 
           {/* Name with autocomplete */}
           <div className="relative">
@@ -187,6 +201,7 @@ function forMeKey(r) { return `${String(r.name || '').toLowerCase()}|${r.date}|$
 export default function ForMe() {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useForMe();
   const { currency } = useCurrency();
+  const { dateLabel } = useCalendar();
   const { addToast } = useToast();
   const { banks, selectedBankId } = useBanks();
 
@@ -226,7 +241,8 @@ export default function ForMe() {
           e.description?.toLowerCase().includes(q) ||
           String(e.amount || '').includes(q) ||
           toInputDate(e.date).includes(q) ||
-          formatDate(toInputDate(e.date)).toLowerCase().includes(q)
+          formatDate(toInputDate(e.date)).toLowerCase().includes(q) ||
+          safeADToBS(toInputDate(e.date)).includes(q)
         )
       : personFilter
         ? entries.filter(e => e.name === personFilter)
@@ -461,7 +477,7 @@ export default function ForMe() {
                             onClick={() => { setPersonFilter(p => p === entry.name ? null : entry.name); setSearch(''); }}
                             className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline text-left"
                           >{entry.name}</button>
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatDate(toInputDate(entry.date))}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(toInputDate(entry.date))}</p>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <span className="text-sm font-bold text-pink-600 dark:text-pink-400">{formatCurrency(entry.amount, currency)}</span>
@@ -477,7 +493,7 @@ export default function ForMe() {
 
                     {/* ── Desktop row (lg+) ── */}
                     <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-3.5 items-center">
-                      <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">{formatDate(toInputDate(entry.date))}</div>
+                      <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">{dateLabel(toInputDate(entry.date))}</div>
                       <div className="col-span-2 text-right">
                         <span className="text-sm font-bold text-pink-600 dark:text-pink-400">{formatCurrency(entry.amount, currency)}</span>
                       </div>

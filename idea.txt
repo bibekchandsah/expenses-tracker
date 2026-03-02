@@ -542,3 +542,15 @@ Nepal → Vikram Samvat and Nepal Sambat
 Thailand → Thai Solar Calendar (Buddhist Era)
 Japan → Japanese Era Calendar
 North Korea	→ Juche Calendar
+
+New files:
+calendarUtils.js — BS conversion algorithm with adToBs() and getMonthLabel(yyyyMM, calendar, format). Covers BS years 2075–2090 with verified month-length lookup table. Anchor: April 14, 2025 = BS 2082-01-01.
+CalendarContext.jsx — CalendarProvider that loads/saves the preference from Firestore, exposes { calendar, updateCalendar, monthLabel }.
+https://www.npmjs.com/package/bikram-sambat-js
+The bug is in getMonthLabel — it uses the 15th of the Gregorian month as the representative day. But BS month boundaries fall around the 13th–17th of the Gregorian month, so March 15 tips into Chaitra while March 1–13 is Falgun. Using day 01 fixes this: the BS month that March 1 falls in is the correct label for all March data.
+https://nepalidatepicker.sajanmaharjan.com.np/v5/
+{"inline": true, "mode": "dark", "miniEnglishDates": true}
+{"inline": true, "miniEnglishDates": true}
+
+Add the BS date picker to the Expenses modal (ExpenseModal.jsx) - similar to what was done for IncomeModal
+Change the date display in the Expenses page date column to use dateLabel()  

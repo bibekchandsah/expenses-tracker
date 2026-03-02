@@ -7,6 +7,7 @@ import { useToast } from '../components/ui/Toast';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, currentMonth, formatMonth } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useCalendar } from '../context/CalendarContext';
 
 function BudgetRow({ category, expenses, budget, month, onSave }) {
   const [editing, setEditing] = useState(false);
@@ -112,6 +113,7 @@ function BudgetRow({ category, expenses, budget, month, onSave }) {
 export default function Budget() {
   const { budgets, loading: bLoading, setBudget, getBudget } = useBudgets();
   const { currency } = useCurrency();
+  const { monthLabel } = useCalendar();
   const { expenses } = useExpenses();
   const { categories } = useCategories();
   const { addToast } = useToast();
@@ -122,7 +124,7 @@ export default function Budget() {
     const now = new Date();
     for (let i = 0; i < 12; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      opts.push(d.toISOString().slice(0, 7));
+      opts.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
     }
     return opts;
   }, []);
@@ -153,7 +155,7 @@ export default function Budget() {
           className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
           {monthOptions.map(m => (
-            <option key={m} value={m}>{formatMonth(m + '-01')}</option>
+            <option key={m} value={m}>{monthLabel(m, 'long')}{m === currentMonth() ? ' (This Month)' : ''}</option>
           ))}
         </select>
       </div>

@@ -14,8 +14,11 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useCalendar } from '../context/CalendarContext';
+import { safeADToBS } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
+import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
 
 // ── Add / Edit Lend Modal ───────────────────────────────────────
 const EMPTY_FORM = {
@@ -28,6 +31,7 @@ const EMPTY_FORM = {
 };
 
 function LendModal({ isOpen, lend, onClose, onSave, existingNames }) {
+  const { calendar } = useCalendar();
   const [form, setForm]     = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -106,7 +110,17 @@ function LendModal({ isOpen, lend, onClose, onSave, existingNames }) {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Date + Amount row */}
           <div className="grid grid-cols-2 gap-3">
-            {field('date', 'Date', 'date', '', true)}
+            {calendar === 'bs' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date <span className="text-red-400">*</span></label>
+                <NepaliDatePickerInput
+                  value={form.date}
+                  onChange={adDate => { setForm(f => ({ ...f, date: adDate })); setErrors(er => ({ ...er, date: '' })); }}
+                  className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
+                />
+                {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
+              </div>
+            ) : field('date', 'Date', 'date', '', true)}
             {field('amount', 'Amount Lent', 'number', '0.00', true, { min: '0.01', step: '0.01' })}
           </div>
 
@@ -204,6 +218,7 @@ function lendKey(r) { return `${String(r.name || '').toLowerCase()}|${r.date}|${
 export default function Lend() {
   const { lends, loading, addLend, updateLend, deleteLend } = useLends();
   const { currency } = useCurrency();
+  const { dateLabel } = useCalendar();
   const { loans } = useLoans();
   const { addToast } = useToast();
   const { banks, selectedBankId } = useBanks();
@@ -253,6 +268,7 @@ export default function Lend() {
           l.reason.toLowerCase().includes(q) ||
           l.description.toLowerCase().includes(q) ||
           l.date.includes(q) ||
+          safeADToBS(l.date).includes(q) ||
           String(l.amount).includes(q)
         )
       : personFilter
@@ -501,7 +517,7 @@ export default function Lend() {
                               onClick={() => { setPersonFilter(p => p === lend.name ? null : lend.name); setSearch(''); }}
                               className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline text-left"
                             >{lend.name}</button>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatDate(lend.date)}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(lend.date)}</p>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
                             <button onClick={() => setQuickAddOpen({ open: true, row: lend })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
@@ -539,7 +555,7 @@ export default function Lend() {
 
                       {/* ── Desktop row (lg+) ── */}
                       <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-3.5 items-center">
-                        <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">{formatDate(lend.date)}</div>
+                        <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">{dateLabel(lend.date)}</div>
                         <div className="col-span-2">
                           <button
                             onClick={() => { setPersonFilter(p => p === lend.name ? null : lend.name); setSearch(''); }}

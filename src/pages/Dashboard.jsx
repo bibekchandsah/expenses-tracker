@@ -17,10 +17,12 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import YearSelector from '../components/ui/YearSelector';
 import { formatCurrency, groupByMonth, groupByCategory, monthsOfYear } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useCalendar } from '../context/CalendarContext';
 
 export default function Dashboard() {
   const { expenses, loading } = useExpenses();
   const { currency } = useCurrency();
+  const { monthLabel, dateLabel, yearLabel } = useCalendar();
   const { categories, getCategoryById } = useCategories();
   const { user } = useAuth();
   const { entries: bankEntries, selectedBank, banks, setSelectedBankId } = useBanks();
@@ -77,10 +79,10 @@ export default function Dashboard() {
       map[m] = (map[m] || 0) + (+e.amount || 0);
     });
     return months.map(m => ({
-      month: new Date(m + '-01').toLocaleDateString('en-US', { month: 'short' }),
+      month: monthLabel(m, 'short'),
       amount: map[m] || 0,
     }));
-  }, [expenses, selectedYear]);
+  }, [expenses, selectedYear, monthLabel]);
 
   // Line chart data — 12m = all 12 months of selectedYear, 6m = last 6 months of selectedYear
   const trendData = useMemo(() => {
@@ -91,10 +93,10 @@ export default function Dashboard() {
       if (m) map[m] = (map[m] || 0) + (+e.amount || 0);
     });
     return months.map(m => ({
-      month: new Date(m + '-01').toLocaleDateString('en-US', { month: 'short' }),
+      month: monthLabel(m, 'short'),
       amount: map[m] || 0,
     }));
-  }, [expenses, trendPeriod, selectedYear]);
+  }, [expenses, trendPeriod, selectedYear, monthLabel]);
 
   // Income trend — 12m = all 12 months of selectedYear, 6m = last 6 months of selectedYear
   const incomeTrendData = useMemo(() => {
@@ -105,10 +107,10 @@ export default function Dashboard() {
       if (m) map[m] = (map[m] || 0) + (+i.amount || 0);
     });
     return months.map(m => ({
-      month: new Date(m + '-01').toLocaleDateString('en-US', { month: 'short' }),
+      month: monthLabel(m, 'short'),
       amount: map[m] || 0,
     }));
-  }, [incomes, incomeTrendPeriod, selectedYear]);
+  }, [incomes, incomeTrendPeriod, selectedYear, monthLabel]);
 
   // Bank deposit / withdraw trend — 12m = all 12 months of selectedYear, 6m = last 6 months of selectedYear
   const bankTrendData = useMemo(() => {
@@ -122,11 +124,11 @@ export default function Dashboard() {
       map[m].withdraw += +e.withdraw || 0;
     });
     return months.map(m => ({
-      month: new Date(m + '-02').toLocaleDateString('en-US', { month: 'short' }),
+      month: monthLabel(m, 'short'),
       deposit:  map[m]?.deposit  || 0,
       withdraw: map[m]?.withdraw || 0,
     }));
-  }, [bankEntries, bankPeriod, selectedYear]);
+  }, [bankEntries, bankPeriod, selectedYear, monthLabel]);
 
   const recentExpenses = useMemo(
     () => expenses.filter(e => e.date.startsWith(String(selectedYear))).slice(0, 5),
@@ -156,14 +158,14 @@ export default function Dashboard() {
           icon={DollarSign}
           color="blue"
           trend={stats.trend}
-          subtitle={`${now.toLocaleDateString('en-US', { month: 'long' })} ${selectedYear}`}
+          subtitle={monthLabel(displayMonth, 'long')}
         />
         <StatsCard
           title="This Year"
           value={formatCurrency(stats.yearTotal, currency)}
           icon={Calendar}
           color="purple"
-          subtitle={`${selectedYear}`}
+          subtitle={yearLabel(selectedYear)}
         />
         <StatsCard
           title="Monthly Average"
@@ -177,7 +179,7 @@ export default function Dashboard() {
           value={stats.yearCount}
           icon={ShoppingBag}
           color="orange"
-          subtitle={`In ${selectedYear}`}
+          subtitle={`In ${yearLabel(selectedYear)}`}
         />
       </div>
 
@@ -209,7 +211,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
               Category Breakdown ({catPeriod === 'month'
-                ? `${now.toLocaleDateString('en-US', { month: 'long' })} ${selectedYear}`
+                ? monthLabel(displayMonth, 'long')
                 : String(selectedYear)})
             </h2>
             <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 text-xs font-medium">
@@ -461,7 +463,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{e.title}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{cat?.name} • {e.date}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{cat?.name} • {dateLabel(e.date)}</p>
                   </div>
                   <span className="text-sm font-semibold text-gray-900 dark:text-white flex-shrink-0">
                     {formatCurrency(e.amount, currency)}

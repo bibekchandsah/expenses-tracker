@@ -7,6 +7,7 @@ import { useCategories } from '../context/CategoryContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useCalendar } from '../context/CalendarContext';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import {
@@ -21,6 +22,7 @@ function SortIcon({ col, sortCol, sortDir }) {
 export default function NetSummary() {
   const { lends, loading: lendLoading }  = useLends();
   const { currency } = useCurrency();
+  const { monthLabel } = useCalendar();
   const { loans, loading: loanLoading }  = useLoans();
   const { expenses } = useExpenses();
   const { getCategoryById } = useCategories();
@@ -112,10 +114,10 @@ export default function NetSummary() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([month, total]) => ({
         month,
-        label: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short' }),
+        label: monthLabel(month, 'short'),
         total,
       }));
-  }, [expenses, yearFilter]);
+  }, [expenses, yearFilter, monthLabel]);
 
   // Per-category expense breakdown
   const categoryData = useMemo(() => {

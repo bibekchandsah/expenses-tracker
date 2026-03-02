@@ -5,6 +5,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useActiveYear } from '../context/ActiveYearContext';
 import { useToast } from '../components/ui/Toast';
 import { getUserProfile, updateUserProfile } from '../services/profileService';
+import { useCalendar } from '../context/CalendarContext';
 import { useExpenses } from '../context/ExpenseContext';
 import { useIncomes } from '../context/IncomeContext';
 import { useLends } from '../context/LendContext';
@@ -69,6 +70,7 @@ export default function Profile() {
   const { user, updateUserInfo, setProfilePhoto, avatarURL } = useAuth();
   const { currency: activeCurrency, updateCurrency } = useCurrency();
   const { activeYear, updateActiveYear } = useActiveYear();
+  const { calendar, updateCalendar } = useCalendar();
   const { expenses, deleteExpense } = useExpenses();
   const { incomes, deleteIncome } = useIncomes();
   const { lends, deleteLend } = useLends();
@@ -531,6 +533,38 @@ export default function Profile() {
               </button>
             </form>
           )}
+        </div>
+      </div>
+
+      {/* Calendar System */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <CalendarRange className="w-4 h-4 text-primary-500" />
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Calendar System</h2>
+        </div>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+          Choose how month names are displayed across Dashboard, Expenses and Income.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { value: 'gregorian', label: 'International', sub: 'Gregorian (Jan – Dec)' },
+            { value: 'bs', label: 'Bikram Sambat', sub: 'Nepali (Baisakh – Chaitra)' },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => updateCalendar(opt.value)}
+              className={`p-3 rounded-xl border-2 text-left transition-all ${
+                calendar === opt.value
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-500'
+              }`}
+            >
+              <div className="font-semibold text-sm text-gray-900 dark:text-white">{opt.label}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{opt.sub}</div>
+              {calendar === opt.value && <Check className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400 mt-1.5" />}
+            </button>
+          ))}
         </div>
       </div>
 

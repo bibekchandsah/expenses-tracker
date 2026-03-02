@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, DollarSign, Calendar, Briefcase, FileText, AlignLeft } from 'lucide-react';
+import { useCalendar } from '../context/CalendarContext';
+import NepaliDatePickerInput from './ui/NepaliDatePickerInput';
 
 export const INCOME_SOURCES = [
   { value: 'Salary',     label: '💼 Salary' },
@@ -17,6 +19,7 @@ export default function IncomeModal({ isOpen, income, onClose, onSave }) {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const { calendar } = useCalendar();
 
   useEffect(() => {
     if (isOpen) {
@@ -147,13 +150,23 @@ export default function IncomeModal({ isOpen, income, onClose, onSave }) {
               Date *
             </label>
             <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="date"
-                value={form.date}
-                onChange={e => change('date', e.target.value)}
-                className={`w-full pl-9 pr-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
-              />
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10 pointer-events-none" />
+              {calendar === 'bs' ? (
+                <NepaliDatePickerInput
+                  value={form.date}
+                  onChange={adDate => change('date', adDate)}
+                  className={`w-full pl-9 pr-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors cursor-pointer ${
+                    errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                />
+              ) : (
+                <input
+                  type="date"
+                  value={form.date}
+                  onChange={e => change('date', e.target.value)}
+                  className={`w-full pl-9 pr-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
+                />
+              )}
             </div>
             {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
           </div>

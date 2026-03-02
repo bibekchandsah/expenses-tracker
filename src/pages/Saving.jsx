@@ -13,8 +13,11 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useCalendar } from '../context/CalendarContext';
+import { safeADToBS } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
+import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 
@@ -26,6 +29,7 @@ function SortIcon({ col, sortCol, sortDir }) {
 }
 
 function SavingModal({ isOpen, entry, onClose, onSave }) {
+  const { calendar } = useCalendar();
   const [form, setForm] = useState({ date: todayStr(), amount: '', expendOn: '', description: '' });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -75,8 +79,16 @@ function SavingModal({ isOpen, entry, onClose, onSave }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date <span className="text-red-400">*</span></label>
-              <input type="date" value={form.date} onChange={e => set('date', e.target.value)}
-                className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`} />
+              {calendar === 'bs' ? (
+                <NepaliDatePickerInput
+                  value={form.date}
+                  onChange={adDate => { set('date', adDate); }}
+                  className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
+                />
+              ) : (
+                <input type="date" value={form.date} onChange={e => set('date', e.target.value)}
+                  className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`} />
+              )}
               {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
             </div>
             <div>
@@ -113,6 +125,7 @@ function SavingModal({ isOpen, entry, onClose, onSave }) {
 }
 
 function SourceModal({ isOpen, source, onClose, onSave }) {
+  const { calendar } = useCalendar();
   const [form, setForm] = useState({ date: todayStr(), amount: '', description: '' });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -161,8 +174,16 @@ function SourceModal({ isOpen, source, onClose, onSave }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date <span className="text-red-400">*</span></label>
-              <input type="date" value={form.date} onChange={e => set('date', e.target.value)}
-                className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`} />
+              {calendar === 'bs' ? (
+                <NepaliDatePickerInput
+                  value={form.date}
+                  onChange={adDate => { set('date', adDate); }}
+                  className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
+                />
+              ) : (
+                <input type="date" value={form.date} onChange={e => set('date', e.target.value)}
+                  className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`} />
+              )}
               {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
             </div>
             <div>
@@ -204,6 +225,7 @@ function savingKey(r) { return `${String(r.expendOn || '').toLowerCase()}|${r.da
 export default function Saving() {
   const { savings, sources, loading, addSaving, updateSaving, deleteSaving, addSource, updateSource, deleteSource } = useSavings();
   const { currency } = useCurrency();
+  const { dateLabel } = useCalendar();
   const { addToast } = useToast();
   const { banks, selectedBankId } = useBanks();
   const { activeYear } = useActiveYear();
@@ -239,7 +261,8 @@ export default function Saving() {
       r.expendOn?.toLowerCase().includes(q) ||
       r.description?.toLowerCase().includes(q) ||
       String(r.amount).includes(q) ||
-      r.date?.includes(q)
+      r.date?.includes(q) ||
+      safeADToBS(r.date).includes(q)
     );
     if (sortCol) {
       rows.sort((a, b) => {
@@ -454,7 +477,7 @@ export default function Saving() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount, currency)}</p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatDate(row.date)}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(row.date)}</p>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
                           <button onClick={() => setQuickAddOpen({ open: true, row: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
@@ -474,7 +497,7 @@ export default function Saving() {
 
                     {/* ── Desktop row (lg+) ── */}
                     <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-3.5 items-center">
-                      <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">{formatDate(row.date)}</div>
+                      <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">{dateLabel(row.date)}</div>
                       <div className="col-span-2 text-right">
                         <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount, currency)}</span>
                       </div>
@@ -544,7 +567,7 @@ export default function Saving() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(src.amount, currency)}</span>
-                          <span className="text-xs text-gray-400">{formatDate(src.date)}</span>
+                          <span className="text-xs text-gray-400">{dateLabel(src.date)}</span>
                         </div>
                         {src.description && (
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate" title={src.description}>{src.description}</p>
@@ -584,14 +607,14 @@ export default function Saving() {
       <ConfirmDialog
         isOpen={!!deleteTarget}
         title="Delete saving record?"
-        message={deleteTarget ? `Amount: ${formatCurrency(deleteTarget.amount, currency)} on ${formatDate(deleteTarget.date)}` : ''}
+        message={deleteTarget ? `Amount: ${formatCurrency(deleteTarget.amount, currency)} on ${dateLabel(deleteTarget.date)}` : ''}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />
       <ConfirmDialog
         isOpen={!!deleteSourceTarget}
         title="Delete source record?"
-        message={deleteSourceTarget ? `Amount: ${formatCurrency(deleteSourceTarget.amount, currency)} on ${formatDate(deleteSourceTarget.date)}` : ''}
+        message={deleteSourceTarget ? `Amount: ${formatCurrency(deleteSourceTarget.amount, currency)} on ${dateLabel(deleteSourceTarget.date)}` : ''}
         onConfirm={handleDeleteSource}
         onCancel={() => setDeleteSourceTarget(null)}
       />

@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { CurrencyProvider } from './context/CurrencyContext';
 import { ActiveYearProvider } from './context/ActiveYearContext';
+import { CalendarProvider } from './context/CalendarContext';
 import { ExpenseProvider } from './context/ExpenseContext';
 import { CategoryProvider } from './context/CategoryContext';
 import { BudgetProvider } from './context/BudgetContext';
@@ -48,6 +49,7 @@ export default function App() {
         <ToastProvider>
           <AuthProvider>
             <CurrencyProvider>
+            <CalendarProvider>
             <ActiveYearProvider>
             <CategoryProvider>
               <ExpenseProvider>
@@ -94,6 +96,7 @@ export default function App() {
               </ExpenseProvider>
             </CategoryProvider>
             </ActiveYearProvider>
+            </CalendarProvider>
             </CurrencyProvider>
           </AuthProvider>
         </ToastProvider>

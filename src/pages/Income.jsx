@@ -10,6 +10,8 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useCalendar } from '../context/CalendarContext';
+import { safeADToBS } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import { useDebounce } from '../hooks/useDebounce';
@@ -51,6 +53,7 @@ function sourceLabel(val) {
 export default function Income() {
   const { incomes, filteredIncomes, loading, filters, setFilters, resetFilters, addIncome, updateIncome, deleteIncome } = useIncomes();
   const { currency } = useCurrency();
+  const { monthLabel, dateLabel } = useCalendar();
   const { addToast } = useToast();
   const { banks, selectedBankId } = useBanks();
   const { activeYear } = useActiveYear();
@@ -77,6 +80,7 @@ export default function Income() {
     return yearFiltered.filter(i =>
       i.title?.toLowerCase().includes(q) ||
       i.date?.toLowerCase().includes(q) ||
+      safeADToBS(i.date).includes(q) ||
       String(i.amount).includes(q) ||
       i.source?.toLowerCase().includes(q) ||
       i.notes?.toLowerCase().includes(q) ||
@@ -209,7 +213,7 @@ export default function Income() {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{inc.title}</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatDate(inc.date)}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(inc.date)}</p>
           </div>
           <span className="text-sm font-semibold text-green-600 dark:text-green-400 flex-shrink-0">{formatCurrency(inc.amount, currency)}</span>
         </div>
@@ -233,7 +237,7 @@ export default function Income() {
       <div className="hidden sm:grid grid-cols-12 gap-0 px-4 py-3 items-center">
         <div className="col-span-3">
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{inc.title}</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatDate(inc.date)}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(inc.date)}</p>
         </div>
         <div className="col-span-2">
           <span className="text-sm font-semibold text-green-600 dark:text-green-400">
@@ -437,7 +441,7 @@ export default function Income() {
           groupedByMonth.flatMap(([month, items]) => [
             <div key={`mh-${month}`} className="px-4 py-2 bg-gray-50 dark:bg-gray-700/70 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
-                {new Date(month + '-02').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                {monthLabel(month, 'long')}
               </span>
               <span className="text-xs text-gray-400 dark:text-gray-500">
                 {items.length} {items.length === 1 ? 'entry' : 'entries'} · {formatCurrency(items.reduce((s, i) => s + (+i.amount || 0), 0), currency)}
@@ -494,7 +498,7 @@ export default function Income() {
                 <tr key={row.month} className={`hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors ${row.month === thisMonth ? 'bg-green-50/50 dark:bg-green-900/10' : ''}`}>
                   <td className="px-5 py-3 font-medium text-gray-900 dark:text-white flex items-center gap-2">
                     {row.month === thisMonth && <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />}
-                    {row.month}
+                    {monthLabel(row.month, 'long')}
                   </td>
                   <td className="px-4 py-3 text-center text-gray-500 dark:text-gray-400">{row.count}</td>
                   <td className="px-5 py-3 text-right font-semibold text-green-600 dark:text-green-400">

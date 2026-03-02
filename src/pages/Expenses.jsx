@@ -11,6 +11,8 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useCalendar } from '../context/CalendarContext';
+import { safeADToBS } from '../utils/calendarUtils';
 import { exportToCSV } from '../utils/csvExport';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
@@ -34,6 +36,7 @@ function expenseKey(r) {
 export default function Expenses() {
   const { expenses, filteredExpenses, loading, filters, setFilters, resetFilters, addExpense, updateExpense, deleteExpense } = useExpenses();
   const { currency } = useCurrency();
+  const { monthLabel, dateLabel } = useCalendar();
   const { categories, getCategoryById } = useCategories();
   const { banks, selectedBankId } = useBanks();
   const { addToast } = useToast();
@@ -63,6 +66,7 @@ export default function Expenses() {
       return (
         e.title?.toLowerCase().includes(q) ||
         e.date?.toLowerCase().includes(q) ||
+        safeADToBS(e.date).includes(q) ||
         String(e.amount).includes(q) ||
         e.notes?.toLowerCase().includes(q) ||
         e.description?.toLowerCase().includes(q) ||
@@ -178,7 +182,7 @@ export default function Expenses() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{expense.title}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(expense.date)}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{dateLabel(expense.date)}</p>
                 </div>
                 <span className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0">{formatCurrency(expense.amount, currency)}</span>
               </div>
@@ -206,7 +210,7 @@ export default function Expenses() {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{expense.title}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(expense.date)}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{dateLabel(expense.date)}</p>
             </div>
           </div>
           <div className="col-span-2">
@@ -439,7 +443,7 @@ export default function Expenses() {
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {monthlyBreakdown.map((row, i) => {
-                const label = new Date(row.month + '-02').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                const label = monthLabel(row.month, 'long');
                 const isCurrentMonth = row.month === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
                 return (
                   <tr key={row.month} className={`hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${isCurrentMonth ? 'bg-primary-50/40 dark:bg-primary-900/10' : ''}`}>

@@ -9,9 +9,14 @@ import { useLoans } from '../context/LoanContext';
 import { useSavings } from '../context/SavingContext';
 import { useForMe } from '../context/ForMeContext';
 import { useCategories } from '../context/CategoryContext';
+import { useCalendar } from '../context/CalendarContext';
+import NepaliDatePickerInput from './ui/NepaliDatePickerInput';
 import { INCOME_SOURCES } from './IncomeModal';
 
-const TODAY = () => new Date().toISOString().slice(0, 10);
+const TODAY = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 const PAGE_OPTIONS = [
   { key: 'income',   label: 'Income',   icon: '💰', accent: 'green',  bankDir: 'deposit'  },
@@ -60,9 +65,9 @@ const LABEL_CLS = 'block text-xs font-medium text-gray-600 dark:text-gray-400 mb
 function toISODate(d) {
   if (!d) return null;
   if (typeof d === 'string') return d.slice(0, 10);
-  if (typeof d.toDate === 'function') return d.toDate().toISOString().slice(0, 10); // Firestore Timestamp
-  if (d instanceof Date) return d.toISOString().slice(0, 10);
-  return null;
+  const dt = typeof d.toDate === 'function' ? d.toDate() : (d instanceof Date ? d : null);
+  if (!dt) return null;
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 }
 
 // Build a pre-filled form for targetPage from the sourceRow values
@@ -117,6 +122,7 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
   const [form,       setForm]       = useState({});
   const [saving,     setSaving]     = useState(false);
   const [count,      setCount]      = useState(0);
+  const { calendar, dateLabel } = useCalendar();
 
   // Reset everything when modal opens/closes
   useEffect(() => {
@@ -245,7 +251,7 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
               <div className="mb-3 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Pre-filling from selected row:</p>
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-600 dark:text-gray-300">
-                  {sourceRow.date   && <span>📅 {toISODate(sourceRow.date)}</span>}
+                  {sourceRow.date   && <span>📅 {dateLabel(toISODate(sourceRow.date))}</span>}
                   {(sourceRow.withdraw || sourceRow.deposit || sourceRow.amount) && (
                     <span>💲 {sourceRow.withdraw || sourceRow.deposit || sourceRow.amount}</span>
                   )}
@@ -286,7 +292,15 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={LABEL_CLS}>Date</label>
-                <input type="date" value={form.date || ''} onChange={e => set('date', e.target.value)} className={INPUT_CLS} />
+                {calendar === 'bs' ? (
+                  <NepaliDatePickerInput
+                    value={form.date || ''}
+                    onChange={adDate => set('date', adDate)}
+                    className={INPUT_CLS}
+                  />
+                ) : (
+                  <input type="date" value={form.date || ''} onChange={e => set('date', e.target.value)} className={INPUT_CLS} />
+                )}
               </div>
               <div>
                 <label className={LABEL_CLS}>Amount *</label>

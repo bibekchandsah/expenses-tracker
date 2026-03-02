@@ -12,8 +12,11 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
+import { useCalendar } from '../context/CalendarContext';
+import { safeADToBS } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
+import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
 
 // ── Add/Edit Bank Modal ─────────────────────────────────────────
 function BankModal({ isOpen, bank, onClose, onSave }) {
@@ -92,6 +95,7 @@ function BankModal({ isOpen, bank, onClose, onSave }) {
 // ── Add/Edit Entry Modal ────────────────────────────────────────
 function EntryModal({ isOpen, entry, bankName, onClose, onSave }) {
   const EMPTY = { date: new Date().toISOString().split('T')[0], description: '', deposit: '', withdraw: '' };
+  const { calendar } = useCalendar();
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -175,12 +179,20 @@ function EntryModal({ isOpen, entry, bankName, onClose, onSave }) {
           {/* Date */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date *</label>
-            <input
-              type="date"
-              value={form.date}
-              onChange={e => { setForm(f => ({ ...f, date: e.target.value })); setErrors(err => ({ ...err, date: '' })); }}
-              className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
-            />
+            {calendar === 'bs' ? (
+              <NepaliDatePickerInput
+                value={form.date}
+                onChange={adDate => { setForm(f => ({ ...f, date: adDate })); setErrors(err => ({ ...err, date: '' })); }}
+                className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
+              />
+            ) : (
+              <input
+                type="date"
+                value={form.date}
+                onChange={e => { setForm(f => ({ ...f, date: e.target.value })); setErrors(err => ({ ...err, date: '' })); }}
+                className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
+              />
+            )}
             {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
           </div>
 
@@ -273,6 +285,7 @@ export default function Bank() {
   } = useBanks();
   const { addToast } = useToast();
   const { currency } = useCurrency();
+  const { dateLabel } = useCalendar();
   const { activeYear } = useActiveYear();
 
   const [bankModalOpen, setBankModalOpen] = useState(false);
@@ -368,6 +381,7 @@ export default function Bank() {
         entries: month.entries.filter(e =>
           e.description.toLowerCase().includes(query) ||
           e.date.includes(query) ||
+          safeADToBS(e.date).includes(query) ||
           String(e.deposit  || '').includes(query) ||
           String(e.withdraw || '').includes(query)
         ),
@@ -661,7 +675,7 @@ export default function Bank() {
                     >
                       {/* Date */}
                       <div className="sm:col-span-2">
-                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{formatDate(entry.date)}</p>
+                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{dateLabel(entry.date)}</p>
                       </div>
 
                       {/* Description */}

@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { X, DollarSign, Calendar, Tag, FileText, AlignLeft } from 'lucide-react';
 import { useCategories } from '../context/CategoryContext';
+import { useCalendar } from '../context/CalendarContext';
+import NepaliDatePickerInput from './ui/NepaliDatePickerInput';
 
 const EMPTY = { title: '', amount: '', category: '', date: '', description: '', notes: '' };
 
 export default function ExpenseModal({ isOpen, expense, onClose, onSave }) {
   const { categories } = useCategories();
+  const { calendar } = useCalendar();
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -137,13 +140,21 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave }) {
             </label>
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="date"
-                value={form.date}
-                onChange={e => change('date', e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-                className={`w-full pl-9 pr-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
-              />
+              {calendar === 'bs' ? (
+                <NepaliDatePickerInput
+                  value={form.date}
+                  onChange={adDate => change('date', adDate)}
+                  className={`w-full pl-9 pr-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
+                />
+              ) : (
+                <input
+                  type="date"
+                  value={form.date}
+                  onChange={e => change('date', e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className={`w-full pl-9 pr-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.date ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
+                />
+              )}
             </div>
             {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
           </div>
