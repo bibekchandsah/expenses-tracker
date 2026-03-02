@@ -296,6 +296,15 @@ below summary table:
     Left — scrollable table listing each month with its total expense, newest first. Sticky header & footer total row. Current month row is subtly highlighted.
     Right — bar chart of the same data (last 12 months). Light indigo bars for past months, darker indigo for the current month. Y-axis auto-abbreviates large numbers (e.g. 1k, 50k). Hover tooltip shows formatted amount in your selected currency.
     Responsive: stacks vertically on small screens, side-by-side on lg+.
+New "Daily Expenses" card — rendered below the Monthly Expenses card:
+Month dropdown (top-right of the card header) — lists all months that have data (latest month selected by default); resets automatically when the year or calendar changes.
+Left table — shows each day with its full date label (Mar 2, or Fal 18 in BS) and total, sorted newest-first, with a sticky total footer.
+Right bar chart — one bar per day (X-axis = day number); colour coded:
+    Dark indigo = today
+    Medium indigo = the highest-spending day
+    Light indigo = all other days
+Tooltip shows the full day label (not just the number).
+BS calendar is fully supported — day labels are converted via safeADToBS and displayed as BS_MONTHS_SHORT day.
 
 
 Collapse/Expand sidebar toggle
@@ -424,7 +433,7 @@ Import wired into all 7 pages:
 Bank entries support both split-column CSVs (separate deposit/withdraw) and single-amount-with-type-column CSVs (e.g. Splitwise, bank exports with CR/DR).
 
 
-add tools page with draggable & resizable calculator like ios support keyboard keys too, currency converter, loan calculator, etc.
+add tools page with draggable & resizable calculator like ios support keyboard keys too, discoun calculator, currency converter, loan/investment calculator, date calculator,, etc.
 Calculator
 iOS-style dark design (#1C1C1E background, orange operators, gray function keys)
 Draggable — grab the header bar and drag anywhere on screen
@@ -482,7 +491,6 @@ for example if user is adding expense and want to insert it in bank (choose bank
 
 quick add button in the actions column of each page has to quickly add an entry to user selected pages (income, expenses, bank, lend, loan, saving, for me) without having to go through individual pages and add entry. for example i am in expenses page and i have to click quick_add then it will show the dropdown of all pages where user can select a page to quickly add an entry to that page. Suppose user selected "loan" then it will populate a modal containing current selected row value to the loan entry value to add an entry to loan page. this will allow users to quickly log their transactions on the go without interrupting their workflow or having to navigate away from the current page.
 
-
 New ⚡ Quick Add flow:
 Click ⚡ on any row → modal opens with a page picker grid showing all 7 pages (Income, Expenses, Bank, Lend, Loan, Saving, For Me) each with their color/icon
 The picker shows a pre-fill preview summarizing the row's date, amount, and name so you know what will be carried over
@@ -509,8 +517,9 @@ ForMe — YearSelector in header; filtered scoped to year (uses toInputDate() fo
 NetSummary — YearSelector in header; lend/loan rows, monthly chart, and category breakdown all scoped to year
 Every page initializes its local year from the activeYear context (the profile setting) and syncs on change, but the user can freely override it per-page.
 
+
 delete/export data of selected year in json and excel format
-Export {year} Data
+Export {year} Data supports BS year format  
 Downloads a JSON file named expense-tracker-2025.json (or whatever year is active)
 Includes all expenses, income, lends, loans, savings, saving sources, and for-me, all banks records for that year
 
@@ -522,6 +531,7 @@ Toast on success or failure
 
 
 login using google, Email/Password, Microsoft, Apple, Twitter, github
+
 
 Profile picture change:
 Avatar now has a hover overlay with a camera icon — click it to open a file picker
@@ -536,7 +546,14 @@ match /users/{userId}/{allPaths=**} {
 Clicking it saves null to Firestore and clears avatarURL → Navbar, Sidebar, and Profile avatar immediately switch to the initials fallback
 After removing, the user can still upload a new photo at any time
 Also fixed the underlying avatarURL logic in AuthContext — it's now cleanly null (show initials) vs a URL/base64 (show image), used consistently across all three components
-
+Added a small pencil (Pencil) icon inline next to the user's name in the avatar card. Clicking it replaces the name with a compact text input (pre-filled with the current name) plus a check button to save and an X button to cancel.
+Saving calls the same updateUserProfile + updateUserInfo logic and shows a toast on success.
+Cleaned up the now-unused User and Save lucide imports.
+Below the expense stats cards, a new "Income & Bank" card shows three coloured sub-cards:
+    This Month Income (green) — sum of incomes for the current calendar month, respecting BS/AD mode.
+    Year Income (blue) — total income for the active year, also BS-aware.
+    Bank Balance (purple) — the current closing balance of the selected bank (computed from openingBalance + all deposits - withdrawals), with a spinner while entries load.
+A small bank dropdown sits below the three cards so the user can switch between their banks without leaving the page. If no banks are added, a friendly placeholder message is shown.
 
 International/Gregorian, Bikram Sambat, and Nepali month support:
 In Profile settings, users can now select their preferred calendar system: International (Gregorian), Bikram Sambat, or Thai Solar Calendar (Buddhist Era). This choice will affect how dates are displayed across the app, including in the Dashboard charts, monthly breakdowns, and date filters. For example, if a user selects Bikram Sambat, the month names in the category breakdown and monthly breakdown tables will switch to their Nepali equivalents (e.g. "बैशाख" or Baisakh instead of "April"). The date pickers in the add/edit modals will also adapt to show the appropriate calendar system. This allows users in Nepal to view their financial data in a format that is culturally familiar and easier for them to understand at a glance.

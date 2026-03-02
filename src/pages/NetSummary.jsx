@@ -10,7 +10,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
-import { getBSYearRange, adDateToBSMonthKey, getBSMonthLabel } from '../utils/calendarUtils';
+import { getBSYearRange, adDateToBSMonthKey, getBSMonthLabel, safeADToBS, BS_MONTHS_SHORT } from '../utils/calendarUtils';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
@@ -34,8 +34,11 @@ export default function NetSummary() {
   const { activeYear, bsActiveYear } = useActiveYear();
   const isBS = calendar === 'bs';
   const [yearFilter, setYearFilter] = useState(() => isBS ? bsActiveYear : activeYear);
+  const [dailyMonth, setDailyMonth] = useState(null);
 
   useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
+  // Reset daily month when year or calendar changes
+  useEffect(() => { setDailyMonth(null); }, [yearFilter, calendar]); // eslint-disable-line
 
   const bsYearRange = useMemo(() => isBS ? getBSYearRange(yearFilter) : null, [isBS, yearFilter]);
 
@@ -127,6 +130,36 @@ export default function NetSummary() {
         total,
       }));
   }, [expenses, yearFilter, monthLabel, isBS, bsYearRange]);
+
+  // Daily expense breakdown for selected month
+  const activeDailyMonth = dailyMonth || (monthlyData.length > 0 ? monthlyData[monthlyData.length - 1].month : null);
+  const dailyData = useMemo(() => {
+    if (!activeDailyMonth) return [];
+    const filtered = isBS
+      ? expenses.filter(e => adDateToBSMonthKey(e.date) === activeDailyMonth)
+      : expenses.filter(e => e.date?.startsWith(activeDailyMonth));
+    const map = {};
+    filtered.forEach(e => {
+      if (!e.date) return;
+      map[e.date] = (map[e.date] || 0) + (+e.amount || 0);
+    });
+    return Object.entries(map)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, total]) => {
+        let dayLabel, fullLabel;
+        if (isBS) {
+          const bs = safeADToBS(date);
+          const parts = bs.split('-').map(Number);
+          dayLabel = parts[2] ? String(parts[2]) : date.slice(8);
+          fullLabel = parts[1] ? `${BS_MONTHS_SHORT[parts[1] - 1]} ${parts[2]}` : date;
+        } else {
+          dayLabel = String(+date.slice(8));
+          const d = new Date(date + 'T00:00:00');
+          fullLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+        return { date, dayLabel, fullLabel, total };
+      });
+  }, [expenses, activeDailyMonth, isBS]); // eslint-disable-line
 
   // Per-category expense breakdown
   const categoryData = useMemo(() => {
@@ -523,6 +556,122 @@ export default function NetSummary() {
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Daily Expense Breakdown */}
+      {monthlyData.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center gap-3">
+            <Calendar className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Daily Expenses</h2>
+            <span className="text-xs text-gray-400 dark:text-gray-500">{dailyData.length} days</span>
+            <div className="ml-auto">
+              <select
+                value={activeDailyMonth || ''}
+                onChange={e => setDailyMonth(e.target.value)}
+                className="px-2.5 py-1.5 text-xs border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              >
+                {[...monthlyData].reverse().map(m => (
+                  <option key={m.month} value={m.month}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {dailyData.length === 0 ? (
+            <div className="flex items-center justify-center py-12 text-sm text-gray-400 dark:text-gray-500">
+              No expenses for this month
+            </div>
+          ) : (
+            <div className="flex flex-col lg:flex-row">
+              {/* Table — left */}
+              <div className="lg:w-64 xl:w-72 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-gray-700 overflow-y-auto max-h-72">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-gray-50 dark:bg-gray-700/60">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Day</th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                    {[...dailyData].reverse().map(d => (
+                      <tr key={d.date} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                        <td className="px-4 py-2.5 font-medium text-gray-700 dark:text-gray-300">{d.fullLabel}</td>
+                        <td className="px-4 py-2.5 text-right font-semibold text-gray-900 dark:text-white tabular-nums">
+                          {formatCurrency(d.total, currency)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="sticky bottom-0 bg-gray-50 dark:bg-gray-700/60 border-t-2 border-gray-200 dark:border-gray-700">
+                    <tr>
+                      <td className="px-4 py-2.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Total</td>
+                      <td className="px-4 py-2.5 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 tabular-nums">
+                        {formatCurrency(dailyData.reduce((s, d) => s + d.total, 0), currency)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Bar chart — right */}
+              <div className="flex-1 p-4 min-h-64">
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={dailyData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="25%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                    <XAxis
+                      dataKey="dayLabel"
+                      tick={{ fontSize: 10, fill: '#9ca3af' }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={dailyData.length > 20 ? 1 : 0}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: '#9ca3af' }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={v => {
+                        if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+                        if (v >= 1_000) return `${(v / 1_000).toFixed(0)}k`;
+                        return v;
+                      }}
+                      width={45}
+                    />
+                    <Tooltip
+                      formatter={v => [formatCurrency(v, currency), 'Expense']}
+                      labelFormatter={label => {
+                        const entry = dailyData.find(d => d.dayLabel === label);
+                        return entry ? entry.fullLabel : label;
+                      }}
+                      contentStyle={{
+                        borderRadius: 12,
+                        border: 'none',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+                        fontSize: 13,
+                      }}
+                      cursor={{ fill: 'rgba(99,102,241,0.06)' }}
+                    />
+                    <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+                      {dailyData.map((entry, index) => {
+                        const isToday = entry.date === new Date().toISOString().slice(0, 10);
+                        const isMax = entry.total === Math.max(...dailyData.map(d => d.total));
+                        return (
+                          <Cell
+                            key={entry.date}
+                            fill={isToday ? '#6366f1' : isMax ? '#818cf8' : '#c7d2fe'}
+                          />
+                        );
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-1">
+                  Darkest = today · Medium = highest spending day
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

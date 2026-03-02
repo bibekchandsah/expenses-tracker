@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { User, Mail, Globe, Save, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet, Camera } from 'lucide-react';
+import { Mail, Globe, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet, Camera, Pencil, X, TrendingUp, Landmark } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useActiveYear } from '../context/ActiveYearContext';
@@ -17,12 +17,21 @@ import { getBankEntriesOnce } from '../services/bankService';
 import { useCategories } from '../context/CategoryContext';
 import { INCOME_SOURCES } from '../components/IncomeModal';
 import { formatCurrency } from '../utils/formatters';
-import { isInBSYear, getCurrentBSYear } from '../utils/calendarUtils';
+import { isInBSYear, getCurrentBSYear, safeADToBS } from '../utils/calendarUtils';
 
 function toDateStr(d) {
   if (!d) return '';
   const dt = d instanceof Date ? d : d.toDate?.() ?? new Date(d);
   return dt.toISOString().slice(0, 10);
+}
+
+function formatExportDate(adDate, calendar) {
+  if (!adDate) return '';
+  if (calendar === 'bs') {
+    const bs = safeADToBS(adDate);
+    return bs || adDate;
+  }
+  return adDate;
 }
 
 const CURRENCIES = [
@@ -78,7 +87,7 @@ export default function Profile() {
   const { loans, deleteLoan } = useLoans();
   const { savings, sources, deleteSaving, deleteSource } = useSavings();
   const { entries: forMeEntries, deleteEntry } = useForMe();
-  const { banks } = useBanks();
+  const { banks, selectedBankId, setSelectedBankId, selectedBank, entries: bankEntries, entriesLoading: bankEntriesLoading } = useBanks();
   const { getCategoryById } = useCategories();
   const { addToast } = useToast();
   const [profile, setProfile] = useState(null);
@@ -89,6 +98,8 @@ export default function Profile() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState('');
 
   // Currency picker state
   const [currencySearch, setCurrencySearch] = useState('');
@@ -113,7 +124,7 @@ export default function Profile() {
   }, [user]);
 
   async function handleSave(e) {
-    e.preventDefault();
+    e?.preventDefault();
     setSaving(true);
     try {
       await Promise.all([
@@ -123,6 +134,25 @@ export default function Profile() {
       addToast('Profile updated!', 'success');
     } catch {
       addToast('Failed to update profile', 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveName() {
+    const name = nameValue.trim();
+    if (!name) return;
+    setSaving(true);
+    try {
+      await Promise.all([
+        updateUserProfile(user.uid, { displayName: name }),
+        updateUserInfo({ displayName: name }),
+      ]);
+      setForm(f => ({ ...f, displayName: name }));
+      setEditingName(false);
+      addToast('Name updated!', 'success');
+    } catch {
+      addToast('Failed to update name', 'error');
     } finally {
       setSaving(false);
     }
@@ -222,19 +252,21 @@ export default function Profile() {
         .map(e => ({ ...e, date: toDateStr(e.date) }));
 
       if (format === 'json') {
+        const fmtDate = d => formatExportDate(d, calendar);
         const data = {
           year: activeYear,
+          calendar: calendar === 'bs' ? 'BS (Bikram Sambat)' : 'AD (Gregorian)',
           exportedAt: new Date().toISOString(),
-          expenses: yearExpenses,
-          incomes:  yearIncomes,
-          lends:    yearLends,
-          loans:    yearLoans,
-          savings:  yearSavings,
-          savingSources: yearSources,
-          forMe: yearForMe,
+          expenses: yearExpenses.map(e => ({ ...e, date: fmtDate(e.date) })),
+          incomes:  yearIncomes.map(i => ({ ...i, date: fmtDate(i.date) })),
+          lends:    yearLends.map(l => ({ ...l, date: fmtDate(l.date) })),
+          loans:    yearLoans.map(l => ({ ...l, date: fmtDate(l.date) })),
+          savings:  yearSavings.map(s => ({ ...s, date: fmtDate(s.date) })),
+          savingSources: yearSources.map(s => ({ ...s, date: fmtDate(s.date) })),
+          forMe: yearForMe.map(e => ({ ...e, date: fmtDate(e.date) })),
           banks: bankData.map(({ bank, entries }) => ({
             bank: { id: bank.id, name: bank.name, openingBalance: bank.openingBalance },
-            entries,
+            entries: entries.map(e => ({ ...e, date: fmtDate(e.date) })),
           })),
         };
         const a = document.createElement('a');
@@ -245,6 +277,7 @@ export default function Profile() {
         const XLSX = await import('xlsx');
         const wb = XLSX.utils.book_new();
         let sheetCount = 0;
+        const fmtDate = d => formatExportDate(d, calendar);
 
         function addSheet(name, rows) {
           if (!rows.length) return;
@@ -253,7 +286,7 @@ export default function Profile() {
         }
 
         addSheet('Income', yearIncomes.map(i => ({
-          'Date':        i.date,
+          'Date':        fmtDate(i.date),
           'Title':       i.title || '',
           'Amount':      +i.amount,
           'Source':      INCOME_SOURCES.find(s => s.value === i.source)?.label || i.source || '',
@@ -261,7 +294,7 @@ export default function Profile() {
           'Description': i.description || '',
         })));
         addSheet('Expenses', yearExpenses.map(e => ({
-          'Date':        e.date,
+          'Date':        fmtDate(e.date),
           'Title':       e.title || '',
           'Amount':      +e.amount,
           'Category':    getCategoryById(e.category)?.name || e.category || '',
@@ -269,7 +302,7 @@ export default function Profile() {
           'Description': e.description || '',
         })));
         addSheet('Lends', yearLends.map(l => ({
-          'Date':        l.date,
+          'Date':        fmtDate(l.date),
           'Name':        l.name || '',
           'Lent':        +l.amount,
           'Reason':      l.reason || '',
@@ -278,7 +311,7 @@ export default function Profile() {
           'Description': l.description || '',
         })));
         addSheet('Loans', yearLoans.map(l => ({
-          'Date':        l.date,
+          'Date':        fmtDate(l.date),
           'Name':        l.name || '',
           'Borrowed':    +l.amount,
           'Reason':      l.reason || '',
@@ -287,18 +320,18 @@ export default function Profile() {
           'Description': l.description || '',
         })));
         addSheet('Savings', yearSavings.map(s => ({
-          'Date':        s.date,
+          'Date':        fmtDate(s.date),
           'Amount':      +s.amount,
           'Expend On':   s.expendOn || '',
           'Description': s.description || '',
         })));
         addSheet('Saving Sources', yearSources.map(s => ({
-          'Date':        s.date,
+          'Date':        fmtDate(s.date),
           'Amount':      +s.amount,
           'Description': s.description || '',
         })));
         addSheet('For Me', yearForMe.map(e => ({
-          'Date':        e.date,
+          'Date':        fmtDate(e.date),
           'Name':        e.name || '',
           'Amount':      +e.amount,
           'Description': e.description || '',
@@ -308,7 +341,7 @@ export default function Profile() {
           addSheet(`Bank - ${bank.name}`, entries.map(e => {
             balance += (+e.deposit || 0) - (+e.withdraw || 0);
             return {
-              'Date':            e.date,
+              'Date':            fmtDate(e.date),
               'Description':     e.description || '',
               'Deposit':         +e.deposit || 0,
               'Withdraw':        +e.withdraw || 0,
@@ -370,6 +403,20 @@ export default function Profile() {
     .reduce((s, e) => s + +e.amount, 0);
   const yearTotal = yearExpenses.reduce((s, e) => s + +e.amount, 0);
 
+  // Income stats
+  const yearIncomeItems = calendar === 'bs'
+    ? incomes.filter(i => isInBSYear(i.date, bsActiveYear))
+    : incomes.filter(i => i.date?.startsWith(String(activeYear)));
+  const thisMonthIncome = yearIncomeItems
+    .filter(i => i.date?.startsWith(displayMonth))
+    .reduce((s, i) => s + +i.amount, 0);
+  const yearTotalIncome = yearIncomeItems.reduce((s, i) => s + +i.amount, 0);
+
+  // Bank balance: last entry's closingBalance, or openingBalance if no entries
+  const bankBalance = bankEntries.length > 0
+    ? bankEntries[bankEntries.length - 1].closingBalance
+    : (selectedBank?.openingBalance ?? null);
+
   return (
     <div className="max-w-xl mx-auto space-y-6 animate-fade-in">
       <div>
@@ -401,7 +448,48 @@ export default function Profile() {
             <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{user?.displayName}</h2>
+            {editingName ? (
+              <form
+                onSubmit={e => { e.preventDefault(); handleSaveName(); }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  autoFocus
+                  type="text"
+                  value={nameValue}
+                  onChange={e => setNameValue(e.target.value)}
+                  className="text-sm font-semibold px-2 py-1 border border-primary-400 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 w-44"
+                />
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="p-1 rounded-lg bg-primary-600 hover:bg-primary-700 text-white disabled:opacity-50"
+                  title="Save"
+                >
+                  {saving ? <div className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <Check className="w-3.5 h-3.5" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingName(false)}
+                  className="p-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                  title="Cancel"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </form>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{user?.displayName}</h2>
+                <button
+                  type="button"
+                  onClick={() => { setNameValue(form.displayName || user?.displayName || ''); setEditingName(true); }}
+                  className="p-1 rounded-lg text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  title="Edit display name"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
             <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-0.5">
               <Mail className="w-3.5 h-3.5" /> {user?.email}
             </p>
@@ -437,30 +525,53 @@ export default function Profile() {
         ))}
       </div>
 
-      {/* Settings form */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
-        <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-5">Settings</h2>
-        <form onSubmit={handleSave} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Display Name</label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                value={form.displayName}
-                onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))}
-                className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
+      {/* Income & Bank Balance */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp className="w-4 h-4 text-green-500" />
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Income &amp; Bank</h2>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {/* This month income */}
+          <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-xl p-3 text-center">
+            <p className="text-base font-bold text-green-700 dark:text-green-400">{formatCurrency(thisMonthIncome, activeCurrency)}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">This Month Income</p>
           </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-xl transition-colors"
-          >
-            <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </form>
+          {/* Year total income */}
+          <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
+            <p className="text-base font-bold text-blue-700 dark:text-blue-400">{formatCurrency(yearTotalIncome, activeCurrency)}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{effectiveYear} Income</p>
+          </div>
+          {/* Bank balance */}
+          <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 rounded-xl p-3 text-center">
+            {bankEntriesLoading ? (
+              <div className="flex justify-center items-center h-8"><div className="w-4 h-4 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" /></div>
+            ) : (
+              <p className="text-base font-bold text-purple-700 dark:text-purple-400">
+                {bankBalance !== null ? formatCurrency(bankBalance, activeCurrency) : '—'}
+              </p>
+            )}
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Bank Balance</p>
+          </div>
+        </div>
+        {/* Bank selector */}
+        {banks.length > 0 && (
+          <div className="mt-3 flex items-center gap-2">
+            <Landmark className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <select
+              value={selectedBankId || ''}
+              onChange={e => setSelectedBankId(e.target.value)}
+              className="flex-1 px-2 py-1.5 text-xs border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+            >
+              {banks.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {banks.length === 0 && (
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">No banks added yet</p>
+        )}
       </div>
 
       {/* Currency Picker */}

@@ -204,7 +204,7 @@ export default function Login() {
             {/* Reset sent */}
             {resetSent && (
               <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
-                <p className="text-sm text-green-700 dark:text-green-400">Reset link sent! Check your inbox.</p>
+                <p className="text-sm text-green-700 dark:text-green-400">Reset link sent! Check your inbox / spam.</p>
               </div>
             )}
 
