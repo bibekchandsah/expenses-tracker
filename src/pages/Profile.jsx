@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Mail, Globe, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet, Camera, Pencil, X, TrendingUp, Landmark } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
@@ -13,11 +13,11 @@ import { useLoans } from '../context/LoanContext';
 import { useSavings } from '../context/SavingContext';
 import { useForMe } from '../context/ForMeContext';
 import { useBanks } from '../context/BankContext';
-import { getBankEntriesOnce } from '../services/bankService';
+import { getBankEntriesOnce, getAllBankEntriesOnce, deleteBankEntry, deleteBank as deleteBankSvc } from '../services/bankService';
 import { useCategories } from '../context/CategoryContext';
 import { INCOME_SOURCES } from '../components/IncomeModal';
 import { formatCurrency } from '../utils/formatters';
-import { isInBSYear, getCurrentBSYear, safeADToBS } from '../utils/calendarUtils';
+import { isInBSYear, getCurrentBSYear, safeADToBS, getBSYearRange } from '../utils/calendarUtils';
 
 function toDateStr(d) {
   if (!d) return '';
@@ -367,23 +367,74 @@ export default function Profile() {
 
   async function handleDeleteYear() {
     setDeleting(true);
-    const matchFn = calendar === 'bs'
-      ? (d) => isInBSYear(d, bsActiveYear)
-      : (d) => d?.startsWith(String(activeYear));
     try {
-      await Promise.all([
-        ...expenses.filter(e => matchFn(e.date)).map(e => deleteExpense(e.id)),
-        ...incomes.filter(i => matchFn(i.date)).map(i => deleteIncome(i.id)),
-        ...lends.filter(l => matchFn(l.date)).map(l => deleteLend(l.id)),
-        ...loans.filter(l => matchFn(l.date)).map(l => deleteLoan(l.id)),
-        ...savings.filter(s => matchFn(s.date)).map(s => deleteSaving(s.id)),
-        ...sources.filter(s => matchFn(s.date)).map(s => deleteSource(s.id)),
-        ...forMeEntries.filter(e => matchFn(toDateStr(e.date))).map(e => deleteEntry(e.id)),
-      ]);
-      addToast(`All ${yearLabel(effectiveYear)} data deleted successfully`, 'success');
+      let matchFn;
+      if (calendar === 'bs') {
+        const { start, end } = getBSYearRange(bsActiveYear);
+        matchFn = (d) => !!d && d.length >= 10 && d >= start && d <= end;
+      } else {
+        const prefix = String(activeYear);
+        matchFn = (d) => typeof d === 'string' && d.startsWith(prefix);
+      }
+
+      // Collect all delete tasks — each wrapped so a single failure is logged but doesn't abort others
+      const tasks = [];
+
+      const labels = [];
+      expenses.filter(e => matchFn(e.date)).forEach(e => { tasks.push(() => deleteExpense(e.id));     labels.push(`expense ${e.id}`); });
+      incomes.filter(i => matchFn(i.date)).forEach(i =>  { tasks.push(() => deleteIncome(i.id));      labels.push(`income ${i.id}`); });
+      lends.filter(l => matchFn(l.date)).forEach(l =>    { tasks.push(() => deleteLend(l.id));         labels.push(`lend ${l.id}`); });
+      loans.filter(l => matchFn(l.date)).forEach(l =>    { tasks.push(() => deleteLoan(l.id));         labels.push(`loan ${l.id}`); });
+      savings.filter(s => matchFn(s.date)).forEach(s =>  { tasks.push(() => deleteSaving(s.id));       labels.push(`saving ${s.id}`); });
+      sources.filter(s => matchFn(s.date)).forEach(s =>  { tasks.push(() => deleteSource(s.id));       labels.push(`source ${s.id}`); });
+      forMeEntries.filter(e => matchFn(toDateStr(e.date))).forEach(e => { tasks.push(() => deleteEntry(e.id)); labels.push(`forMe ${e.id}`); });
+
+      // Fetch bank entries across all banks (no ordering = no composite index required)
+      const bankFetches = await Promise.allSettled(
+        banks.map(b => getAllBankEntriesOnce(user.uid, b.id).then(entries => ({ bankId: b.id, entries })))
+      );
+      bankFetches.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          console.error(`[Delete] Fetch entries for bank ${banks[i]?.id} failed:`, r.reason);
+          return;
+        }
+        r.value.entries.filter(e => matchFn(e.date)).forEach(e => {
+          tasks.push(() => deleteBankEntry(user.uid, r.value.bankId, e.id));
+          labels.push(`bankEntry ${r.value.bankId}/${e.id}`);
+        });
+      });
+
+      // Run all entry/record deletes first, log any individual failures
+      const results = await Promise.allSettled(tasks.map(fn => fn()));
+      let failCount = 0;
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          failCount++;
+          console.error(`[Delete] Failed to delete ${labels[i]}:`, r.reason);
+        }
+      });
+
+      // Delete bank accounts themselves (name + opening balance)
+      const bankDelResults = await Promise.allSettled(
+        banks.map(b => deleteBankSvc(user.uid, b.id))
+      );
+      bankDelResults.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          failCount++;
+          console.error(`[Delete] Failed to delete bank ${banks[i]?.id}:`, r.reason);
+        }
+      });
+
+      if (failCount === 0) {
+        const label = calendar === 'bs' ? String(bsActiveYear) : String(activeYear);
+        addToast(`All ${label} data deleted successfully`, 'success');
+      } else {
+        addToast(`Deleted with ${failCount} error(s) — check console for details`, 'error');
+      }
       setDeleteConfirm(false);
-    } catch {
-      addToast('Some items failed to delete', 'error');
+    } catch (err) {
+      console.error('[Delete] Unexpected error:', err);
+      addToast('Delete failed — check console for details', 'error');
     } finally {
       setDeleting(false);
     }
@@ -412,10 +463,15 @@ export default function Profile() {
     .reduce((s, i) => s + +i.amount, 0);
   const yearTotalIncome = yearIncomeItems.reduce((s, i) => s + +i.amount, 0);
 
-  // Bank balance: last entry's closingBalance, or openingBalance if no entries
-  const bankBalance = bankEntries.length > 0
-    ? bankEntries[bankEntries.length - 1].closingBalance
-    : (selectedBank?.openingBalance ?? null);
+  // Bank balance: last entry of the selected year's closingBalance (running balance up to that point)
+  const yearBankEntries = useMemo(() => {
+    if (calendar === 'bs') return bankEntries.filter(e => isInBSYear(e.date, bsActiveYear));
+    return bankEntries.filter(e => e.date?.startsWith(String(activeYear)));
+  }, [bankEntries, calendar, bsActiveYear, activeYear]);
+
+  const bankBalance = yearBankEntries.length > 0
+    ? yearBankEntries[yearBankEntries.length - 1].closingBalance
+    : 0;
 
   return (
     <div className="max-w-xl mx-auto space-y-6 animate-fade-in">
@@ -548,10 +604,10 @@ export default function Profile() {
               <div className="flex justify-center items-center h-8"><div className="w-4 h-4 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" /></div>
             ) : (
               <p className="text-base font-bold text-purple-700 dark:text-purple-400">
-                {bankBalance !== null ? formatCurrency(bankBalance, activeCurrency) : '—'}
+                {formatCurrency(bankBalance, activeCurrency)}
               </p>
             )}
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Bank Balance</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{effectiveYear} Bank Balance</p>
           </div>
         </div>
         {/* Bank selector */}

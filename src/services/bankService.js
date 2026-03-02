@@ -92,6 +92,17 @@ export async function deleteBankEntry(uid, bankId, entryId) {
   return deleteDoc(doc(db, 'users', uid, 'banks', bankId, 'entries', entryId));
 }
 
+// One-time fetch of all entries for a bank without ordering (used for bulk delete)
+export async function getAllBankEntriesOnce(uid, bankId) {
+  const snap = await getDocs(entriesRef(uid, bankId));
+  return snap.docs.map(d => ({
+    id: d.id,
+    date: d.data().date?.toDate
+      ? d.data().date.toDate().toISOString().split('T')[0]
+      : d.data().date,
+  }));
+}
+
 // One-time fetch of all entries for a bank (used for export)
 export async function getBankEntriesOnce(uid, bankId) {
   const q = query(entriesRef(uid, bankId), orderBy('date', 'asc'), orderBy('createdAt', 'asc'));

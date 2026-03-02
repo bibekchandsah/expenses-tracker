@@ -567,6 +567,11 @@ Below the expense stats cards, a new "Income & Bank" card shows three coloured s
     Year Income (blue) — total income for the active year, also BS-aware.
     Bank Balance (purple) — the current closing balance of the selected bank (computed from openingBalance + all deposits - withdrawals), with a spinner while entries load.
 A small bank dropdown sits below the three cards so the user can switch between their banks without leaving the page. If no banks are added, a friendly placeholder message is shown.
+Fetches entries from all banks in parallel using getBankEntriesOnce(user.uid, b.id) — not just the currently selected bank
+Filters by year using the same matchFn (respects BS/AD calendar mode)
+Deletes matching entries via deleteBankEntry(user.uid, b.id, e.id) alongside all the other data deletions in a single Promise.all
+show income & bank summary acording to selected date
+
 
 International/Gregorian, Bikram Sambat, and Nepali month support:
 In Profile settings, users can now select their preferred calendar system: International (Gregorian), Bikram Sambat, or Thai Solar Calendar (Buddhist Era). This choice will affect how dates are displayed across the app, including in the Dashboard charts, monthly breakdowns, and date filters. For example, if a user selects Bikram Sambat, the month names in the category breakdown and monthly breakdown tables will switch to their Nepali equivalents (e.g. "बैशाख" or Baisakh instead of "April"). The date pickers in the add/edit modals will also adapt to show the appropriate calendar system. This allows users in Nepal to view their financial data in a format that is culturally familiar and easier for them to understand at a glance.
