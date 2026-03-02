@@ -539,17 +539,17 @@ export default function Lend() {
                             <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Lent</p>
                             <p className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(lend.amount, currency)}</p>
                           </div>
-                          <div>
+                          <div className="text-center">
                             <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Returned</p>
                             {+lend.returnedAmount > 0
                               ? <p className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(lend.returnedAmount, currency)}</p>
                               : <p className="text-sm text-gray-300 dark:text-gray-600">—</p>
                             }
                           </div>
-                          <div>
+                          <div className="text-right">
                             <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Due</p>
                             {isSettled
-                              ? <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-green-600 dark:text-green-400"><CheckCircle2 className="w-3 h-3" /> Settled</span>
+                              ? <span className="inline-flex items-center justify-end gap-0.5 text-xs font-semibold text-green-600 dark:text-green-400"><CheckCircle2 className="w-3 h-3" /> Settled</span>
                               : <p className="text-sm font-bold text-red-600 dark:text-red-400">{formatCurrency(remaining, currency)}</p>
                             }
                           </div>

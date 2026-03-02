@@ -11,15 +11,15 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 // ── Color palette ────────────────────────────────────────────────
 const COLORS = [
-  { id: 'default', label: 'Default', bg: '', cardLight: 'bg-white border-gray-200', cardDark: 'dark:bg-gray-800 dark:border-gray-700', dot: 'bg-gray-300 dark:bg-gray-600' },
-  { id: 'red',     label: 'Red',     bg: 'bg-red-50    dark:bg-red-950',   cardLight: 'bg-red-50    border-red-200',    cardDark: 'dark:bg-red-950    dark:border-red-800',    dot: 'bg-red-400' },
-  { id: 'orange',  label: 'Orange',  bg: 'bg-orange-50 dark:bg-orange-950', cardLight: 'bg-orange-50 border-orange-200', cardDark: 'dark:bg-orange-950 dark:border-orange-800', dot: 'bg-orange-400' },
-  { id: 'yellow',  label: 'Yellow',  bg: 'bg-yellow-50 dark:bg-yellow-950', cardLight: 'bg-yellow-50 border-yellow-200', cardDark: 'dark:bg-yellow-950 dark:border-yellow-800', dot: 'bg-yellow-400' },
-  { id: 'green',   label: 'Green',   bg: 'bg-green-50  dark:bg-green-950',  cardLight: 'bg-green-50  border-green-200',  cardDark: 'dark:bg-green-950  dark:border-green-800',  dot: 'bg-green-400' },
-  { id: 'teal',    label: 'Teal',    bg: 'bg-teal-50   dark:bg-teal-950',   cardLight: 'bg-teal-50   border-teal-200',   cardDark: 'dark:bg-teal-950   dark:border-teal-800',   dot: 'bg-teal-400' },
-  { id: 'blue',    label: 'Blue',    bg: 'bg-blue-50   dark:bg-blue-950',   cardLight: 'bg-blue-50   border-blue-200',   cardDark: 'dark:bg-blue-950   dark:border-blue-800',   dot: 'bg-blue-400' },
-  { id: 'purple',  label: 'Purple',  bg: 'bg-purple-50 dark:bg-purple-950', cardLight: 'bg-purple-50 border-purple-200', cardDark: 'dark:bg-purple-950 dark:border-purple-800', dot: 'bg-purple-400' },
-  { id: 'pink',    label: 'Pink',    bg: 'bg-pink-50   dark:bg-pink-950',   cardLight: 'bg-pink-50   border-pink-200',   cardDark: 'dark:bg-pink-950   dark:border-pink-800',   dot: 'bg-pink-400' },
+  { id: 'default', label: 'Default', bg: '', cardLight: 'bg-white border-gray-200', cardDark: 'dark:bg-gray-800 dark:border-gray-700', dot: 'bg-gray-300 dark:bg-gray-600',     dateColor: 'text-gray-400 dark:text-gray-500' },
+  { id: 'red',     label: 'Red',     bg: 'bg-red-50    dark:bg-red-950',   cardLight: 'bg-red-50    border-red-200',    cardDark: 'dark:bg-red-950    dark:border-red-800',    dot: 'bg-red-400',    dateColor: 'text-red-400    dark:text-red-400' },
+  { id: 'orange',  label: 'Orange',  bg: 'bg-orange-50 dark:bg-orange-950', cardLight: 'bg-orange-50 border-orange-200', cardDark: 'dark:bg-orange-950 dark:border-orange-800', dot: 'bg-orange-400', dateColor: 'text-orange-400 dark:text-orange-400' },
+  { id: 'yellow',  label: 'Yellow',  bg: 'bg-yellow-50 dark:bg-yellow-950', cardLight: 'bg-yellow-50 border-yellow-200', cardDark: 'dark:bg-yellow-950 dark:border-yellow-800', dot: 'bg-yellow-400', dateColor: 'text-yellow-500 dark:text-yellow-400' },
+  { id: 'green',   label: 'Green',   bg: 'bg-green-50  dark:bg-green-950',  cardLight: 'bg-green-50  border-green-200',  cardDark: 'dark:bg-green-950  dark:border-green-800',  dot: 'bg-green-400',  dateColor: 'text-green-500  dark:text-green-400' },
+  { id: 'teal',    label: 'Teal',    bg: 'bg-teal-50   dark:bg-teal-950',   cardLight: 'bg-teal-50   border-teal-200',   cardDark: 'dark:bg-teal-950   dark:border-teal-800',   dot: 'bg-teal-400',   dateColor: 'text-teal-500   dark:text-teal-400' },
+  { id: 'blue',    label: 'Blue',    bg: 'bg-blue-50   dark:bg-blue-950',   cardLight: 'bg-blue-50   border-blue-200',   cardDark: 'dark:bg-blue-950   dark:border-blue-800',   dot: 'bg-blue-400',   dateColor: 'text-blue-400   dark:text-blue-400' },
+  { id: 'purple',  label: 'Purple',  bg: 'bg-purple-50 dark:bg-purple-950', cardLight: 'bg-purple-50 border-purple-200', cardDark: 'dark:bg-purple-950 dark:border-purple-800', dot: 'bg-purple-400', dateColor: 'text-purple-400 dark:text-purple-400' },
+  { id: 'pink',    label: 'Pink',    bg: 'bg-pink-50   dark:bg-pink-950',   cardLight: 'bg-pink-50   border-pink-200',   cardDark: 'dark:bg-pink-950   dark:border-pink-800',   dot: 'bg-pink-400',   dateColor: 'text-pink-400   dark:text-pink-400' },
 ];
 
 function getColor(id) {
@@ -380,7 +380,7 @@ function NoteCard({ note, onEdit, onPin, onArchive, onDelete, onColorChange }) {
 function NotesGrid({ notes, onEdit, onPin, onArchive, onDelete, onColorChange }) {
   if (notes.length === 0) return null;
   return (
-    <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4" style={{ columnGap: '1rem' }}>
+    <div className="columns-1 sm:columns-2 lg:columns-3" style={{ columnGap: '1rem' }}>
       {notes.map(n => (
         <div key={n.id} className="break-inside-avoid" style={{ marginBottom: '1rem' }}>
           <NoteCard
@@ -408,14 +408,13 @@ function NotesList({ notes, onEdit, onPin, onArchive, onDelete, onColorChange })
           <div
             key={n.id}
             onClick={() => onEdit(n)}
-            className={`group flex items-start gap-3 px-4 py-3 rounded-2xl border cursor-pointer transition-all hover:shadow-md ${c.cardLight} ${c.cardDark}`}
+            className={`group flex items-center gap-3 px-4 py-3 rounded-2xl border cursor-pointer transition-all hover:shadow-md ${c.cardLight} ${c.cardDark}`}
           >
-            {n.pinned && <Pin className="w-3 h-3 text-primary-400 flex-shrink-0 mt-0.5" />}
+            {n.pinned && <Pin className="w-3 h-3 text-primary-400 flex-shrink-0" />}
             <div className="flex-1 min-w-0">
               {n.title   && <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{n.title}</p>}
               {n.content && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{n.content}</p>}
             </div>
-            <span className="text-xs text-gray-400 flex-shrink-0 self-center">{formatRelative(n.updatedAt)}</span>
             <div
               className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
               onClick={e => e.stopPropagation()}
@@ -427,6 +426,7 @@ function NotesList({ notes, onEdit, onPin, onArchive, onDelete, onColorChange })
               <button title="Delete" onClick={e => { e.stopPropagation(); onDelete(n); }}
                 className="p-1 rounded-lg text-gray-400 hover:text-red-600 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"><Trash2 className="w-3 h-3" /></button>
             </div>
+            <span className={`text-xs flex-shrink-0 self-center ${c.dateColor}`}>{formatRelative(n.updatedAt)}</span>
           </div>
         );
       })}

@@ -484,24 +484,23 @@ export default function Saving() {
                     {/* ── Mobile card (< lg) ── */}
                     <div className="lg:hidden px-4 py-3">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount, currency)}</p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(row.date)}</p>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <button onClick={() => setQuickAddOpen({ open: true, row: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => setSavingModal({ open: true, item: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => setDeleteTarget(row)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount, currency)}</p>
+                        <div className="flex-shrink-0">
+                          {row.expendOn
+                            ? <span className="inline-block px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs">{row.expendOn}</span>
+                            : <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                          }
                         </div>
                       </div>
-                      {row.expendOn && (
-                        <div className="mt-1.5">
-                          <span className="inline-block px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs">{row.expendOn}</span>
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <p className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">{dateLabel(row.date)}</p>
+                        <div className="flex items-center gap-1 min-w-0">
+                          {row.description && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{row.description}</p>}
+                          <button onClick={() => setQuickAddOpen({ open: true, row: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors flex-shrink-0" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setSavingModal({ open: true, item: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors flex-shrink-0" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setDeleteTarget(row)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
-                      )}
-                      {row.description && (
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{row.description}</p>
-                      )}
+                      </div>
                     </div>
 
                     {/* ── Desktop row (lg+) ── */}
