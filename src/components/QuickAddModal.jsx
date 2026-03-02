@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Plus, ArrowDown, ArrowUp, ChevronLeft } from 'lucide-react';
 import { useToast } from './ui/Toast';
+import { useAuth } from '../context/AuthContext';
 import { useIncomes } from '../context/IncomeContext';
 import { useExpenses } from '../context/ExpenseContext';
 import { useBanks } from '../context/BankContext';
@@ -12,6 +13,7 @@ import { useCategories } from '../context/CategoryContext';
 import { useCalendar } from '../context/CalendarContext';
 import NepaliDatePickerInput from './ui/NepaliDatePickerInput';
 import { INCOME_SOURCES } from './IncomeModal';
+import { addBankEntry as addBankEntrySvc } from '../services/bankService';
 
 const TODAY = () => {
   const d = new Date();
@@ -78,7 +80,7 @@ function prefill(targetPage, sourceRow) {
     switch (targetPage) {
       case 'income':   return { ...base, title: '', source: '', notes: '', description: '' };
       case 'expenses': return { ...base, title: '', category: '', note: '', description: '' };
-      case 'bank':     return { date: today, type: 'deposit', amount: '', description: '' };
+      case 'bank':     return { date: today, type: 'deposit', amount: '', description: '', bankId: '' };
       case 'lend':     return { ...base, name: '', reason: '', description: '' };
       case 'loan':     return { ...base, name: '', reason: '', description: '' };
       case 'saving':   return { ...base, expendOn: '', description: '' };
@@ -94,7 +96,7 @@ function prefill(targetPage, sourceRow) {
   switch (targetPage) {
     case 'income':   return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, title: nameish || sourceRow.description || '', source: '', notes: sourceRow.notes || sourceRow.reason || '', description };
     case 'expenses': return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, title: nameish || sourceRow.description || '', category: '', note: sourceRow.note || sourceRow.notes|| sourceRow.reason || '', description };
-    case 'bank':     return { date, type: 'deposit', amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, description: nameish+' '+sourceRow.reason || description };
+    case 'bank':     return { date, type: 'deposit', amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, description: nameish+' '+sourceRow.reason || description, bankId: '' };
     case 'lend':     return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, name: nameish, reason: sourceRow.reason || sourceRow.note || sourceRow.notes || '', description };
     case 'loan':     return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, name: nameish, reason: sourceRow.reason || sourceRow.note || sourceRow.notes || '', description };
     case 'saving':   return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, expendOn: nameish+' '+sourceRow.reason, description };
@@ -106,11 +108,12 @@ function prefill(targetPage, sourceRow) {
 
 export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }) {
   const { addToast } = useToast();
+  const { user } = useAuth();
 
   // ── Consume all page contexts internally ─────────────────────
   const { addIncome }                           = useIncomes();
   const { addExpense }                          = useExpenses();
-  const { addEntry: addBankEntry_ctx }          = useBanks();
+  const { banks }                               = useBanks();
   const { addLend }                             = useLends();
   const { addLoan }                             = useLoans();
   const { addSaving }                           = useSavings();
@@ -136,7 +139,9 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
   // Pre-fill form when user picks a target page
   useEffect(() => {
     if (targetPage) {
-      setForm(prefill(targetPage, sourceRow));
+      const f = prefill(targetPage, sourceRow);
+      if (targetPage === 'bank' && banks.length > 0) f.bankId = banks[0].id;
+      setForm(f);
     }
   }, [targetPage]); // eslint-disable-line
 
@@ -150,7 +155,6 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
     switch (pg) {
       case 'income':   return addIncome;
       case 'expenses': return addExpense;
-      case 'bank':     return addBankEntry_ctx;
       case 'lend':     return addLend;
       case 'loan':     return addLoan;
       case 'saving':   return addSaving;
@@ -166,9 +170,11 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
     if (targetPage !== 'bank' && (!form.amount || isNaN(amt) || amt <= 0)) {
       addToast('Enter a valid amount', 'error'); return;
     }
+    // Bank validation
     if (targetPage === 'bank') {
       const ba = parseFloat(form.amount);
       if (!form.amount || isNaN(ba) || ba <= 0) { addToast('Enter a valid amount', 'error'); return; }
+      if (!form.bankId) { addToast('Select a bank', 'error'); return; }
     }
     if ((targetPage === 'income' || targetPage === 'expenses') && !form.title?.trim()) {
       addToast('Title is required', 'error'); return;
@@ -186,19 +192,26 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
         data.withdraw = form.type === 'withdraw' ? numAmt : 0;
         delete data.type;
         delete data.amount;
+        const bankId = data.bankId;
+        delete data.bankId;
+        await addBankEntrySvc(user.uid, bankId, data);
       } else {
         data.amount = numAmt;
       }
       if (targetPage === 'lend') data.returnedAmount = 0;
       if (targetPage === 'loan') data.paidAmount = 0;
 
-      const addFn = getAddFn(targetPage);
-      if (addFn) await addFn(data);
+      if (targetPage !== 'bank') {
+        const addFn = getAddFn(targetPage);
+        if (addFn) await addFn(data);
+      }
 
       setCount(c => c + 1);
       addToast(`${pageOpt.label} entry added`, 'success');
       // Re-prefill (keeps date + source row values, clears editable fields)
-      setForm(prefill(targetPage, sourceRow));
+      const nextForm = prefill(targetPage, sourceRow);
+      if (targetPage === 'bank') nextForm.bankId = form.bankId; // keep selected bank
+      setForm(nextForm);
     } catch {
       addToast('Failed to save entry', 'error');
     } finally {
@@ -307,6 +320,25 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
                 <input type="number" step="0.01" min="0" placeholder="0.00" value={form.amount || ''} onChange={e => set('amount', e.target.value)} className={INPUT_CLS} autoFocus />
               </div>
             </div>
+
+            {/* Bank selector */}
+            {targetPage === 'bank' && banks.length > 0 && (
+              <div>
+                <label className={LABEL_CLS}>Bank *</label>
+                <select
+                  value={form.bankId || ''}
+                  onChange={e => set('bankId', e.target.value)}
+                  className={INPUT_CLS}
+                >
+                  {banks.map(b => (
+                    <option key={b.id} value={b.id}>🏦 {b.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {targetPage === 'bank' && banks.length === 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 text-center py-1">No banks added yet. Add a bank first.</p>
+            )}
 
             {/* Bank: deposit / withdraw toggle */}
             {targetPage === 'bank' && (

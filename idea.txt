@@ -305,7 +305,16 @@ Right bar chart — one bar per day (X-axis = day number); colour coded:
     Light indigo = all other days
 Tooltip shows the full day label (not just the number).
 BS calendar is fully supported — day labels are converted via safeADToBS and displayed as BS_MONTHS_SHORT day.
-
+=IF(AND(ISNUMBER(L6), L6>1), HYPERLINK("whatsapp://send?text=Date: " & TEXT(TODAY(), "mm/dd/yyyy") & "%0AHi " & I6 & ", Just a gentle reminder about the money Rs:-  " &L6 & ". Need that money back. Can you take care of it soon?", "Send Message"), "")
+Date: 03/02/2026
+Hi Devraj sah, Just a gentle reminder about the money Rs:-  1234.8. Need that money back. Can you take care of it soon?
+Added a "Send Message" column header (col-span-2).
+For each row, computes:
+Today's date as DD/MM/YYYY — in BS format if the calendar is set to BS (e.g. 18/11/2082), otherwise international.
+A WhatsApp message:
+A wa.me/?text=... link that opens WhatsApp with the pre-filled message (no phone number required).
+The green WhatsApp button is shown on desktop; on mobile it appears as a row item labelled "Send Message".
+The footer row has an empty col-span-2 placeholder for the new column.
 
 Collapse/Expand sidebar toggle
 Hover tooltips : When collapsed, hovering over any nav icon shows a floating label tooltip to the right of the icon with an arrow pointer.
@@ -502,6 +511,10 @@ Click Add → entry saved, form re-prefills from original row (ready for another
 Click Back → return to the page picker to choose a different target
 Bank sync toggle still available (except when adding to Bank itself)
 Current page disabled in page picker — the button for whichever page the ⚡ was clicked on renders grayed out with opacity-40 cursor-not-allowed and a (current) label, and its onClick / disabled prevent selection.
+Bank dropdown is shown as the first field when targetPage === 'bank', listing all banks with a 🏦 prefix. The first bank is auto-selected when the form loads, and the selection is preserved across consecutive "Add" submissions.
+If no banks have been added yet, a warning message is shown instead of the dropdown.
+On submit, the entry is saved directly to the chosen bank using addBankEntrySvc(user.uid, form.bankId, data) — this doesn't interfere with the Bank page's currently selected bank in the context.
+Validation ensures a bank must be selected before the entry can be submitted.
 
 
 
