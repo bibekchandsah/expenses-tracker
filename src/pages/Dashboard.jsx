@@ -34,10 +34,10 @@ export default function Dashboard() {
   // The same calendar month inside the selected year (e.g. March 2025 if today is March)
   const displayMonth = `${selectedYear}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  const [catPeriod, setCatPeriod] = useState('month');
-  const [trendPeriod, setTrendPeriod] = useState('6m');
-  const [incomeTrendPeriod, setIncomeTrendPeriod] = useState('6m');
-  const [bankPeriod, setBankPeriod] = useState('6m');
+  const [catPeriod, setCatPeriod] = useState('year');
+  const [trendPeriod, setTrendPeriod] = useState('12m');
+  const [incomeTrendPeriod, setIncomeTrendPeriod] = useState('12m');
+  const [bankPeriod, setBankPeriod] = useState('12m');
 
   const stats = useMemo(() => {
     const monthExpenses    = expenses.filter(e => e.date.startsWith(displayMonth));
