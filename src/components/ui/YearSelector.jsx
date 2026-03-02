@@ -30,7 +30,7 @@ export default function YearSelector({ year, onChange, calendar = 'gregorian', c
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
-      <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 px-1 min-w-[40px] text-center select-none">
+      <span className="flex-1 text-sm font-semibold text-gray-800 dark:text-gray-100 px-1 text-center select-none">
         {year}
       </span>
       <button

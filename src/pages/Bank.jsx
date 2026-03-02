@@ -442,12 +442,15 @@ export default function Bank() {
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage bank accounts and track transactions</p>
         </div>
-        <button
-          onClick={() => { setEditingBank(null); setBankModalOpen(true); }}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" /> Add Bank
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <YearSelector year={yearFilter} calendar={calendar} onChange={yr => { setYearFilter(yr); setMonthPage(0); }} />
+          <button
+            onClick={() => { setEditingBank(null); setBankModalOpen(true); }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Add Bank
+          </button>
+        </div>
       </div>
 
       {/* ── No banks empty state ── */}
@@ -469,62 +472,64 @@ export default function Bank() {
         <>
           {/* ── Bank Selector + Actions row ── */}
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-            {/* Custom dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setDropdownOpen(o => !o)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm font-medium text-gray-900 dark:text-white hover:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500 min-w-[200px] justify-between transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-primary-500" />
-                  <span className="truncate max-w-[160px]">{selectedBank?.name || 'Select bank...'}</span>
-                </div>
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${dropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
+            {/* Dropdown + Edit/Delete on same row */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              {/* Custom dropdown */}
+              <div className="relative flex-1 sm:flex-none">
+                <button
+                  onClick={() => setDropdownOpen(o => !o)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm font-medium text-gray-900 dark:text-white hover:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500 w-full sm:min-w-[200px] justify-between transition-colors"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0" />
+                    <span className="truncate">{selectedBank?.name || 'Select bank...'}</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${dropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
 
-              {dropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 w-full min-w-[220px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-20 overflow-hidden animate-slide-in">
-                  {banks.map(bank => (
-                    <button
-                      key={bank.id}
-                      onClick={() => { setSelectedBankId(bank.id); setDropdownOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
-                        bank.id === selectedBankId
-                          ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      <Building2 className="w-4 h-4 flex-shrink-0 opacity-60" />
-                      <span className="flex-1 text-left font-medium truncate">{bank.name}</span>
-                      {bank.id === selectedBankId && <Check className="w-4 h-4 flex-shrink-0" />}
-                    </button>
-                  ))}
+                {dropdownOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-full min-w-[220px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-20 overflow-hidden animate-slide-in">
+                    {banks.map(bank => (
+                      <button
+                        key={bank.id}
+                        onClick={() => { setSelectedBankId(bank.id); setDropdownOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                          bank.id === selectedBankId
+                            ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        <Building2 className="w-4 h-4 flex-shrink-0 opacity-60" />
+                        <span className="flex-1 text-left font-medium truncate">{bank.name}</span>
+                        {bank.id === selectedBankId && <Check className="w-4 h-4 flex-shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Edit / Delete current bank */}
+              {selectedBank && (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => { setEditingBank(selectedBank); setBankModalOpen(true); }}
+                    className="p-2 rounded-xl text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 border border-gray-200 dark:border-gray-700 transition-colors"
+                    title="Edit bank"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setDeleteBankTarget(selectedBank)}
+                    className="p-2 rounded-xl text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 border border-gray-200 dark:border-gray-700 transition-colors"
+                    title="Delete bank"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               )}
             </div>
 
-            {/* Edit / Delete current bank */}
-            {selectedBank && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => { setEditingBank(selectedBank); setBankModalOpen(true); }}
-                  className="p-2 rounded-xl text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 border border-gray-200 dark:border-gray-700 transition-colors"
-                  title="Edit bank"
-                >
-                  <Settings className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setDeleteBankTarget(selectedBank)}
-                  className="p-2 rounded-xl text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 border border-gray-200 dark:border-gray-700 transition-colors"
-                  title="Delete bank"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-
             <div className="sm:ml-auto flex items-center gap-2">
-              <YearSelector year={yearFilter} calendar={calendar} onChange={yr => { setYearFilter(yr); setMonthPage(0); }} />
               {selectedBank && (
                 <button
                   onClick={() => setImportOpen(true)}
@@ -679,72 +684,77 @@ export default function Bank() {
                     {month.entries.map((entry) => (
                     <div
                       key={entry.id}
-                      className="grid grid-cols-1 sm:grid-cols-12 gap-2 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors items-center group"
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group"
                     >
-                      {/* Date */}
-                      <div className="sm:col-span-2">
-                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{dateLabel(entry.date)}</p>
-                      </div>
-
-                      {/* Description */}
-                      <div className="sm:col-span-4">
-                        <p className="text-sm text-gray-900 dark:text-white font-medium truncate" title={entry.description}>{entry.description}</p>
-                        {/* Mobile amounts */}
-                        <div className="flex items-center gap-3 sm:hidden mt-0.5">
-                          {+entry.deposit > 0 && <span className="text-xs font-semibold text-green-600">+{formatCurrency(entry.deposit, currency)}</span>}
-                          {+entry.withdraw > 0 && <span className="text-xs font-semibold text-red-600">−{formatCurrency(entry.withdraw, currency)}</span>}
-                          <span className="text-xs text-gray-500">Bal: {formatCurrency(entry.closingBalance, currency)}</span>
+                      {/* ── Mobile card (< sm) ── */}
+                      <div className="sm:hidden px-5 py-3.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{dateLabel(entry.date)}</p>
+                            <p className="text-sm text-gray-900 dark:text-white font-medium truncate mt-0.5" title={entry.description}>{entry.description}</p>
+                          </div>
+                          <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                            {+entry.deposit > 0 && (
+                              <span className="text-sm font-semibold text-green-600 dark:text-green-400">+{formatCurrency(entry.deposit, currency)}</span>
+                            )}
+                            {+entry.withdraw > 0 && (
+                              <span className="text-sm font-semibold text-red-600 dark:text-red-400">−{formatCurrency(entry.withdraw, currency)}</span>
+                            )}
+                            <span className={`text-xs font-bold ${entry.closingBalance >= 0 ? 'text-gray-700 dark:text-gray-300' : 'text-red-600 dark:text-red-400'}`}>
+                              Bal: {formatCurrency(entry.closingBalance, currency)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setQuickAddOpen({ open: true, row: entry })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => { setEditingEntry(entry); setEntryModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setDeleteEntryTarget(entry)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </div>
 
-                      {/* Deposit */}
-                      <div className="hidden sm:block sm:col-span-2 text-right">
-                        {+entry.deposit > 0 ? (
-                          <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-                            +{formatCurrency(entry.deposit, currency)}
+                      {/* ── Desktop row (sm+) ── */}
+                      <div className="hidden sm:grid grid-cols-12 gap-2 px-5 py-3.5 items-center">
+                        {/* Date */}
+                        <div className="col-span-2">
+                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{dateLabel(entry.date)}</p>
+                        </div>
+
+                        {/* Description */}
+                        <div className="col-span-4">
+                          <p className="text-sm text-gray-900 dark:text-white font-medium truncate" title={entry.description}>{entry.description}</p>
+                        </div>
+
+                        {/* Deposit */}
+                        <div className="col-span-2 text-right">
+                          {+entry.deposit > 0 ? (
+                            <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+                              +{formatCurrency(entry.deposit, currency)}
+                            </span>
+                          ) : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                        </div>
+
+                        {/* Withdraw */}
+                        <div className="col-span-2 text-right">
+                          {+entry.withdraw > 0 ? (
+                            <span className="text-sm font-semibold text-red-600 dark:text-red-400">
+                              −{formatCurrency(entry.withdraw, currency)}
+                            </span>
+                          ) : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                        </div>
+
+                        {/* Closing Balance */}
+                        <div className="col-span-1 text-right">
+                          <span className={`text-sm font-bold ${entry.closingBalance >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-600 dark:text-red-400'}`}>
+                            {formatCurrency(entry.closingBalance, currency)}
                           </span>
-                        ) : <span className="text-gray-300 dark:text-gray-600">—</span>}
-                      </div>
+                        </div>
 
-                      {/* Withdraw */}
-                      <div className="hidden sm:block sm:col-span-2 text-right">
-                        {+entry.withdraw > 0 ? (
-                          <span className="text-sm font-semibold text-red-600 dark:text-red-400">
-                            −{formatCurrency(entry.withdraw, currency)}
-                          </span>
-                        ) : <span className="text-gray-300 dark:text-gray-600">—</span>}
-                      </div>
-
-                      {/* Closing Balance */}
-                      <div className="hidden sm:block sm:col-span-1 text-right">
-                        <span className={`text-sm font-bold ${entry.closingBalance >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-600 dark:text-red-400'}`}>
-                          {formatCurrency(entry.closingBalance, currency)}
-                        </span>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="sm:col-span-1 flex items-center gap-1 sm:justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => setQuickAddOpen({ open: true, row: entry })}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
-                          title="Quick Add"
-                        >
-                          <Zap className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => { setEditingEntry(entry); setEntryModalOpen(true); }}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteEntryTarget(entry)}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {/* Actions */}
+                        <div className="col-span-1 flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setQuickAddOpen({ open: true, row: entry })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => { setEditingEntry(entry); setEntryModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setDeleteEntryTarget(entry)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
                       </div>
                     </div>
                   ))}

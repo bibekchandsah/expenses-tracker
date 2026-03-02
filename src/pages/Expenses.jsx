@@ -189,15 +189,19 @@ export default function Expenses() {
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{expense.title}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{dateLabel(expense.date)}</p>
                 </div>
-                <span className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0">{formatCurrency(expense.amount, currency)}</span>
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(expense.amount, currency)}</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: (cat?.color || '#6b7280') + '20', color: cat?.color || '#6b7280' }}>
+                    {cat?.name || expense.category}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: (cat?.color || '#6b7280') + '20', color: cat?.color || '#6b7280' }}>
-                  {cat?.name || expense.category}
-                </span>
-                {expense.notes && <span className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Note:</span> {expense.notes}</span>}
-                {expense.description && <span className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Desc:</span> {expense.description}</span>}
-              </div>
+              {(expense.notes || expense.description) && (
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  {expense.notes && <span className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Note:</span> {expense.notes}</span>}
+                  {expense.description && <span className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Desc:</span> {expense.description}</span>}
+                </div>
+              )}
               <div className="flex items-center gap-1 mt-1.5">
                 <button onClick={() => setQuickAddOpen({ open: true, row: expense })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-4 h-4" /></button>
                 <button onClick={() => openEdit(expense)} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"><Edit2 className="w-4 h-4" /></button>

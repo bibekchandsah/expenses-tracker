@@ -604,3 +604,7 @@ The user wants to implement a Bikram Sambat (BS) date system where:
     When BS is chosen, years are shown as individual years (2080, 2081, 2082, 2083, 2084...) not as "2082/83" format
     Data is stored and queried using BS months (Baisakh, Jestha, Ashadh, Shrawan, Bhadra, Ashwin, Kartik, Mangsir, Poush, Magh, Falgun, Chaitra) with their actual date ranges
     The income trend graph needs to display data grouped by BS months rather than converting to international dates, which is currently causing incorrect data visualization
+
+in dashboard for small devices in year changing show year value in center and previous & next icon at the start and end of container
+in income, lend, loan, saving, for me page for small devices hide the text of import and export and only show icon same like in expense page
+income 

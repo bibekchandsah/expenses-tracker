@@ -230,17 +230,21 @@ export default function Income() {
             <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{inc.title}</p>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(inc.date)}</p>
           </div>
-          <span className="text-sm font-semibold text-green-600 dark:text-green-400 flex-shrink-0">{formatCurrency(inc.amount, currency)}</span>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(inc.amount, currency)}</span>
+            {inc.source && (
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SOURCE_COLORS[inc.source] ?? SOURCE_COLORS.Other}`}>
+                {sourceLabel(inc.source)}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-          {inc.source && (
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SOURCE_COLORS[inc.source] ?? SOURCE_COLORS.Other}`}>
-              {sourceLabel(inc.source)}
-            </span>
-          )}
-          {inc.notes && <p className="text-xs text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">Notes:</span> {inc.notes}</p>}
-          {inc.description && <p className="text-xs text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">Desc:</span> {inc.description}</p>}
-        </div>
+        {(inc.notes || inc.description) && (
+          <div className="mt-1.5 space-y-0.5">
+            {inc.notes && <p className="text-xs text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">Notes:</span> {inc.notes}</p>}
+            {inc.description && <p className="text-xs text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">Desc:</span> {inc.description}</p>}
+          </div>
+        )}
         <div className="flex items-center gap-1 mt-1.5">
           <button onClick={() => setQuickAddOpen({ open: true, row: inc })} className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-lg transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
           <button onClick={() => openEdit(inc)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
@@ -306,13 +310,13 @@ export default function Income() {
             onClick={() => setImportOpen(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
-            <Upload className="w-4 h-4" /> Import
+            <Upload className="w-4 h-4" /><span className="hidden sm:inline"> Import</span>
           </button>
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
-            <Download className="w-4 h-4" /> Export
+            <Download className="w-4 h-4" /><span className="hidden sm:inline"> Export</span>
           </button>
           <button
             onClick={openAdd}

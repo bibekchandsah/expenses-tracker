@@ -214,6 +214,7 @@ export default function Dashboard() {
           year={isBS ? selectedBSYear : selectedYear}
           calendar={calendar}
           onChange={yr => isBS ? setSelectedBSYear(yr) : setSelectedYear(yr)}
+          className="w-full sm:w-auto"
         />
       </div>
 

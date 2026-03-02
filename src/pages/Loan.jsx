@@ -395,13 +395,13 @@ export default function Loan() {
             onClick={() => setImportOpen(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
-            <Upload className="w-4 h-4" /> Import CSV
+            <Upload className="w-4 h-4" /><span className="hidden sm:inline"> Import CSV</span>
           </button>
           <button
             onClick={handleExport}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
-            <Download className="w-4 h-4" /> Export CSV
+            <Download className="w-4 h-4" /><span className="hidden sm:inline"> Export CSV</span>
           </button>
           <button
             onClick={() => { setEditingLoan(null); setModalOpen(true); }}
