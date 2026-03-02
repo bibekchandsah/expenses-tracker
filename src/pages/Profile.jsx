@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { User, Mail, Globe, Save, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet, Camera } from 'lucide-react';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useActiveYear } from '../context/ActiveYearContext';
@@ -68,7 +66,7 @@ const CURRENCIES = [
 ];
 
 export default function Profile() {
-  const { user, updateUserInfo } = useAuth();
+  const { user, updateUserInfo, setProfilePhoto, avatarURL } = useAuth();
   const { currency: activeCurrency, updateCurrency } = useCurrency();
   const { activeYear, updateActiveYear } = useActiveYear();
   const { expenses, deleteExpense } = useExpenses();
@@ -127,24 +125,52 @@ export default function Profile() {
     }
   }
 
+  function compressImage(file, size = 150, quality = 0.75) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        // crop to square from center
+        const min = Math.min(img.width, img.height);
+        const sx = (img.width - min) / 2;
+        const sy = (img.height - min) / 2;
+        ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
   async function handlePhotoChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingPhoto(true);
     try {
-      const fileRef = storageRef(storage, `users/${user.uid}/profile`);
-      await uploadBytes(fileRef, file);
-      const url = await getDownloadURL(fileRef);
-      await Promise.all([
-        updateUserProfile(user.uid, { photoURL: url }),
-        updateUserInfo({ photoURL: url }),
-      ]);
+      const base64 = await compressImage(file);
+      await updateUserProfile(user.uid, { photoURL: base64 });
+      setProfilePhoto(base64);
       addToast('Profile picture updated!', 'success');
     } catch {
-      addToast('Failed to upload photo', 'error');
+      addToast('Failed to update photo', 'error');
     } finally {
       setUploadingPhoto(false);
       e.target.value = '';
+    }
+  }
+
+  async function handleRemovePhoto() {
+    try {
+      await updateUserProfile(user.uid, { photoURL: null });
+      setProfilePhoto(null);
+      addToast('Profile picture removed', 'success');
+    } catch {
+      addToast('Failed to remove photo', 'error');
     }
   }
 
@@ -349,8 +375,8 @@ export default function Profile() {
             onClick={() => photoInputRef.current?.click()}
             title="Change profile picture"
           >
-            {user?.photoURL ? (
-              <img src={user.photoURL} alt={user.displayName} referrerPolicy="no-referrer" className="w-20 h-20 rounded-2xl object-cover" />
+            {avatarURL ? (
+              <img src={avatarURL} alt={user.displayName} referrerPolicy="no-referrer" className="w-20 h-20 rounded-2xl object-cover" />
             ) : (
               <div className="w-20 h-20 rounded-2xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-3xl font-bold text-primary-700 dark:text-primary-400">
                 {user?.displayName?.[0] || 'U'}
@@ -369,9 +395,20 @@ export default function Profile() {
             <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-0.5">
               <Mail className="w-3.5 h-3.5" /> {user?.email}
             </p>
-            <span className="inline-block mt-1.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
-              Google Account
-            </span>
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
+                Google Account
+              </span>
+              {avatarURL && (
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 underline underline-offset-2"
+                >
+                  Remove photo
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

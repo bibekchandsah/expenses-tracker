@@ -20,6 +20,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [profilePhotoURL, setProfilePhotoURL] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -46,10 +47,16 @@ export function AuthProvider({ children }) {
         currency: 'USD',
         createdAt: serverTimestamp(),
       });
+      setProfilePhotoURL(firebaseUser.photoURL || null);
+    } else {
+      const data = snap.data();
+      // null = no custom photo → fall back to OAuth; '' = explicitly removed → show initials
+      setProfilePhotoURL('photoURL' in data ? (data.photoURL || null) : null);
     }
   }
 
   function clearError() { setError(null); }
+  function setProfilePhoto(url) { setProfilePhotoURL(url); }
 
   async function signInWithProvider(provider) {
     setError(null);
@@ -122,6 +129,10 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user, loading, error, clearError,
+      // avatarURL: the resolved photo to display everywhere
+      // null = use initials; string = photo URL or base64
+      avatarURL: profilePhotoURL,
+      setProfilePhoto,
       signInWithGoogle, signInWithMicrosoft, signInWithApple, signInWithTwitter, signInWithGitHub,
       signUpWithEmail, signInWithEmail, resetPassword,
       updateUserInfo, logout,

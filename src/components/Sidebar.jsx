@@ -82,7 +82,7 @@ function NavItem({ to, label, icon: Icon, collapsed, onClose }) {
 }
 
 export default function Sidebar({ open, onClose }) {
-  const { user, logout } = useAuth();
+  const { user, logout, avatarURL } = useAuth();
   const { dark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -301,10 +301,11 @@ export default function Sidebar({ open, onClose }) {
               title={collapsed ? (user?.displayName || user?.email || 'Profile') : ''}
             >
               {/* Avatar */}
-              {user?.photoURL ? (
+              {avatarURL ? (
                 <img
-                  src={user.photoURL}
+                  src={avatarURL}
                   alt={user.displayName || 'Avatar'}
+                  referrerPolicy="no-referrer"
                   className="w-8 h-8 rounded-full object-cover flex-shrink-0 ring-2 ring-primary-200 dark:ring-primary-800"
                 />
               ) : (

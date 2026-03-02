@@ -4,7 +4,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useToast } from './ui/Toast';
 
 export default function Navbar({ onMenuClick }) {
-  const { user, logout } = useAuth();
+  const { user, logout, avatarURL } = useAuth();
   const { dark, toggleTheme } = useTheme();
   const { addToast } = useToast();
 
@@ -39,8 +39,8 @@ export default function Navbar({ onMenuClick }) {
 
         {/* User info */}
         <div className="flex items-center gap-2 ml-2">
-          {user?.photoURL ? (
-            <img src={user.photoURL} alt={user.displayName} className="w-8 h-8 rounded-full object-cover" />
+          {avatarURL ? (
+            <img src={avatarURL} alt={user.displayName} referrerPolicy="no-referrer" className="w-8 h-8 rounded-full object-cover" />
           ) : (
             <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-sm font-medium">
               {user?.displayName?.[0] || 'U'}

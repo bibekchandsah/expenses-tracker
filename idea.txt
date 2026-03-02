@@ -515,3 +515,17 @@ Toast on success or failure
 
 
 login using google, Email/Password, Microsoft, Apple, Twitter, github
+
+Profile picture change:
+Avatar now has a hover overlay with a camera icon — click it to open a file picker
+Selected image uploads to Firebase Storage at users/{uid}/profile
+After upload, both Firebase Auth's photoURL and Firestore profile are updated simultaneously
+The new photo appears immediately everywhere (Dashboard, Profile) without requiring a reload
+Important: You need to enable Firebase Storage rules to allow authenticated users to write to their own folder. Go to Firebase Console → Storage → Rules and add:
+match /users/{userId}/{allPaths=**} {
+  allow read, write: if request.auth != null && request.auth.uid == userId;
+}
+"Remove photo" link appears next to the account badge in the profile card — only visible when a photo is currently set
+Clicking it saves null to Firestore and clears avatarURL → Navbar, Sidebar, and Profile avatar immediately switch to the initials fallback
+After removing, the user can still upload a new photo at any time
+Also fixed the underlying avatarURL logic in AuthContext — it's now cleanly null (show initials) vs a URL/base64 (show image), used consistently across all three components
