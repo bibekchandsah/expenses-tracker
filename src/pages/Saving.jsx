@@ -14,7 +14,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
-import { safeADToBS } from '../utils/calendarUtils';
+import { safeADToBS, getBSYearRange } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
@@ -225,10 +225,11 @@ function savingKey(r) { return `${String(r.expendOn || '').toLowerCase()}|${r.da
 export default function Saving() {
   const { savings, sources, loading, addSaving, updateSaving, deleteSaving, addSource, updateSource, deleteSource } = useSavings();
   const { currency } = useCurrency();
-  const { dateLabel } = useCalendar();
+  const { dateLabel, calendar } = useCalendar();
   const { addToast } = useToast();
   const { banks, selectedBankId } = useBanks();
-  const { activeYear } = useActiveYear();
+  const { activeYear, bsActiveYear } = useActiveYear();
+  const isBS = calendar === 'bs';
 
   const [showSidePanel, setShowSidePanel] = useState(true);
   const [importOpen, setImportOpen]        = useState(false);
@@ -240,9 +241,11 @@ export default function Saving() {
   const [sortCol, setSortCol] = useState(null);
   const [sortDir, setSortDir] = useState('desc');
   const [search,  setSearch]  = useState('');
-  const [yearFilter, setYearFilter] = useState(() => activeYear);
+  const [yearFilter, setYearFilter] = useState(() => isBS ? bsActiveYear : activeYear);
 
-  useEffect(() => { setYearFilter(activeYear); }, [activeYear]);
+  useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
+
+  const bsYearRange = useMemo(() => isBS ? getBSYearRange(yearFilter) : null, [isBS, yearFilter]);
 
   function handleSort(col) {
     if (sortCol === col) {
@@ -255,7 +258,9 @@ export default function Saving() {
   }
 
   const filteredSavings = useMemo(() => {
-    let rows = savings.filter(r => r.date?.startsWith(String(yearFilter)));
+    let rows = isBS
+      ? savings.filter(r => r.date && bsYearRange && r.date >= bsYearRange.start && r.date <= bsYearRange.end)
+      : savings.filter(r => r.date?.startsWith(String(yearFilter)));
     const q = search.toLowerCase();
     if (q) rows = rows.filter(r =>
       r.expendOn?.toLowerCase().includes(q) ||
@@ -274,10 +279,14 @@ export default function Saving() {
       });
     }
     return rows;
-  }, [savings, sortCol, sortDir, search, yearFilter]);
+  }, [savings, sortCol, sortDir, search, yearFilter, isBS, bsYearRange]);
 
-  const yearSavings  = useMemo(() => savings.filter(r => r.date?.startsWith(String(yearFilter))), [savings, yearFilter]);
-  const yearSources  = useMemo(() => sources.filter(r => r.date?.startsWith(String(yearFilter))), [sources, yearFilter]);
+  const yearSavings  = useMemo(() => isBS
+    ? savings.filter(r => r.date && bsYearRange && r.date >= bsYearRange.start && r.date <= bsYearRange.end)
+    : savings.filter(r => r.date?.startsWith(String(yearFilter))), [savings, yearFilter, isBS, bsYearRange]);
+  const yearSources  = useMemo(() => isBS
+    ? sources.filter(r => r.date && bsYearRange && r.date >= bsYearRange.start && r.date <= bsYearRange.end)
+    : sources.filter(r => r.date?.startsWith(String(yearFilter))), [sources, yearFilter, isBS, bsYearRange]);
   const totalSpent   = useMemo(() => yearSavings.reduce((s, r) => s + (+r.amount || 0), 0), [yearSavings]);
   const totalSourced = useMemo(() => yearSources.reduce((s, r) => s + (+r.amount || 0), 0), [yearSources]);
   const netBalance   = totalSourced - totalSpent;
@@ -353,7 +362,7 @@ export default function Saving() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track savings and their sources</p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <YearSelector year={yearFilter} onChange={yr => setYearFilter(yr)} />
+          <YearSelector year={yearFilter} calendar={calendar} onChange={yr => setYearFilter(yr)} />
           <button
             onClick={() => setImportOpen(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"

@@ -554,3 +554,12 @@ https://nepalidatepicker.sajanmaharjan.com.np/v5/
 
 Add the BS date picker to the Expenses modal (ExpenseModal.jsx) - similar to what was done for IncomeModal
 Change the date display in the Expenses page date column to use dateLabel()  
+
+
+
+BS full system implementation
+The user wants to implement a Bikram Sambat (BS) date system where:
+    Users can choose between "AD" (international/Gregorian) and "BS" (Bikram Sambat) calendar systems
+    When BS is chosen, years are shown as individual years (2080, 2081, 2082, 2083, 2084...) not as "2082/83" format
+    Data is stored and queried using BS months (Baisakh, Jestha, Ashadh, Shrawan, Bhadra, Ashwin, Kartik, Mangsir, Poush, Magh, Falgun, Chaitra) with their actual date ranges
+    The income trend graph needs to display data grouped by BS months rather than converting to international dates, which is currently causing incorrect data visualization

@@ -11,7 +11,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
-import { safeADToBS } from '../utils/calendarUtils';
+import { safeADToBS, adDateToBSMonthKey, getBSYearRange, bsMonthsOfYear, getBSMonthLabel } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import { useDebounce } from '../hooks/useDebounce';
@@ -53,10 +53,11 @@ function sourceLabel(val) {
 export default function Income() {
   const { incomes, filteredIncomes, loading, filters, setFilters, resetFilters, addIncome, updateIncome, deleteIncome } = useIncomes();
   const { currency } = useCurrency();
-  const { monthLabel, dateLabel } = useCalendar();
+  const { monthLabel, dateLabel, calendar } = useCalendar();
   const { addToast } = useToast();
   const { banks, selectedBankId } = useBanks();
-  const { activeYear } = useActiveYear();
+  const { activeYear, bsActiveYear } = useActiveYear();
+  const isBS = calendar === 'bs';
 
   const [modalOpen, setModalOpen]       = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState({ open: false, row: null });
@@ -64,17 +65,21 @@ export default function Income() {
   const [editingIncome, setEditingIncome] = useState(null);
   const [deleteTarget, setDeleteTarget]  = useState(null);
   const [showFilters, setShowFilters]    = useState(false);
-  const [yearFilter, setYearFilter]      = useState(() => activeYear);
+  const [yearFilter, setYearFilter]      = useState(() => isBS ? bsActiveYear : activeYear);
   const [page, setPage]                  = useState(1);
 
-  useEffect(() => { setYearFilter(activeYear); }, [activeYear]);
+  // Sync yearFilter when activeYear, bsActiveYear, or calendar changes
+  useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); setPage(1); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
 
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebounce(searchInput, 300);
 
-  // Full-text search
+  // Full-text search with BS-aware year filter
+  const bsYearRange = useMemo(() => isBS ? getBSYearRange(yearFilter) : null, [isBS, yearFilter]);
   const searchFiltered = useMemo(() => {
-    const yearFiltered = filteredIncomes.filter(i => i.date?.startsWith(String(yearFilter)));
+    const yearFiltered = isBS
+      ? filteredIncomes.filter(i => i.date >= bsYearRange.start && i.date <= bsYearRange.end)
+      : filteredIncomes.filter(i => i.date?.startsWith(String(yearFilter)));
     if (!debouncedSearch.trim()) return yearFiltered;
     const q = debouncedSearch.toLowerCase();
     return yearFiltered.filter(i =>
@@ -86,19 +91,20 @@ export default function Income() {
       i.notes?.toLowerCase().includes(q) ||
       i.description?.toLowerCase().includes(q)
     );
-  }, [filteredIncomes, debouncedSearch, yearFilter]);
+  }, [filteredIncomes, debouncedSearch, yearFilter, bsYearRange, isBS]);
 
   const useMonthView = searchFiltered.length > 30;
 
   const groupedByMonth = useMemo(() => {
     const map = {};
     searchFiltered.forEach(i => {
-      const m = i.date?.slice(0, 7) ?? 'Unknown';
+      const m = isBS ? (adDateToBSMonthKey(i.date) || 'Unknown') : (i.date?.slice(0, 7) ?? 'Unknown');
       if (!map[m]) map[m] = [];
       map[m].push(i);
     });
+    // Sort BS months by numeric "YYYY-MM" order (works same as AD)
     return Object.entries(map).sort(([a], [b]) => b.localeCompare(a));
-  }, [searchFiltered]);
+  }, [searchFiltered, isBS]);
 
   const paginated = useMemo(() => {
     if (useMonthView) return [];
@@ -111,31 +117,37 @@ export default function Income() {
   // Stats — all scoped to yearFilter
   const stats = useMemo(() => {
     const d = new Date();
-    const thisMonth = `${yearFilter}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const yearIncomes = incomes.filter(i => i.date?.startsWith(String(yearFilter)));
+    const thisMonth = isBS
+      ? adDateToBSMonthKey(d.toISOString().slice(0, 10))
+      : `${yearFilter}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const yearIncomes = isBS
+      ? incomes.filter(i => i.date >= bsYearRange.start && i.date <= bsYearRange.end)
+      : incomes.filter(i => i.date?.startsWith(String(yearFilter)));
     const total        = yearIncomes.reduce((s, i) => s + (+i.amount || 0), 0);
-    const thisMonthAmt = yearIncomes
-      .filter(i => i.date?.startsWith(thisMonth))
-      .reduce((s, i) => s + (+i.amount || 0), 0);
+    const thisMonthAmt = isBS
+      ? yearIncomes.filter(i => adDateToBSMonthKey(i.date) === thisMonth).reduce((s, i) => s + (+i.amount || 0), 0)
+      : yearIncomes.filter(i => i.date?.startsWith(thisMonth)).reduce((s, i) => s + (+i.amount || 0), 0);
     const avgMonthly = (() => {
-      const months = new Set(yearIncomes.map(i => i.date?.slice(0, 7)).filter(Boolean));
+      const months = isBS
+        ? new Set(yearIncomes.map(i => adDateToBSMonthKey(i.date)).filter(Boolean))
+        : new Set(yearIncomes.map(i => i.date?.slice(0, 7)).filter(Boolean));
       return months.size ? total / months.size : 0;
     })();
     return { total, thisMonthAmt, avgMonthly, count: yearIncomes.length };
-  }, [incomes, yearFilter]);
+  }, [incomes, yearFilter, bsYearRange, isBS]);
 
   // Monthly breakdown
   const monthlyBreakdown = useMemo(() => {
     const map = {};
     searchFiltered.forEach(i => {
-      const m = i.date?.slice(0, 7);
+      const m = isBS ? (adDateToBSMonthKey(i.date) || '') : (i.date?.slice(0, 7));
       if (!m) return;
       if (!map[m]) map[m] = { month: m, total: 0, count: 0 };
       map[m].total += +i.amount || 0;
       map[m].count += 1;
     });
     return Object.values(map).sort((a, b) => b.month.localeCompare(a.month));
-  }, [searchFiltered]);
+  }, [searchFiltered, isBS]);
 
   function openAdd()       { setEditingIncome(null); setModalOpen(true); }
   function openEdit(inc)   { setEditingIncome(inc);  setModalOpen(true); }
@@ -200,10 +212,13 @@ export default function Income() {
     URL.revokeObjectURL(url);
   }
 
-  const hasActiveFilters = filters.source || filters.month || filters.startDate || filters.endDate;
-
+  // thisMonth for row highlight in breakdown table
   const d = new Date();
-  const thisMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const thisMonth = isBS
+    ? adDateToBSMonthKey(d.toISOString().slice(0, 10))
+    : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+  const hasActiveFilters = filters.source || filters.month || filters.startDate || filters.endDate;
 
   const renderRow = (inc) => (
     <div key={inc.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors group">
@@ -286,7 +301,7 @@ export default function Income() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <YearSelector year={yearFilter} onChange={yr => { setYearFilter(yr); setPage(1); }} />
+          <YearSelector year={yearFilter} calendar={calendar} onChange={yr => { setYearFilter(yr); setPage(1); }} />
           <button
             onClick={() => setImportOpen(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -441,7 +456,7 @@ export default function Income() {
           groupedByMonth.flatMap(([month, items]) => [
             <div key={`mh-${month}`} className="px-4 py-2 bg-gray-50 dark:bg-gray-700/70 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
-                {monthLabel(month, 'long')}
+                {isBS ? getBSMonthLabel(month, 'long') : monthLabel(month, 'long')}
               </span>
               <span className="text-xs text-gray-400 dark:text-gray-500">
                 {items.length} {items.length === 1 ? 'entry' : 'entries'} · {formatCurrency(items.reduce((s, i) => s + (+i.amount || 0), 0), currency)}
@@ -498,7 +513,7 @@ export default function Income() {
                 <tr key={row.month} className={`hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors ${row.month === thisMonth ? 'bg-green-50/50 dark:bg-green-900/10' : ''}`}>
                   <td className="px-5 py-3 font-medium text-gray-900 dark:text-white flex items-center gap-2">
                     {row.month === thisMonth && <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />}
-                    {monthLabel(row.month, 'long')}
+                    {isBS ? getBSMonthLabel(row.month, 'long') : monthLabel(row.month, 'long')}
                   </td>
                   <td className="px-4 py-3 text-center text-gray-500 dark:text-gray-400">{row.count}</td>
                   <td className="px-5 py-3 text-right font-semibold text-green-600 dark:text-green-400">

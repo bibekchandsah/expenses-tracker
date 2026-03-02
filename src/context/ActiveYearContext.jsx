@@ -2,20 +2,26 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from './AuthContext';
+import { getCurrentBSYear } from '../utils/calendarUtils';
 
 const ActiveYearContext = createContext(null);
 
 export function ActiveYearProvider({ children }) {
   const { user } = useAuth();
-  const thisYear = new Date().getFullYear();
-  const [activeYear, setActiveYear] = useState(thisYear);
+  const thisYear   = new Date().getFullYear();
+  const thisBSYear = getCurrentBSYear();
+
+  const [activeYear,   setActiveYear]   = useState(thisYear);
+  const [bsActiveYear, setBSActiveYear] = useState(thisBSYear);
 
   useEffect(() => {
-    if (!user) { setActiveYear(thisYear); return; }
+    if (!user) { setActiveYear(thisYear); setBSActiveYear(thisBSYear); return; }
     const ref = doc(db, 'users', user.uid, 'profile', 'info');
     const unsub = onSnapshot(ref, snap => {
       if (snap.exists()) {
-        setActiveYear(snap.data().activeYear || thisYear);
+        const data = snap.data();
+        setActiveYear(data.activeYear || thisYear);
+        setBSActiveYear(data.bsActiveYear || thisBSYear);
       }
     });
     return unsub;
@@ -28,8 +34,15 @@ export function ActiveYearProvider({ children }) {
     await updateDoc(ref, { activeYear: year, updatedAt: serverTimestamp() });
   }
 
+  async function updateBSActiveYear(year) {
+    if (!user) return;
+    setBSActiveYear(year); // optimistic
+    const ref = doc(db, 'users', user.uid, 'profile', 'info');
+    await updateDoc(ref, { bsActiveYear: year, updatedAt: serverTimestamp() });
+  }
+
   return (
-    <ActiveYearContext.Provider value={{ activeYear, updateActiveYear }}>
+    <ActiveYearContext.Provider value={{ activeYear, updateActiveYear, bsActiveYear, updateBSActiveYear }}>
       {children}
     </ActiveYearContext.Provider>
   );

@@ -17,6 +17,7 @@ import { getBankEntriesOnce } from '../services/bankService';
 import { useCategories } from '../context/CategoryContext';
 import { INCOME_SOURCES } from '../components/IncomeModal';
 import { formatCurrency } from '../utils/formatters';
+import { isInBSYear, getCurrentBSYear } from '../utils/calendarUtils';
 
 function toDateStr(d) {
   if (!d) return '';
@@ -69,7 +70,7 @@ const CURRENCIES = [
 export default function Profile() {
   const { user, updateUserInfo, setProfilePhoto, avatarURL } = useAuth();
   const { currency: activeCurrency, updateCurrency } = useCurrency();
-  const { activeYear, updateActiveYear } = useActiveYear();
+  const { activeYear, updateActiveYear, bsActiveYear, updateBSActiveYear } = useActiveYear();
   const { calendar, updateCalendar, yearLabel } = useCalendar();
   const { expenses, deleteExpense } = useExpenses();
   const { incomes, deleteIncome } = useIncomes();
@@ -333,18 +334,20 @@ export default function Profile() {
 
   async function handleDeleteYear() {
     setDeleting(true);
-    const yr = String(activeYear);
+    const matchFn = calendar === 'bs'
+      ? (d) => isInBSYear(d, bsActiveYear)
+      : (d) => d?.startsWith(String(activeYear));
     try {
       await Promise.all([
-        ...expenses.filter(e => e.date?.startsWith(yr)).map(e => deleteExpense(e.id)),
-        ...incomes.filter(i => i.date?.startsWith(yr)).map(i => deleteIncome(i.id)),
-        ...lends.filter(l => l.date?.startsWith(yr)).map(l => deleteLend(l.id)),
-        ...loans.filter(l => l.date?.startsWith(yr)).map(l => deleteLoan(l.id)),
-        ...savings.filter(s => s.date?.startsWith(yr)).map(s => deleteSaving(s.id)),
-        ...sources.filter(s => s.date?.startsWith(yr)).map(s => deleteSource(s.id)),
-        ...forMeEntries.filter(e => toDateStr(e.date).startsWith(yr)).map(e => deleteEntry(e.id)),
+        ...expenses.filter(e => matchFn(e.date)).map(e => deleteExpense(e.id)),
+        ...incomes.filter(i => matchFn(i.date)).map(i => deleteIncome(i.id)),
+        ...lends.filter(l => matchFn(l.date)).map(l => deleteLend(l.id)),
+        ...loans.filter(l => matchFn(l.date)).map(l => deleteLoan(l.id)),
+        ...savings.filter(s => matchFn(s.date)).map(s => deleteSaving(s.id)),
+        ...sources.filter(s => matchFn(s.date)).map(s => deleteSource(s.id)),
+        ...forMeEntries.filter(e => matchFn(toDateStr(e.date))).map(e => deleteEntry(e.id)),
       ]);
-      addToast(`All ${activeYear} data deleted successfully`, 'success');
+      addToast(`All ${yearLabel(effectiveYear)} data deleted successfully`, 'success');
       setDeleteConfirm(false);
     } catch {
       addToast('Some items failed to delete', 'error');
@@ -353,9 +356,14 @@ export default function Profile() {
     }
   }
 
-  const yearExpenses  = expenses.filter(e => e.date?.startsWith(String(activeYear)));
+  // Year-scoped stats — honours BS calendar mode
+  const effectiveYear = calendar === 'bs' ? bsActiveYear : activeYear;
+  const yearExpenses = calendar === 'bs'
+    ? expenses.filter(e => isInBSYear(e.date, bsActiveYear))
+    : expenses.filter(e => e.date?.startsWith(String(activeYear)));
   const totalExpenses  = yearExpenses.length;
   const now            = new Date();
+  // "This month" AD prefix for Gregorian; for BS we use adDateToBSMonthKey
   const displayMonth   = `${activeYear}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const thisMonthTotal = yearExpenses
     .filter(e => e.date?.startsWith(displayMonth))
@@ -418,9 +426,9 @@ export default function Profile() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: `${yearLabel(activeYear)} Expenses`, value: totalExpenses },
+          { label: `${effectiveYear} Expenses`, value: totalExpenses },
           { label: 'This Month', value: formatCurrency(thisMonthTotal, activeCurrency) },
-          { label: `${yearLabel(activeYear)} Total`, value: formatCurrency(yearTotal, activeCurrency) },
+          { label: `${effectiveYear} Total`, value: formatCurrency(yearTotal, activeCurrency) },
         ].map(s => (
           <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 text-center">
             <p className="text-lg font-bold text-gray-900 dark:text-white">{s.value}</p>
@@ -574,7 +582,7 @@ export default function Profile() {
           <Download className="w-4 h-4 text-primary-500" /> Year Data Management
         </h2>
         <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
-          Export or permanently delete all your data for <span className="font-semibold text-gray-700 dark:text-gray-300">{yearLabel(activeYear)}</span>. Includes expenses, income, lends, loans, savings, for-me and all bank records.
+          Export or permanently delete all your data for <span className="font-semibold text-gray-700 dark:text-gray-300">{effectiveYear}</span>. Includes expenses, income, lends, loans, savings, for-me and all bank records.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
           <button
@@ -582,20 +590,20 @@ export default function Profile() {
             disabled={exporting}
             className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/40 disabled:opacity-60 transition-colors"
           >
-            <FileSpreadsheet className="w-4 h-4" /> {exporting ? 'Exporting...' : `Export ${yearLabel(activeYear)} as Excel`}
+            <FileSpreadsheet className="w-4 h-4" /> {exporting ? 'Exporting...' : `Export ${effectiveYear} as Excel`}
           </button>
           <button
             onClick={() => handleExportYear('json')}
             disabled={exporting}
             className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl hover:bg-primary-100 dark:hover:bg-primary-900/40 disabled:opacity-60 transition-colors"
           >
-            <FileJson className="w-4 h-4" /> {exporting ? 'Exporting...' : `Export ${yearLabel(activeYear)} as JSON`}
+            <FileJson className="w-4 h-4" /> {exporting ? 'Exporting...' : `Export ${effectiveYear} as JSON`}
           </button>
           <button
             onClick={() => setDeleteConfirm(true)}
             className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
           >
-            <Trash2 className="w-4 h-4" /> Delete {yearLabel(activeYear)} Data
+            <Trash2 className="w-4 h-4" /> Delete {effectiveYear} Data
           </button>
         </div>
 
@@ -604,9 +612,9 @@ export default function Profile() {
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-red-700 dark:text-red-400">Delete all {yearLabel(activeYear)} data?</p>
+                <p className="text-sm font-semibold text-red-700 dark:text-red-400">Delete all {effectiveYear} data?</p>
                 <p className="text-xs text-red-600/80 dark:text-red-500 mt-1">
-                  This will permanently delete all expenses, income, lends, loans, savings and for-me records from {yearLabel(activeYear)}. This cannot be undone.
+                  This will permanently delete all expenses, income, lends, loans, savings and for-me records from {effectiveYear}. This cannot be undone.
                 </p>
               </div>
             </div>
@@ -616,7 +624,7 @@ export default function Profile() {
                 disabled={deleting}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 rounded-xl transition-colors"
               >
-                <Trash2 className="w-3.5 h-3.5" /> {deleting ? 'Deleting...' : `Yes, Delete All ${yearLabel(activeYear)} Data`}
+                <Trash2 className="w-3.5 h-3.5" /> {deleting ? 'Deleting...' : `Yes, Delete All ${effectiveYear} Data`}
               </button>
               <button
                 onClick={() => setDeleteConfirm(false)}
@@ -632,9 +640,14 @@ export default function Profile() {
 
       {/* Active Year Picker */}
       {(() => {
-        const thisYear = new Date().getFullYear();
+        const isBS = calendar === 'bs';
+        const currentAD = new Date().getFullYear();
+        const currentBS = getCurrentBSYear();
+        const startY  = isBS ? 2074 : 2020;
+        const endY    = isBS ? currentBS + 1 : currentAD + 1;
+        const nowY    = isBS ? currentBS : currentAD;
         const yearRange = [];
-        for (let y = 2020; y <= thisYear + 1; y++) yearRange.push(y);
+        for (let y = startY; y <= endY; y++) yearRange.push(y);
         return (
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center justify-between mb-1">
@@ -642,7 +655,7 @@ export default function Profile() {
                 <CalendarRange className="w-4 h-4 text-primary-500" /> Active Year
               </h2>
               <span className="text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 px-2.5 py-1 rounded-full font-semibold">
-                Active: {yearLabel(activeYear)}
+                Active: {isBS ? bsActiveYear : yearLabel(activeYear)}
               </span>
             </div>
             <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
@@ -650,19 +663,19 @@ export default function Profile() {
             </p>
             <div className="grid grid-cols-4 gap-2">
               {yearRange.map(y => {
-                const isActive = activeYear === y;
-                const isCurrent = y === thisYear;
+                const isActive  = isBS ? (bsActiveYear === y) : (activeYear === y);
+                const isCurrent = y === nowY;
                 return (
                   <button
                     key={y}
-                    onClick={() => updateActiveYear(y)}
+                    onClick={() => isBS ? updateBSActiveYear(y) : updateActiveYear(y)}
                     className={`relative py-2.5 rounded-xl text-sm font-semibold border transition-all ${
                       isActive
                         ? 'bg-primary-600 border-primary-600 text-white shadow-sm'
                         : 'border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-primary-400 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20'
                     }`}
                   >
-                    {yearLabel(y)}
+                    {y}
                     {isCurrent && (
                       <span className={`absolute -top-1.5 -right-1.5 text-[9px] font-bold px-1 py-0.5 rounded-full ${
                         isActive ? 'bg-white text-primary-600' : 'bg-primary-600 text-white'

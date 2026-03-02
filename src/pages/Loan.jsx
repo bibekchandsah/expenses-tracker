@@ -15,7 +15,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
-import { safeADToBS } from '../utils/calendarUtils';
+import { safeADToBS, getBSYearRange } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
@@ -218,7 +218,7 @@ function loanKey(r) { return `${String(r.name || '').toLowerCase()}|${r.date}|${
 export default function Loan() {
   const { loans, loading, addLoan, updateLoan, deleteLoan } = useLoans();
   const { currency } = useCurrency();
-  const { dateLabel } = useCalendar();
+  const { dateLabel, calendar } = useCalendar();
   const { lends } = useLends();
   const { addToast } = useToast();
   const { banks, selectedBankId } = useBanks();
@@ -235,9 +235,12 @@ export default function Loan() {
   const [panelOpen, setPanelOpen]         = useState(true);
   const [chartOpen, setChartOpen]         = useState(true);
   const [showSidePanel, setShowSidePanel] = useState(true);
-  const { activeYear } = useActiveYear();
-  const [yearFilter, setYearFilter] = useState(() => activeYear);
-  useEffect(() => { setYearFilter(activeYear); }, [activeYear]);
+  const { activeYear, bsActiveYear } = useActiveYear();
+  const isBS = calendar === 'bs';
+  const [yearFilter, setYearFilter] = useState(() => isBS ? bsActiveYear : activeYear);
+  useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
+
+  const bsYearRange = useMemo(() => isBS ? getBSYearRange(yearFilter) : null, [isBS, yearFilter]);
 
   // Unique names for autocomplete — merged from both Loan and Lend pages
   const existingNames = useMemo(() => [
@@ -259,7 +262,9 @@ export default function Loan() {
 
   const filteredLoans = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const yearLoans = loans.filter(l => l.date?.startsWith(String(yearFilter)));
+    const yearLoans = isBS
+      ? loans.filter(l => l.date && bsYearRange && l.date >= bsYearRange.start && l.date <= bsYearRange.end)
+      : loans.filter(l => l.date?.startsWith(String(yearFilter)));
     let data = q
       ? yearLoans.filter(l =>
           l.name.toLowerCase().includes(q) ||
@@ -286,11 +291,13 @@ export default function Loan() {
       if (av > bv) return sortDir === 'asc' ?  1 : -1;
       return 0;
     });
-  }, [loans, search, sortCol, sortDir, personFilter, yearFilter]);
+  }, [loans, search, sortCol, sortDir, personFilter, yearFilter, isBS, bsYearRange]);
 
   // Per-lender summary (right panel) — scoped to yearFilter
   const lenderSummary = useMemo(() => {
-    const yearLoans = loans.filter(l => l.date?.startsWith(String(yearFilter)));
+    const yearLoans = isBS
+      ? loans.filter(l => l.date && bsYearRange && l.date >= bsYearRange.start && l.date <= bsYearRange.end)
+      : loans.filter(l => l.date?.startsWith(String(yearFilter)));
     const map = {};
     yearLoans.forEach(l => {
       if (!map[l.name]) map[l.name] = { name: l.name, totalBorrowed: 0, totalPaid: 0 };
@@ -300,18 +307,20 @@ export default function Loan() {
     return Object.values(map)
       .map(p => ({ ...p, remaining: p.totalBorrowed - p.totalPaid }))
       .sort((a, b) => b.remaining - a.remaining);
-  }, [loans, yearFilter]);
+  }, [loans, yearFilter, isBS, bsYearRange]);
 
   // Overall stats — scoped to yearFilter
   const stats = useMemo(() => {
-    const yearLoans = loans.filter(l => l.date?.startsWith(String(yearFilter)));
+    const yearLoans = isBS
+      ? loans.filter(l => l.date && bsYearRange && l.date >= bsYearRange.start && l.date <= bsYearRange.end)
+      : loans.filter(l => l.date?.startsWith(String(yearFilter)));
     return {
       totalBorrowed:  yearLoans.reduce((s, l) => s + (+l.amount     || 0), 0),
       totalPaid:      yearLoans.reduce((s, l) => s + (+l.paidAmount || 0), 0),
       totalRemaining: yearLoans.reduce((s, l) => s + ((+l.amount || 0) - (+l.paidAmount || 0)), 0),
       lendersCount:   new Set(yearLoans.map(l => l.name)).size,
     };
-  }, [loans, yearFilter]);
+  }, [loans, yearFilter, isBS, bsYearRange]);
 
   async function handleSave(data) {
     if (editingLoan) { await updateLoan(editingLoan.id, data); addToast('Record updated!'); }
@@ -381,7 +390,7 @@ export default function Loan() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track money you've borrowed and amounts paid back</p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <YearSelector year={yearFilter} onChange={yr => setYearFilter(yr)} />
+          <YearSelector year={yearFilter} calendar={calendar} onChange={yr => setYearFilter(yr)} />
           <button
             onClick={() => setImportOpen(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"

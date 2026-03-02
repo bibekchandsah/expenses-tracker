@@ -12,7 +12,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
-import { safeADToBS } from '../utils/calendarUtils';
+import { safeADToBS, adDateToBSMonthKey, getBSYearRange, getBSMonthLabel } from '../utils/calendarUtils';
 import { exportToCSV } from '../utils/csvExport';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
@@ -36,11 +36,12 @@ function expenseKey(r) {
 export default function Expenses() {
   const { expenses, filteredExpenses, loading, filters, setFilters, resetFilters, addExpense, updateExpense, deleteExpense } = useExpenses();
   const { currency } = useCurrency();
-  const { monthLabel, dateLabel } = useCalendar();
+  const { monthLabel, dateLabel, calendar } = useCalendar();
   const { categories, getCategoryById } = useCategories();
   const { banks, selectedBankId } = useBanks();
   const { addToast } = useToast();
-  const { activeYear } = useActiveYear();
+  const { activeYear, bsActiveYear } = useActiveYear();
+  const isBS = calendar === 'bs';
 
   const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -48,17 +49,21 @@ export default function Expenses() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [quickAddOpen, setQuickAddOpen] = useState({ open: false, row: null });
   const [showFilters, setShowFilters] = useState(false);
-  const [yearFilter, setYearFilter] = useState(() => activeYear);
+  const [yearFilter, setYearFilter] = useState(() => isBS ? bsActiveYear : activeYear);
   const [page, setPage] = useState(1);
 
-  useEffect(() => { setYearFilter(activeYear); }, [activeYear]);
+  // Sync yearFilter when activeYear, bsActiveYear, or calendar changes
+  useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); setPage(1); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
 
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebounce(searchInput, 300);
 
-  // Full-text search across all visible fields
+  // Full-text search with BS-aware year filter
+  const bsYearRange = useMemo(() => isBS ? getBSYearRange(yearFilter) : null, [isBS, yearFilter]);
   const searchFiltered = useMemo(() => {
-    const yearFiltered = filteredExpenses.filter(e => e.date?.startsWith(String(yearFilter)));
+    const yearFiltered = isBS
+      ? filteredExpenses.filter(e => e.date >= bsYearRange.start && e.date <= bsYearRange.end)
+      : filteredExpenses.filter(e => e.date?.startsWith(String(yearFilter)));
     if (!debouncedSearch.trim()) return yearFiltered;
     const q = debouncedSearch.toLowerCase();
     return yearFiltered.filter(e => {
@@ -73,19 +78,19 @@ export default function Expenses() {
         cat?.name?.toLowerCase().includes(q)
       );
     });
-  }, [filteredExpenses, debouncedSearch, getCategoryById, yearFilter]);
+  }, [filteredExpenses, debouncedSearch, getCategoryById, yearFilter, bsYearRange, isBS]);
 
   const useMonthView = searchFiltered.length > 30;
 
   const groupedByMonth = useMemo(() => {
     const map = {};
     searchFiltered.forEach(e => {
-      const m = e.date?.slice(0, 7) ?? 'Unknown';
+      const m = isBS ? (adDateToBSMonthKey(e.date) || 'Unknown') : (e.date?.slice(0, 7) ?? 'Unknown');
       if (!map[m]) map[m] = [];
       map[m].push(e);
     });
     return Object.entries(map).sort(([a], [b]) => b.localeCompare(a));
-  }, [searchFiltered]);
+  }, [searchFiltered, isBS]);
 
   const paginated = useMemo(() => {
     if (useMonthView) return [];
@@ -99,14 +104,14 @@ export default function Expenses() {
   const monthlyBreakdown = useMemo(() => {
     const map = {};
     searchFiltered.forEach(e => {
-      const m = e.date?.slice(0, 7);
+      const m = isBS ? (adDateToBSMonthKey(e.date) || '') : (e.date?.slice(0, 7));
       if (!m) return;
       if (!map[m]) map[m] = { month: m, total: 0, count: 0 };
       map[m].total += +e.amount || 0;
       map[m].count += 1;
     });
     return Object.values(map).sort((a, b) => b.month.localeCompare(a.month));
-  }, [searchFiltered]);
+  }, [searchFiltered, isBS]);
 
   function openAdd() { setEditingExpense(null); setModalOpen(true); }
   function openEdit(exp) { setEditingExpense(exp); setModalOpen(true); }
@@ -249,7 +254,7 @@ export default function Expenses() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{searchFiltered.length} of {expenses.length} expenses</p>
         </div>
         <div className="flex items-center gap-2">
-          <YearSelector year={yearFilter} onChange={yr => { setYearFilter(yr); setPage(1); }} />
+          <YearSelector year={yearFilter} calendar={calendar} onChange={yr => { setYearFilter(yr); setPage(1); }} />
           <button
             onClick={() => setImportOpen(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -390,7 +395,9 @@ export default function Expenses() {
               ? groupedByMonth.flatMap(([month, items]) => [
                   <div key={`mh-${month}`} className="px-5 py-2 bg-gray-50 dark:bg-gray-700/70 flex items-center justify-between">
                     <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
-                      {new Date(month + '-02').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      {isBS
+                        ? getBSMonthLabel(month, 'long')
+                        : new Date(month + '-02').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                     </span>
                     <span className="text-xs text-gray-400 dark:text-gray-500">
                       {items.length} {items.length === 1 ? 'expense' : 'expenses'} · {formatCurrency(items.reduce((s, e) => s + (+e.amount || 0), 0), currency)}
@@ -443,8 +450,12 @@ export default function Expenses() {
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {monthlyBreakdown.map((row, i) => {
-                const label = monthLabel(row.month, 'long');
-                const isCurrentMonth = row.month === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+                const label = isBS ? getBSMonthLabel(row.month, 'long') : monthLabel(row.month, 'long');
+                const now2 = new Date();
+                const currentMonthKey = isBS
+                  ? adDateToBSMonthKey(now2.toISOString().slice(0, 10))
+                  : `${now2.getFullYear()}-${String(now2.getMonth() + 1).padStart(2, '0')}`;
+                const isCurrentMonth = row.month === currentMonthKey;
                 return (
                   <tr key={row.month} className={`hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${isCurrentMonth ? 'bg-primary-50/40 dark:bg-primary-900/10' : ''}`}>
                     <td className="px-5 py-3 font-medium text-gray-800 dark:text-gray-200 flex items-center gap-2">

@@ -1,22 +1,30 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { getCurrentBSYear } from '../../utils/calendarUtils';
 
-const MIN_YEAR = 2020;
-const MAX_YEAR = new Date().getFullYear() + 1;
+const AD_MIN = 2020;
+const AD_MAX = new Date().getFullYear() + 1;
+
+const BS_MIN = 2074;
+const BS_MAX = getCurrentBSYear() + 1;
 
 /**
  * A compact year nav with ‹ YYYY › arrows.
  *
  * Props:
- *   year     – current year (number)
- *   onChange – called with new year (number)
+ *   year      – current year (number)
+ *   onChange  – called with new year (number)
+ *   calendar  – 'gregorian' | 'bs'  (default: 'gregorian')
  *   className – optional extra wrapper classes
  */
-export default function YearSelector({ year, onChange, className = '' }) {
+export default function YearSelector({ year, onChange, calendar = 'gregorian', className = '' }) {
+  const minYear = calendar === 'bs' ? BS_MIN : AD_MIN;
+  const maxYear = calendar === 'bs' ? BS_MAX : AD_MAX;
+
   return (
     <div className={`flex items-center gap-0.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-1 py-0.5 ${className}`}>
       <button
-        onClick={() => year > MIN_YEAR && onChange(year - 1)}
-        disabled={year <= MIN_YEAR}
+        onClick={() => year > minYear && onChange(year - 1)}
+        disabled={year <= minYear}
         className="p-1 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         title="Previous year"
       >
@@ -26,8 +34,8 @@ export default function YearSelector({ year, onChange, className = '' }) {
         {year}
       </span>
       <button
-        onClick={() => year < MAX_YEAR && onChange(year + 1)}
-        disabled={year >= MAX_YEAR}
+        onClick={() => year < maxYear && onChange(year + 1)}
+        disabled={year >= maxYear}
         className="p-1 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         title="Next year"
       >

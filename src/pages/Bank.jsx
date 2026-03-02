@@ -13,7 +13,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
-import { safeADToBS } from '../utils/calendarUtils';
+import { safeADToBS, getBSYearRange, adDateToBSMonthKey, getBSMonthLabel } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
@@ -285,8 +285,9 @@ export default function Bank() {
   } = useBanks();
   const { addToast } = useToast();
   const { currency } = useCurrency();
-  const { dateLabel } = useCalendar();
-  const { activeYear } = useActiveYear();
+  const { dateLabel, calendar } = useCalendar();
+  const { activeYear, bsActiveYear } = useActiveYear();
+  const isBS = calendar === 'bs';
 
   const [bankModalOpen, setBankModalOpen] = useState(false);
   const [editingBank, setEditingBank] = useState(null);
@@ -304,9 +305,11 @@ export default function Bank() {
   const [sortCol, setSortCol] = useState(null);   // null | 'date'|'description'|'deposit'|'withdraw'|'balance'
   const [sortDir, setSortDir] = useState('asc');  // 'asc' | 'desc'
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [yearFilter, setYearFilter] = useState(() => activeYear);
+  const [yearFilter, setYearFilter] = useState(() => isBS ? bsActiveYear : activeYear);
 
-  useEffect(() => { setYearFilter(activeYear); }, [activeYear]);
+  useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); setMonthPage(0); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
+
+  const bsYearRange = useMemo(() => isBS ? getBSYearRange(yearFilter) : null, [isBS, yearFilter]);
 
   // Reset to newest month + clear search when bank changes
   useEffect(() => { setMonthPage(0); setShowAll(false); setSearch(''); setSortCol(null); }, [selectedBankId]);
@@ -332,24 +335,27 @@ export default function Bank() {
   // Within each month entries are reversed for display (newest entry at top).
   // closingBalance on each entry is already computed oldest-first in context.
   const months = useMemo(() => {
-    const yearEntries = entries.filter(e => e.date?.startsWith(String(yearFilter)));
+    const yearEntries = isBS
+      ? entries.filter(e => e.date && bsYearRange && e.date >= bsYearRange.start && e.date <= bsYearRange.end)
+      : entries.filter(e => e.date?.startsWith(String(yearFilter)));
     const map = {};
     yearEntries.forEach(e => {
-      const key = e.date.slice(0, 7); // "YYYY-MM"
+      const key = isBS ? adDateToBSMonthKey(e.date) : e.date.slice(0, 7);
       if (!map[key]) map[key] = [];
       map[key].push(e);
     });
     return Object.keys(map)
       .sort((a, b) => b.localeCompare(a)) // newest month first
       .map(key => {
-        const [y, m] = key.split('-');
-        const label = new Date(+y, +m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        const label = isBS
+          ? getBSMonthLabel(key, 'long')
+          : (() => { const [y, m] = key.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); })();
         const monthEntries = map[key];
         const totalDeposit  = monthEntries.reduce((s, e) => s + (+e.deposit  || 0), 0);
         const totalWithdraw = monthEntries.reduce((s, e) => s + (+e.withdraw || 0), 0);
         return { key, label, entries: [...monthEntries].reverse(), totalDeposit, totalWithdraw };
       });
-  }, [entries, yearFilter]);
+  }, [entries, yearFilter, isBS, bsYearRange]);
 
   const currentMonth = months[monthPage] ?? null;
 
@@ -391,7 +397,9 @@ export default function Bank() {
 
   // Bank stats — scoped to yearFilter
   const stats = useMemo(() => {
-    const yearEntries = entries.filter(e => e.date?.startsWith(String(yearFilter)));
+    const yearEntries = isBS
+      ? entries.filter(e => e.date && bsYearRange && e.date >= bsYearRange.start && e.date <= bsYearRange.end)
+      : entries.filter(e => e.date?.startsWith(String(yearFilter)));
     const totalDeposit  = yearEntries.reduce((s, e) => s + (+e.deposit  || 0), 0);
     const totalWithdraw = yearEntries.reduce((s, e) => s + (+e.withdraw || 0), 0);
     const currentBalance = yearEntries.length > 0
@@ -516,7 +524,7 @@ export default function Bank() {
             )}
 
             <div className="sm:ml-auto flex items-center gap-2">
-              <YearSelector year={yearFilter} onChange={yr => { setYearFilter(yr); setMonthPage(0); }} />
+              <YearSelector year={yearFilter} calendar={calendar} onChange={yr => { setYearFilter(yr); setMonthPage(0); }} />
               {selectedBank && (
                 <button
                   onClick={() => setImportOpen(true)}

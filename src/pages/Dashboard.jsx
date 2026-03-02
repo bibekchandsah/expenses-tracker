@@ -16,25 +16,40 @@ import StatsCard from '../components/ui/StatsCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import YearSelector from '../components/ui/YearSelector';
 import { formatCurrency, groupByMonth, groupByCategory, monthsOfYear } from '../utils/formatters';
+import {
+  bsMonthsOfYear, adDateToBSMonthKey, getBSMonthLabel,
+  getBSYearRange, isInBSYear, getCurrentBSYear,
+} from '../utils/calendarUtils';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
 
 export default function Dashboard() {
   const { expenses, loading } = useExpenses();
   const { currency } = useCurrency();
-  const { monthLabel, dateLabel, yearLabel } = useCalendar();
+  const { monthLabel, dateLabel, yearLabel, calendar } = useCalendar();
   const { categories, getCategoryById } = useCategories();
   const { user } = useAuth();
   const { entries: bankEntries, selectedBank, banks, setSelectedBankId } = useBanks();
   const { incomes } = useIncomes();
 
   const now = new Date();
-  const { activeYear } = useActiveYear();
-  const [selectedYear, setSelectedYear] = useState(() => activeYear);
-  useEffect(() => { setSelectedYear(activeYear); }, [activeYear]);
+  const { activeYear, bsActiveYear } = useActiveYear();
+  const [selectedYear,   setSelectedYear]   = useState(() => activeYear);
+  const [selectedBSYear, setSelectedBSYear] = useState(() => bsActiveYear);
+  useEffect(() => { setSelectedYear(activeYear);     }, [activeYear]);
+  useEffect(() => { setSelectedBSYear(bsActiveYear); }, [bsActiveYear]);
 
-  // The same calendar month inside the selected year (e.g. March 2025 if today is March)
-  const displayMonth = `${selectedYear}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const isBS = calendar === 'bs';
+
+  // AD "YYYY-MM" for Gregorian mode; BS "YYYY-MM" key for BS mode
+  const displayMonth = isBS
+    ? adDateToBSMonthKey(now.toISOString().slice(0, 10))
+    : `${selectedYear}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  // Year used for all data operations
+  const activeSelYear   = isBS ? selectedBSYear : selectedYear;
+  // AD date range for the selected BS year (only used in BS mode)
+  const bsYearRange = isBS ? getBSYearRange(selectedBSYear) : null;
 
   const [catPeriod, setCatPeriod] = useState('year');
   const [trendPeriod, setTrendPeriod] = useState('12m');
@@ -42,78 +57,128 @@ export default function Dashboard() {
   const [bankPeriod, setBankPeriod] = useState('12m');
 
   const stats = useMemo(() => {
-    const monthExpenses    = expenses.filter(e => e.date.startsWith(displayMonth));
-    const yearExpenses     = expenses.filter(e => e.date.startsWith(String(selectedYear)));
+    const monthExpenses = isBS
+      ? expenses.filter(e => adDateToBSMonthKey(e.date) === displayMonth)
+      : expenses.filter(e => e.date.startsWith(displayMonth));
 
-    // Previous month relative to displayMonth (for trend %)
-    const prevM = new Date(selectedYear, now.getMonth() - 1, 1).toISOString().slice(0, 7);
-    const lastMonthExpenses = expenses.filter(e => e.date.startsWith(prevM));
+    const yearExpenses = isBS
+      ? expenses.filter(e => e.date >= bsYearRange.start && e.date <= bsYearRange.end)
+      : expenses.filter(e => e.date.startsWith(String(selectedYear)));
+
+    // Previous month (for trend %)
+    const prevM = isBS
+      ? (() => {
+          const [byStr, bmStr] = displayMonth.split('-');
+          const bm = parseInt(bmStr, 10);
+          const by = parseInt(byStr, 10);
+          return bm === 1 ? `${by - 1}-12` : `${by}-${String(bm - 1).padStart(2, '0')}`;
+        })()
+      : new Date(selectedYear, now.getMonth() - 1, 1).toISOString().slice(0, 7);
+    const lastMonthExpenses = isBS
+      ? expenses.filter(e => adDateToBSMonthKey(e.date) === prevM)
+      : expenses.filter(e => e.date.startsWith(prevM));
 
     const monthTotal     = monthExpenses.reduce((s, e) => s + +e.amount, 0);
     const lastMonthTotal = lastMonthExpenses.reduce((s, e) => s + +e.amount, 0);
     const yearTotal      = yearExpenses.reduce((s, e) => s + +e.amount, 0);
     const trend = lastMonthTotal ? ((monthTotal - lastMonthTotal) / lastMonthTotal) * 100 : 0;
 
-    const avgMonthly = yearTotal / Math.max(1, new Set(yearExpenses.map(e => e.date.slice(0, 7))).size);
+    const avgMonthly = isBS
+      ? yearTotal / Math.max(1, new Set(yearExpenses.map(e => adDateToBSMonthKey(e.date))).size)
+      : yearTotal / Math.max(1, new Set(yearExpenses.map(e => e.date.slice(0, 7))).size);
 
     return { monthTotal, yearTotal, trend, avgMonthly, count: monthExpenses.length, yearCount: yearExpenses.length };
-  }, [expenses, displayMonth, selectedYear]);
+  }, [expenses, displayMonth, selectedYear, selectedBSYear, bsYearRange, isBS]);
 
   // Category breakdown — this month (within selectedYear) or full year
   const categoryData = useMemo(() => {
     const filtered = catPeriod === 'month'
-      ? expenses.filter(e => e.date.startsWith(displayMonth))
-      : expenses.filter(e => e.date.startsWith(String(selectedYear)));
+      ? (isBS
+          ? expenses.filter(e => adDateToBSMonthKey(e.date) === displayMonth)
+          : expenses.filter(e => e.date.startsWith(displayMonth)))
+      : (isBS
+          ? expenses.filter(e => e.date >= bsYearRange.start && e.date <= bsYearRange.end)
+          : expenses.filter(e => e.date.startsWith(String(selectedYear))));
     return groupByCategory(filtered).map(g => {
       const cat = getCategoryById(g.category);
       return { ...g, name: cat?.name || g.category, color: cat?.color || '#6b7280' };
     }).sort((a, b) => b.total - a.total);
-  }, [expenses, displayMonth, selectedYear, catPeriod, getCategoryById]);
+  }, [expenses, displayMonth, selectedYear, selectedBSYear, bsYearRange, catPeriod, getCategoryById, isBS]);
 
-  // Monthly bar chart (all 12 months of selectedYear)
+  // Monthly bar chart (all 12 months of selected year)
   const monthlyData = useMemo(() => {
+    if (isBS) {
+      const months = bsMonthsOfYear(selectedBSYear);
+      const map = {};
+      expenses.filter(e => e.date >= bsYearRange.start && e.date <= bsYearRange.end).forEach(e => {
+        const m = adDateToBSMonthKey(e.date);
+        map[m] = (map[m] || 0) + (+e.amount || 0);
+      });
+      return months.map(m => ({ month: getBSMonthLabel(m, 'short'), amount: map[m] || 0 }));
+    }
     const months = monthsOfYear(selectedYear);
     const map = {};
     expenses.filter(e => e.date?.startsWith(String(selectedYear))).forEach(e => {
       const m = e.date.slice(0, 7);
       map[m] = (map[m] || 0) + (+e.amount || 0);
     });
-    return months.map(m => ({
-      month: monthLabel(m, 'short'),
-      amount: map[m] || 0,
-    }));
-  }, [expenses, selectedYear, monthLabel]);
+    return months.map(m => ({ month: monthLabel(m, 'short'), amount: map[m] || 0 }));
+  }, [expenses, selectedYear, selectedBSYear, bsYearRange, monthLabel, isBS]);
 
-  // Line chart data — 12m = all 12 months of selectedYear, 6m = last 6 months of selectedYear
+  // Line chart data — 12m / 6m expense trend
   const trendData = useMemo(() => {
+    if (isBS) {
+      const months = trendPeriod === '12m' ? bsMonthsOfYear(selectedBSYear) : bsMonthsOfYear(selectedBSYear).slice(-6);
+      const map = {};
+      expenses.forEach(e => {
+        const m = adDateToBSMonthKey(e.date);
+        if (m) map[m] = (map[m] || 0) + (+e.amount || 0);
+      });
+      return months.map(m => ({ month: getBSMonthLabel(m, 'short'), amount: map[m] || 0 }));
+    }
     const months = trendPeriod === '12m' ? monthsOfYear(selectedYear) : monthsOfYear(selectedYear).slice(-6);
     const map = {};
     expenses.forEach(e => {
       const m = e.date?.slice(0, 7);
       if (m) map[m] = (map[m] || 0) + (+e.amount || 0);
     });
-    return months.map(m => ({
-      month: monthLabel(m, 'short'),
-      amount: map[m] || 0,
-    }));
-  }, [expenses, trendPeriod, selectedYear, monthLabel]);
+    return months.map(m => ({ month: monthLabel(m, 'short'), amount: map[m] || 0 }));
+  }, [expenses, trendPeriod, selectedYear, selectedBSYear, monthLabel, isBS]);
 
-  // Income trend — 12m = all 12 months of selectedYear, 6m = last 6 months of selectedYear
+  // Income trend — 12m / 6m
   const incomeTrendData = useMemo(() => {
+    if (isBS) {
+      const months = incomeTrendPeriod === '12m' ? bsMonthsOfYear(selectedBSYear) : bsMonthsOfYear(selectedBSYear).slice(-6);
+      const map = {};
+      incomes.forEach(i => {
+        const m = adDateToBSMonthKey(i.date);
+        if (m) map[m] = (map[m] || 0) + (+i.amount || 0);
+      });
+      return months.map(m => ({ month: getBSMonthLabel(m, 'short'), amount: map[m] || 0 }));
+    }
     const months = incomeTrendPeriod === '12m' ? monthsOfYear(selectedYear) : monthsOfYear(selectedYear).slice(-6);
     const map = {};
     incomes.forEach(i => {
       const m = i.date?.slice(0, 7);
       if (m) map[m] = (map[m] || 0) + (+i.amount || 0);
     });
-    return months.map(m => ({
-      month: monthLabel(m, 'short'),
-      amount: map[m] || 0,
-    }));
-  }, [incomes, incomeTrendPeriod, selectedYear, monthLabel]);
+    return months.map(m => ({ month: monthLabel(m, 'short'), amount: map[m] || 0 }));
+  }, [incomes, incomeTrendPeriod, selectedYear, selectedBSYear, monthLabel, isBS]);
 
-  // Bank deposit / withdraw trend — 12m = all 12 months of selectedYear, 6m = last 6 months of selectedYear
+  // Bank deposit / withdraw trend
   const bankTrendData = useMemo(() => {
+    if (isBS) {
+      const months = bankPeriod === '12m' ? bsMonthsOfYear(selectedBSYear) : bsMonthsOfYear(selectedBSYear).slice(-6);
+      const map = {};
+      bankEntries.forEach(e => {
+        const m = adDateToBSMonthKey(e.date);
+        if (!m) return;
+        if (!map[m]) map[m] = { deposit: 0, withdraw: 0 };
+        map[m].deposit  += +e.deposit  || 0;
+        map[m].withdraw += +e.withdraw || 0;
+      });
+      return months.map(m => ({ month: getBSMonthLabel(m, 'short'), deposit: map[m]?.deposit || 0, withdraw: map[m]?.withdraw || 0 }));
+    }
     const months = bankPeriod === '12m' ? monthsOfYear(selectedYear) : monthsOfYear(selectedYear).slice(-6);
     const map = {};
     bankEntries.forEach(e => {
@@ -123,16 +188,14 @@ export default function Dashboard() {
       map[m].deposit  += +e.deposit  || 0;
       map[m].withdraw += +e.withdraw || 0;
     });
-    return months.map(m => ({
-      month: monthLabel(m, 'short'),
-      deposit:  map[m]?.deposit  || 0,
-      withdraw: map[m]?.withdraw || 0,
-    }));
-  }, [bankEntries, bankPeriod, selectedYear, monthLabel]);
+    return months.map(m => ({ month: monthLabel(m, 'short'), deposit: map[m]?.deposit || 0, withdraw: map[m]?.withdraw || 0 }));
+  }, [bankEntries, bankPeriod, selectedYear, selectedBSYear, monthLabel, isBS]);
 
   const recentExpenses = useMemo(
-    () => expenses.filter(e => e.date.startsWith(String(selectedYear))).slice(0, 5),
-    [expenses, selectedYear]
+    () => isBS
+      ? expenses.filter(e => e.date >= bsYearRange.start && e.date <= bsYearRange.end).slice(0, 5)
+      : expenses.filter(e => e.date.startsWith(String(selectedYear))).slice(0, 5),
+    [expenses, selectedYear, selectedBSYear, bsYearRange, isBS]
   );
 
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
@@ -147,7 +210,11 @@ export default function Dashboard() {
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Here's your financial overview</p>
         </div>
-        <YearSelector year={selectedYear} onChange={setSelectedYear} />
+        <YearSelector
+          year={isBS ? selectedBSYear : selectedYear}
+          calendar={calendar}
+          onChange={yr => isBS ? setSelectedBSYear(yr) : setSelectedYear(yr)}
+        />
       </div>
 
       {/* Stats cards */}
@@ -158,14 +225,14 @@ export default function Dashboard() {
           icon={DollarSign}
           color="blue"
           trend={stats.trend}
-          subtitle={monthLabel(displayMonth, 'long')}
+          subtitle={isBS ? getBSMonthLabel(displayMonth, 'long') : monthLabel(displayMonth, 'long')}
         />
         <StatsCard
           title="This Year"
           value={formatCurrency(stats.yearTotal, currency)}
           icon={Calendar}
           color="purple"
-          subtitle={yearLabel(selectedYear)}
+          subtitle={isBS ? String(selectedBSYear) : yearLabel(selectedYear)}
         />
         <StatsCard
           title="Monthly Average"
@@ -179,7 +246,7 @@ export default function Dashboard() {
           value={stats.yearCount}
           icon={ShoppingBag}
           color="orange"
-          subtitle={`In ${yearLabel(selectedYear)}`}
+          subtitle={`In ${isBS ? selectedBSYear : yearLabel(selectedYear)}`}
         />
       </div>
 
@@ -187,7 +254,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Bar chart */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Monthly Expenses {selectedYear}</h2>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Monthly Expenses {activeSelYear}</h2>
           {expenses.length === 0 ? (
             <div className="flex items-center justify-center h-48 text-gray-400 text-sm">No data yet</div>
           ) : (
@@ -211,8 +278,8 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
               Category Breakdown ({catPeriod === 'month'
-                ? monthLabel(displayMonth, 'long')
-                : String(selectedYear)})
+                ? (isBS ? getBSMonthLabel(displayMonth, 'long') : monthLabel(displayMonth, 'long'))
+                : String(activeSelYear)})
             </h2>
             <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 text-xs font-medium">
               <button
@@ -273,7 +340,7 @@ export default function Dashboard() {
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
-            Income Trend {selectedYear} ({incomeTrendPeriod === '12m' ? 'Full Year' : 'Last 6 Months'})
+            Income Trend {activeSelYear} ({incomeTrendPeriod === '12m' ? 'Full Year' : 'Last 6 Months'})
           </h2>
           <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 text-xs font-medium">
             <button
@@ -319,7 +386,7 @@ export default function Dashboard() {
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
-            Spending Trend {selectedYear} ({trendPeriod === '12m' ? 'Full Year' : 'Last 6 Months'})
+            Spending Trend {activeSelYear} ({trendPeriod === '12m' ? 'Full Year' : 'Last 6 Months'})
           </h2>
           <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 text-xs font-medium">
             <button
