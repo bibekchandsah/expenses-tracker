@@ -375,6 +375,7 @@ income trend line chart added below the bank trend with:
     6 Months / 1 Year toggle (same as spending trend)
     Title "Income Trend"
     Legend label "Income"
+in dashboard by default select year value for category breakdown, income trend, spending trend, bank trend charts to show more data and give a better overview of the trends. users can still switch to 6 months view if they want to focus on recent activity, but showing 1 year by default provides a more comprehensive picture of their financial habits and patterns over time.
 
 
 Income page features:
@@ -529,3 +530,15 @@ match /users/{userId}/{allPaths=**} {
 Clicking it saves null to Firestore and clears avatarURL → Navbar, Sidebar, and Profile avatar immediately switch to the initials fallback
 After removing, the user can still upload a new photo at any time
 Also fixed the underlying avatarURL logic in AuthContext — it's now cleanly null (show initials) vs a URL/base64 (show image), used consistently across all three components
+
+
+International/Gregorian, Bikram Sambat, and Nepali month support:
+In Profile settings, users can now select their preferred calendar system: International (Gregorian), Bikram Sambat, or Thai Solar Calendar (Buddhist Era). This choice will affect how dates are displayed across the app, including in the Dashboard charts, monthly breakdowns, and date filters. For example, if a user selects Bikram Sambat, the month names in the category breakdown and monthly breakdown tables will switch to their Nepali equivalents (e.g. "बैशाख" or Baisakh instead of "April"). The date pickers in the add/edit modals will also adapt to show the appropriate calendar system. This allows users in Nepal to view their financial data in a format that is culturally familiar and easier for them to understand at a glance.
+For currenltly implement International/Gregorian calendar and Bikram Sambat calendar with month name support in the dashboard category breakdown and monthly breakdown tables. In the profile settings, users can select their preferred calendar system, and the app will adapt the date displays accordingly. For example, if a user selects Bikram Sambat, the month names in the category breakdown and monthly breakdown tables will switch to their Nepali equivalents (e.g. "बैशाख" or Baisakh instead of "April"). The date pickers in the add/edit modals will also adapt to show the appropriate calendar system. This allows users in Nepal to view their financial data in a format that is culturally familiar and easier for them to understand at a glance.
+
+Iran & Afghanistan → Solar Hijri calendar (starts at the Islamic Hijra, year begins at the March equinox).
+Ethiopia → Ethiopian calendar (about 7–8 years behind Gregorian, with 13 months).
+Nepal → Vikram Samvat and Nepal Sambat
+Thailand → Thai Solar Calendar (Buddhist Era)
+Japan → Japanese Era Calendar
+North Korea	→ Juche Calendar

@@ -24,6 +24,7 @@ import {
   Moon,
   Wrench,
   Calculator as CalculatorIcon,
+  Star,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -246,6 +247,17 @@ export default function Sidebar({ open, onClose }) {
                   <CalculatorIcon className="w-4 h-4 text-gray-400" />
                   Calculator
                 </button>
+                <a
+                  href="https://github.com/bibekchandsah/expenses-tracker"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setToolsOpen(false)}
+                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200
+                             hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Star className="w-4 h-4 text-yellow-400" />
+                  Contribute / Star
+                </a>
               </div>
             )}
           </div>
