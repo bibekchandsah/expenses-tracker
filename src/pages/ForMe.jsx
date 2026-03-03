@@ -15,7 +15,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate, capFirst } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
-import { safeADToBS } from '../utils/calendarUtils';
+import { safeADToBS, getBSYearRange } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
@@ -201,7 +201,7 @@ function forMeKey(r) { return `${String(r.name || '').toLowerCase()}|${r.date}|$
 export default function ForMe() {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useForMe();
   const { currency } = useCurrency();
-  const { dateLabel } = useCalendar();
+  const { dateLabel, calendar } = useCalendar();
   const { addToast } = useToast();
   const { banks, selectedBankId } = useBanks();
 
@@ -217,9 +217,12 @@ export default function ForMe() {
   const [panelOpen,     setPanelOpen]     = useState(true);
   const [chartOpen,     setChartOpen]     = useState(true);
   const [showSidePanel, setShowSidePanel] = useState(true);
-  const { activeYear } = useActiveYear();
-  const [yearFilter, setYearFilter] = useState(() => activeYear);
-  useEffect(() => { setYearFilter(activeYear); }, [activeYear]);
+  const { activeYear, bsActiveYear } = useActiveYear();
+  const isBS = calendar === 'bs';
+  const [yearFilter, setYearFilter] = useState(() => isBS ? bsActiveYear : activeYear);
+  useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
+
+  const bsYearRange = useMemo(() => isBS ? getBSYearRange(yearFilter) : null, [isBS, yearFilter]);
 
   const existingNames = useMemo(() => [...new Set(entries.map(e => e.name))].sort(), [entries]);
 
@@ -249,7 +252,9 @@ export default function ForMe() {
         : entries;
 
     // Year filter
-    data = data.filter(e => toInputDate(e.date).startsWith(String(yearFilter)));
+    data = isBS
+      ? data.filter(e => bsYearRange && toInputDate(e.date) >= bsYearRange.start && toInputDate(e.date) <= bsYearRange.end)
+      : data.filter(e => toInputDate(e.date).startsWith(String(yearFilter)));
 
     if (!sortCol) return data;
     return [...data].sort((a, b) => {
@@ -261,11 +266,13 @@ export default function ForMe() {
       if (av > bv) return sortDir === 'asc' ?  1 : -1;
       return 0;
     });
-  }, [entries, search, sortCol, sortDir, personFilter, yearFilter]);
+  }, [entries, search, sortCol, sortDir, personFilter, yearFilter, isBS, bsYearRange]);
 
   // Per-person summary for right panel — scoped to yearFilter
   const personSummary = useMemo(() => {
-    const yearEntries = entries.filter(e => toInputDate(e.date).startsWith(String(yearFilter)));
+    const yearEntries = isBS
+      ? entries.filter(e => bsYearRange && toInputDate(e.date) >= bsYearRange.start && toInputDate(e.date) <= bsYearRange.end)
+      : entries.filter(e => toInputDate(e.date).startsWith(String(yearFilter)));
     const map = {};
     yearEntries.forEach(e => {
       if (!map[e.name]) map[e.name] = { name: e.name, total: 0, count: 0 };
@@ -273,18 +280,20 @@ export default function ForMe() {
       map[e.name].count += 1;
     });
     return Object.values(map).sort((a, b) => b.total - a.total);
-  }, [entries, yearFilter]);
+  }, [entries, yearFilter, isBS, bsYearRange]);
 
   // Overall stats — scoped to yearFilter
   const stats = useMemo(() => {
-    const yearEntries = entries.filter(e => toInputDate(e.date).startsWith(String(yearFilter)));
+    const yearEntries = isBS
+      ? entries.filter(e => bsYearRange && toInputDate(e.date) >= bsYearRange.start && toInputDate(e.date) <= bsYearRange.end)
+      : entries.filter(e => toInputDate(e.date).startsWith(String(yearFilter)));
     return {
       total:   yearEntries.reduce((s, e) => s + (+e.amount || 0), 0),
       count:   yearEntries.length,
       people:  new Set(yearEntries.map(e => e.name)).size,
       highest: yearEntries.reduce((mx, e) => Math.max(mx, +e.amount || 0), 0),
     };
-  }, [entries, yearFilter]);
+  }, [entries, yearFilter, isBS, bsYearRange]);
 
   const maxPersonTotal = useMemo(() => Math.max(...personSummary.map(p => p.total), 1), [personSummary]);
 
@@ -351,7 +360,7 @@ export default function ForMe() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track people who owe you a treat or payment</p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <YearSelector year={yearFilter} onChange={yr => setYearFilter(yr)} />
+          <YearSelector year={yearFilter} calendar={calendar} onChange={yr => setYearFilter(yr)} />
           <button
             onClick={() => setImportOpen(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
