@@ -788,6 +788,7 @@ export default function Lend() {
         existingRecords={lends}
         duplicateKeyFn={lendKey}
         onImport={handleCSVImport}
+        calendar={calendar}
         accentColor="blue"
       />
     </div>

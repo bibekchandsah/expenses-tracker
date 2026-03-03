@@ -784,6 +784,7 @@ export default function Loan() {
         duplicateKeyFn={loanKey}
         onImport={handleCSVImport}
         accentColor="blue"
+        calendar={calendar}
       />
     </div>
   );

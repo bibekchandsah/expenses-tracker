@@ -516,6 +516,7 @@ export default function Expenses() {
         duplicateKeyFn={expenseKey}
         onImport={handleCSVImport}
         accentColor="blue"
+        calendar={calendar}
       />
     </div>
   );

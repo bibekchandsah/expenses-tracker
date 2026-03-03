@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Mail, Globe, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet, Camera, Pencil, X, TrendingUp, Landmark } from 'lucide-react';
+import { Mail, Globe, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet, Camera, Pencil, X, TrendingUp, Landmark, ShoppingBag, PiggyBank, Heart, ArrowUpRight, ArrowDownLeft, DollarSign } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useActiveYear } from '../context/ActiveYearContext';
@@ -76,6 +76,26 @@ const CURRENCIES = [
   { code: 'QAR', label: 'Qatari Riyal',           symbol: 'QR' },
 ];
 
+const PAGE_DELETE_CONFIG = [
+  { key: 'expenses', label: 'Expenses',      Icon: ShoppingBag,   color: 'orange'  },
+  { key: 'income',   label: 'Income',         Icon: DollarSign,    color: 'green'   },
+  { key: 'bank',     label: 'Bank',           Icon: Landmark,      color: 'blue'    },
+  { key: 'lend',     label: 'Lend',           Icon: ArrowUpRight,  color: 'violet'  },
+  { key: 'loan',     label: 'Loan',           Icon: ArrowDownLeft, color: 'red'     },
+  { key: 'saving',   label: 'Saving',         Icon: PiggyBank,     color: 'emerald' },
+  { key: 'forMe',    label: 'For Me',         Icon: Heart,         color: 'pink'    },
+];
+
+const PAGE_DELETE_COLORS = {
+  orange:  { btn: 'text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/40',  conf: 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800', title: 'text-orange-700 dark:text-orange-400', body: 'text-orange-600/80 dark:text-orange-500' },
+  green:   { btn: 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40',    conf: 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800',   title: 'text-green-700 dark:text-green-400',  body: 'text-green-600/80 dark:text-green-500'  },
+  blue:    { btn: 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40',       conf: 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800',     title: 'text-blue-700 dark:text-blue-400',    body: 'text-blue-600/80 dark:text-blue-500'    },
+  violet:  { btn: 'text-violet-700 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/40', conf: 'bg-violet-50 dark:bg-violet-900/10 border-violet-200 dark:border-violet-800', title: 'text-violet-700 dark:text-violet-400', body: 'text-violet-600/80 dark:text-violet-500' },
+  red:     { btn: 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40',          conf: 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800',         title: 'text-red-700 dark:text-red-400',      body: 'text-red-600/80 dark:text-red-500'      },
+  emerald: { btn: 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40', conf: 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800', title: 'text-emerald-700 dark:text-emerald-400', body: 'text-emerald-600/80 dark:text-emerald-500' },
+  pink:    { btn: 'text-pink-700 dark:text-pink-400 bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-800 hover:bg-pink-100 dark:hover:bg-pink-900/40',       conf: 'bg-pink-50 dark:bg-pink-900/10 border-pink-200 dark:border-pink-800',     title: 'text-pink-700 dark:text-pink-400',    body: 'text-pink-600/80 dark:text-pink-500'    },
+};
+
 export default function Profile() {
   const { user, updateUserInfo, setProfilePhoto, avatarURL } = useAuth();
   const { currency: activeCurrency, updateCurrency } = useCurrency();
@@ -97,6 +117,8 @@ export default function Profile() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deletePageConfirm, setDeletePageConfirm] = useState(null); // page key
+  const [deletingPage, setDeletingPage] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState('');
@@ -429,6 +451,73 @@ export default function Profile() {
     }
   }
 
+  async function handleDeletePage(pageKey) {
+    setDeletingPage(true);
+    try {
+      let matchFn;
+      if (calendar === 'bs') {
+        const { start, end } = getBSYearRange(bsActiveYear);
+        matchFn = (d) => !!d && d.length >= 10 && d >= start && d <= end;
+      } else {
+        const prefix = String(activeYear);
+        matchFn = (d) => typeof d === 'string' && d.startsWith(prefix);
+      }
+
+      const tasks = [];
+      const labels = [];
+
+      if (pageKey === 'expenses') {
+        expenses.filter(e => matchFn(e.date)).forEach(e => { tasks.push(() => deleteExpense(e.id)); labels.push(`expense ${e.id}`); });
+      } else if (pageKey === 'income') {
+        incomes.filter(i => matchFn(i.date)).forEach(i => { tasks.push(() => deleteIncome(i.id)); labels.push(`income ${i.id}`); });
+      } else if (pageKey === 'lend') {
+        lends.filter(l => matchFn(l.date)).forEach(l => { tasks.push(() => deleteLend(l.id)); labels.push(`lend ${l.id}`); });
+      } else if (pageKey === 'loan') {
+        loans.filter(l => matchFn(l.date)).forEach(l => { tasks.push(() => deleteLoan(l.id)); labels.push(`loan ${l.id}`); });
+      } else if (pageKey === 'saving') {
+        savings.filter(s => matchFn(s.date)).forEach(s => { tasks.push(() => deleteSaving(s.id)); labels.push(`saving ${s.id}`); });
+        sources.filter(s => matchFn(s.date)).forEach(s => { tasks.push(() => deleteSource(s.id)); labels.push(`source ${s.id}`); });
+      } else if (pageKey === 'forMe') {
+        forMeEntries.filter(e => matchFn(toDateStr(e.date))).forEach(e => { tasks.push(() => deleteEntry(e.id)); labels.push(`forMe ${e.id}`); });
+      } else if (pageKey === 'bank') {
+        const bankFetches = await Promise.allSettled(
+          banks.map(b => getAllBankEntriesOnce(user.uid, b.id).then(entries => ({ bankId: b.id, entries })))
+        );
+        bankFetches.forEach((r, i) => {
+          if (r.status === 'rejected') { console.error(`[Delete] Fetch bank ${banks[i]?.id}:`, r.reason); return; }
+          r.value.entries.filter(e => matchFn(e.date)).forEach(e => {
+            tasks.push(() => deleteBankEntry(user.uid, r.value.bankId, e.id));
+            labels.push(`bankEntry ${r.value.bankId}/${e.id}`);
+          });
+        });
+      }
+
+      if (tasks.length === 0) {
+        const yearLbl = calendar === 'bs' ? String(bsActiveYear) : String(activeYear);
+        const pageLabel = PAGE_DELETE_CONFIG.find(p => p.key === pageKey)?.label;
+        addToast(`No ${pageLabel} data found for ${yearLbl}`, 'info');
+        setDeletePageConfirm(null);
+        return;
+      }
+
+      const results = await Promise.allSettled(tasks.map(fn => fn()));
+      const failCount = results.filter(r => r.status === 'rejected').length;
+      const yearLbl = calendar === 'bs' ? String(bsActiveYear) : String(activeYear);
+      const pageLabel = PAGE_DELETE_CONFIG.find(p => p.key === pageKey)?.label;
+      if (failCount === 0) {
+        addToast(`${pageLabel} data for ${yearLbl} deleted successfully`, 'success');
+      } else {
+        addToast(`Deleted with ${failCount} error(s)`, 'error');
+      }
+      setDeletePageConfirm(null);
+    } catch (err) {
+      console.error('[Delete Page] Unexpected error:', err);
+      addToast('Delete failed', 'error');
+    } finally {
+      setDeletingPage(false);
+    }
+  }
+
   // Year-scoped stats — honours BS calendar mode
   const effectiveYear = calendar === 'bs' ? bsActiveYear : activeYear;
   const yearExpenses = calendar === 'bs'
@@ -738,9 +827,11 @@ export default function Profile() {
           <Download className="w-4 h-4 text-primary-500" /> Year Data Management
         </h2>
         <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
-          Export or permanently delete all your data for <span className="font-semibold text-gray-700 dark:text-gray-300">{effectiveYear}</span>. Includes expenses, income, lends, loans, savings, for-me and all bank records.
+          Export or permanently delete your data for <span className="font-semibold text-gray-700 dark:text-gray-300">{effectiveYear}</span>. Deletions respect the selected year and cannot be undone.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+
+        {/* Export buttons */}
+        <div className="flex flex-col sm:flex-row gap-3 flex-wrap mb-4">
           <button
             onClick={() => handleExportYear('xlsx')}
             disabled={exporting}
@@ -755,16 +846,21 @@ export default function Profile() {
           >
             <FileJson className="w-4 h-4" /> {exporting ? 'Exporting...' : `Export ${effectiveYear} as JSON`}
           </button>
+        </div>
+
+        {/* Delete All */}
+        <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mb-3">
+          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Delete Data</p>
           <button
-            onClick={() => setDeleteConfirm(true)}
+            onClick={() => { setDeleteConfirm(true); setDeletePageConfirm(null); }}
             className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
           >
-            <Trash2 className="w-4 h-4" /> Delete {effectiveYear} Data
+            <Trash2 className="w-4 h-4" /> Delete All {effectiveYear} Data
           </button>
         </div>
 
         {deleteConfirm && (
-          <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-800">
+          <div className="mt-3 p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-800">
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
               <div>
@@ -792,6 +888,60 @@ export default function Profile() {
             </div>
           </div>
         )}
+
+        {/* Per-page delete */}
+        <div className="mt-4">
+          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Delete by Page — {effectiveYear} only</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            {PAGE_DELETE_CONFIG.map(({ key, label, Icon, color }) => {
+              const cls = PAGE_DELETE_COLORS[color];
+              return (
+                <button
+                  key={key}
+                  onClick={() => { setDeletePageConfirm(k => k === key ? null : key); setDeleteConfirm(false); }}
+                  className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium border rounded-xl transition-colors ${cls.btn} ${deletePageConfirm === key ? 'ring-2 ring-offset-1 ring-current' : ''}`}
+                >
+                  <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">{label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {deletePageConfirm && (() => {
+            const cfg = PAGE_DELETE_CONFIG.find(p => p.key === deletePageConfirm);
+            const cls = PAGE_DELETE_COLORS[cfg.color];
+            return (
+              <div className={`mt-3 p-4 rounded-xl border ${cls.conf}`}>
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${cls.title}`} />
+                  <div>
+                    <p className={`text-sm font-semibold ${cls.title}`}>Delete all {cfg.label} data for {effectiveYear}?</p>
+                    <p className={`text-xs mt-1 ${cls.body}`}>
+                      This will permanently remove all <strong>{cfg.label}</strong> records{cfg.key === 'saving' ? ' (including saving sources)' : cfg.key === 'bank' ? ' (entries across all banks)' : ''} for {effectiveYear}. This cannot be undone.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={() => handleDeletePage(deletePageConfirm)}
+                    disabled={deletingPage}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 rounded-xl transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> {deletingPage ? 'Deleting...' : `Yes, Delete ${cfg.label} Data`}
+                  </button>
+                  <button
+                    onClick={() => setDeletePageConfirm(null)}
+                    disabled={deletingPage}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-60 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
       </div>
 
       {/* Active Year Picker */}

@@ -1,4 +1,4 @@
-npm run dev
+npm run dev # Starts both backend (3001) and frontend (5173)
 npm run build
 echo y | vercel --prod 
 Live at https://meroexpensetracker.vercel
@@ -606,8 +606,16 @@ The user wants to implement a Bikram Sambat (BS) date system where:
     The income trend graph needs to display data grouped by BS months rather than converting to international dates, which is currently causing incorrect data visualization
 
 in dashboard for small devices in year changing show year value in center and previous & next icon at the start and end of container
-in income, lend, loan, saving, for me page for small devices hide the text of import and export and only show icon same like in expense page
-income 
+in income, lend, loan, saving, for me page for small devices hide the text of import and export and only show icon same like in expense page, income 
+The following BS date formats are now supported in the import modal:
+    Format	        Example
+    BS YYYY-MM-DD	2082-06-15
+    BS YYYY/MM/DD	2082/06/15
+    BS DD/MM/YYYY	15/06/2082
+    BS MM/DD/YYYY	06/15/2082
+    BS DD-MM-YYYY	15-06-2082
+    BS MM-DD-YYYY	06-15-2082
+Auto-detect also now handles BS dates automatically — any YYYY-MM-DD or YYYY/MM/DD with a year ≥ 2070 is treated as BS and converted to AD before saving. When BS calendar is selected, the modal pre-selects BS YYYY-MM-DD as the default.
 
 
 first letter always capital in table data of table for example if user enter ram in name, notes, note, description, title field then it should show Ram in the table to maintain consistency and also it will look better. this feature is implemented in all pages income, expenses, bank, lend, loan, saving, for me.

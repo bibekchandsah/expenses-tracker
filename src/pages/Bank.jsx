@@ -868,7 +868,9 @@ export default function Bank() {
           }
         }}
         accentColor="blue"
+        calendar={calendar}
       />
     </div>
   );
 }
+

@@ -679,6 +679,7 @@ export default function ForMe() {
         duplicateKeyFn={forMeKey}
         onImport={handleCSVImport}
         accentColor="pink"
+        calendar={calendar}
       />
     </div>
   );

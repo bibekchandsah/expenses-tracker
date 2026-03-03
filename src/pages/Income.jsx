@@ -570,6 +570,7 @@ export default function Income() {
         duplicateKeyFn={incomeKey}
         onImport={handleCSVImport}
         accentColor="green"
+        calendar={calendar}
       />
     </div>
   );

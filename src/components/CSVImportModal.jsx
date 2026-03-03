@@ -12,24 +12,33 @@
  *  accentColor     string  optional tailwind color class prefix e.g. 'blue' | 'green'
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   X, Upload, FileText, AlertTriangle, CheckCircle2, AlertCircle,
   ChevronRight, SkipForward, RefreshCw, ChevronDown, ChevronUp,
 } from 'lucide-react';
+import { BSToAD } from 'bikram-sambat-js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const DATE_FORMATS = [
-  { label: 'Auto-detect',              value: 'auto' },
-  { label: 'YYYY-MM-DD',               value: 'YYYY-MM-DD' },
-  { label: 'MM/DD/YYYY (US)',          value: 'MM/DD/YYYY' },
-  { label: 'DD/MM/YYYY (EU/Asia)',     value: 'DD/MM/YYYY' },
-  { label: 'MM-DD-YYYY',              value: 'MM-DD-YYYY' },
-  { label: 'DD-MM-YYYY',              value: 'DD-MM-YYYY' },
-  { label: 'YYYY/MM/DD',              value: 'YYYY/MM/DD' },
-  { label: 'D MMM YYYY (15 Mar 2024)', value: 'D_MMM_YYYY' },
-  { label: 'MMM D YYYY (Mar 15 2024)', value: 'MMM_D_YYYY' },
+  { label: 'Auto-detect',                          value: 'auto' },
+  // ── Bikram Sambat (BS) formats ──
+  { label: 'BS YYYY-MM-DD  (2082-06-15)',           value: 'BS_YYYY-MM-DD' },
+  { label: 'BS YYYY/MM/DD  (2082/06/15)',           value: 'BS_YYYY/MM/DD' },
+  { label: 'BS DD/MM/YYYY  (15/06/2082)',           value: 'BS_DD/MM/YYYY' },
+  { label: 'BS MM/DD/YYYY  (06/15/2082)',           value: 'BS_MM/DD/YYYY' },
+  { label: 'BS DD-MM-YYYY  (15-06-2082)',           value: 'BS_DD-MM-YYYY' },
+  { label: 'BS MM-DD-YYYY  (06-15-2082)',           value: 'BS_MM-DD-YYYY' },
+  // ── Gregorian (AD) formats ──
+  { label: 'YYYY-MM-DD',                           value: 'YYYY-MM-DD' },
+  { label: 'MM/DD/YYYY (US)',                      value: 'MM/DD/YYYY' },
+  { label: 'DD/MM/YYYY (EU/Asia)',                 value: 'DD/MM/YYYY' },
+  { label: 'MM-DD-YYYY',                          value: 'MM-DD-YYYY' },
+  { label: 'DD-MM-YYYY',                          value: 'DD-MM-YYYY' },
+  { label: 'YYYY/MM/DD',                          value: 'YYYY/MM/DD' },
+  { label: 'D MMM YYYY (15 Mar 2024)',             value: 'D_MMM_YYYY' },
+  { label: 'MMM D YYYY (Mar 15 2024)',             value: 'MMM_D_YYYY' },
 ];
 
 const MONTHS_SHORT = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
@@ -72,17 +81,60 @@ function toISO(y, m, d) {
   return `${year}-${month}-${day}`;
 }
 
+function bsToADSafe(bsDate) {
+  try { return BSToAD(bsDate) || null; } catch { return null; }
+}
+
 function parseDate(raw, format) {
   if (!raw) return null;
   const s = String(raw).trim().replace(/\s+/g, ' ');
 
+  // ── Bikram Sambat formats — parse then convert to AD for storage ──
+  if (format === 'BS_YYYY-MM-DD') {
+    const m = s.match(/^(\d{4})[\-\/](\d{1,2})[\-\/](\d{1,2})/);
+    if (m) return bsToADSafe(toISO(m[1], m[2], m[3]));
+    return null;
+  }
+  if (format === 'BS_YYYY/MM/DD') {
+    const m = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+    if (m) return bsToADSafe(toISO(m[1], m[2], m[3]));
+    return null;
+  }
+  if (format === 'BS_DD/MM/YYYY') {
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) return bsToADSafe(toISO(m[3], m[2], m[1]));
+    return null;
+  }
+  if (format === 'BS_MM/DD/YYYY') {
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) return bsToADSafe(toISO(m[3], m[1], m[2]));
+    return null;
+  }
+  if (format === 'BS_DD-MM-YYYY') {
+    const m = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+    if (m) return bsToADSafe(toISO(m[3], m[2], m[1]));
+    return null;
+  }
+  if (format === 'BS_MM-DD-YYYY') {
+    const m = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+    if (m) return bsToADSafe(toISO(m[3], m[1], m[2]));
+    return null;
+  }
+
   if (format === 'YYYY-MM-DD' || format === 'auto') {
     const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-    if (m) return toISO(m[1], m[2], m[3]);
+    if (m) {
+      // Auto: years >= 2070 cannot be AD (still far future), treat as BS
+      if (format === 'auto' && +m[1] >= 2070) return bsToADSafe(toISO(m[1], m[2], m[3]));
+      return toISO(m[1], m[2], m[3]);
+    }
   }
   if (format === 'YYYY/MM/DD' || format === 'auto') {
     const m = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
-    if (m) return toISO(m[1], m[2], m[3]);
+    if (m) {
+      if (format === 'auto' && +m[1] >= 2070) return bsToADSafe(toISO(m[1], m[2], m[3]));
+      return toISO(m[1], m[2], m[3]);
+    }
   }
   if (format === 'MM/DD/YYYY') {
     const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -178,6 +230,7 @@ export default function CSVImportModal({
   duplicateKeyFn,
   onImport,
   accentColor = 'blue',
+  calendar = 'gregorian',
 }) {
   const [step, setStep]               = useState(STEP.UPLOAD);
   const [csvHeaders, setCsvHeaders]   = useState([]);
@@ -185,7 +238,7 @@ export default function CSVImportModal({
   const [fileName, setFileName]       = useState('');
   const [parseError, setParseError]   = useState('');
   const [mapping, setMapping]         = useState({});
-  const [dateFormat, setDateFormat]   = useState('auto');
+  const [dateFormat, setDateFormat]   = useState(() => calendar === 'bs' ? 'BS_YYYY-MM-DD' : 'auto');
   const [dupAction, setDupAction]     = useState('skip');
   const [analysis, setAnalysis]       = useState(null);
   const [showDupList, setShowDupList] = useState(false);
@@ -197,10 +250,15 @@ export default function CSVImportModal({
 
   const accent = accentColor;
 
+  // Auto-switch date format when modal opens based on current calendar
+  useEffect(() => {
+    if (isOpen) setDateFormat(calendar === 'bs' ? 'BS_YYYY-MM-DD' : 'auto');
+  }, [isOpen, calendar]);
+
   function reset() {
     setStep(STEP.UPLOAD);
     setCsvHeaders([]); setCsvRows([]); setFileName(''); setParseError('');
-    setMapping({}); setDateFormat('auto'); setDupAction('skip');
+    setMapping({}); setDateFormat(calendar === 'bs' ? 'BS_YYYY-MM-DD' : 'auto'); setDupAction('skip');
     setAnalysis(null); setShowDupList(false); setShowBadList(false);
     setImporting(false); setResult(null); setDragOver(false);
   }
