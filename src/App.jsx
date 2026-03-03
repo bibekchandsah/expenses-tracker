@@ -16,6 +16,7 @@ import { NoteProvider } from './context/NoteContext';
 import { ForMeProvider } from './context/ForMeContext';
 import { IncomeProvider } from './context/IncomeContext';
 import { ToastProvider } from './components/ui/Toast';
+import PWAInstallPrompt from './components/ui/PWAInstallPrompt';
 import PrivateRoute from './routes/PrivateRoute';
 import Layout from './components/Layout';
 import LoadingSpinner from './components/ui/LoadingSpinner';
@@ -99,6 +100,7 @@ export default function App() {
             </CalendarProvider>
             </CurrencyProvider>
           </AuthProvider>
+          <PWAInstallPrompt />
         </ToastProvider>
       </ThemeProvider>
     </BrowserRouter>

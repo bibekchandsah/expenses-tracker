@@ -10,7 +10,6 @@ firebase login
 firebase use --add    # pick your project from the list
 # Deploy the security rules
 firebase deploy --only firestore:rules
-
 cd "d:\programming exercise\react\expenses tracker"
 echo y | vercel --prod
 
@@ -24,8 +23,6 @@ Filter record by month, year, amount expend on category, start date and end date
 search & sort by note and description
 Bar graph and pie chart of expense category wise distribution
 Show in table of individual category and amount expend on it and remaining amount for the month
-
-(done) Show bar graph of monthly expend
 
 Given amount (done)
 Date l amount l name l reason l returned amount l description 
@@ -49,8 +46,9 @@ Dropdoen of multiple bank and user can add name of it
 Date l description l deposit l withdraw l closing amount 
 
 Discussion or note page (done)
-
+(done) Show bar graph of monthly expend
 Graph showing how much u take and what percentage I returned dual data in same bar (done)
+
 
 (done)
 show/hide sidebar icon & tooltip on hover
@@ -60,8 +58,8 @@ add logout button in sidebar
 add search functionality to expenses, loans and bank entries
 custom scrollbar
 
-(done) show the user selected currency type in the profile page and use it throughout the app for displaying amounts. user can choose from a list of common currencies (USD, EUR, INR, NPR, THB, IDR, BTN, LKR, MVR, GBP, etc.) or enter a custom currency code. the selected currency will be saved in their profile and used as the default currency for all financial data displayed in the app, including expenses, budgets, bank entries, etc. this way users can see their financial data in their preferred currency format and easily track their finances without having to manually convert amounts.
 
+(done) show the user selected currency type in the profile page and use it throughout the app for displaying amounts. user can choose from a list of common currencies (USD, EUR, INR, NPR, THB, IDR, BTN, LKR, MVR, GBP, etc.) or enter a custom currency code. the selected currency will be saved in their profile and used as the default currency for all financial data displayed in the app, including expenses, budgets, bank entries, etc. this way users can see their financial data in their preferred currency format and easily track their finances without having to manually convert amounts.
 
 
 setup firebase hosting and deploy the app
@@ -140,12 +138,96 @@ Copy API Key (Client ID) + API Secret → paste into Firebase Console → Twitte
 implemented
 -----------------------
 Page	Features
-Login	Google Sign-In, branded split layout
+Login	Google Sign-In, branded split layout, 
+login using google, Email/Password, Microsoft, Apple, Twitter, github
 Dashboard	4 stat cards, bar/pie/area charts, recent transactions
 Expenses	CRUD, search, filters (category/date), sort, pagination, CSV export
 Categories	Default + custom categories with icon/color pickers
 Budget	Per-category monthly budgets, progress bars, over-budget alerts
 Profile	Display name, currency setting, account stats
+
+
+Collapse/Expand sidebar toggle
+Hover tooltips : When collapsed, hovering over any nav icon shows a floating label tooltip to the right of the icon with an arrow pointer.
+Profile section (bottom)
+Shows user's Google profile picture (or initials avatar if no photo) + name + email when expanded
+Just the avatar when collapsed (with title tooltip)
+Clicking opens a dropdown menu with:
+    Signed in as header (name + email)
+    View Profile → navigates to /profile
+    Logout (red) → signs out and redirects to /login
+Sidebar — theme toggle button added above the profile section. In expanded mode it shows the icon + "Dark Mode" / "Light Mode" label. In collapsed mode it shows just the icon with a tooltip on hover.
+Layout — Navbar removed entirely. On desktop the sidebar is always visible so no header is needed. On mobile a slim top bar (lg:hidden) shows only the hamburger button to open the sidebar.
+
+
+Dashboard page updates:
+Category Breakdown toggle — now defaults to Monthly with a Monthly / Yearly pill toggle in the top-right corner of the chart card. Switching to Yearly aggregates all expenses from the current year.
+Monthly Expenses showing current month — the root cause was a timezone bug: new Date().toISOString() converts to UTC, so in Nepal (UTC+5:45) "March 1 local" = "Feb 28 UTC", making March invisible. 
+The Spending Trend chart now has a 6 Months / 1 Year toggle in the top-right corner — defaults to 6 months, switching to 1 Year shows all 12 months.
+Bank Trend area chart now appears below Spending Trend with:
+    Green area — monthly deposit totals
+    Red area — monthly withdrawal totals
+    6 Months / 1 Year toggle (same as spending trend)
+    Title shows the currently selected bank name (e.g. "Bank Trend — My SBI Account")
+    Legend labels "Deposit" and "Withdraw"
+The Bank Trend card now shows a bank selector dropdown in the header when you have multiple banks — switching it instantly updates the chart without leaving the dashboard. If you only have one bank, the name is shown as plain text.
+income trend line chart added below the bank trend with:
+    Green line — monthly income totals
+    6 Months / 1 Year toggle (same as spending trend)
+    Title "Income Trend"
+    Legend label "Income"
+in dashboard by default select year value for category breakdown, income trend, spending trend, bank trend charts to show more data and give a better overview of the trends. users can still switch to 6 months view if they want to focus on recent activity, but showing 1 year by default provides a more comprehensive picture of their financial habits and patterns over time.
+
+↓ 100.0% vs last month in all card in dashboard vs last year in all other 3 remaining card in dashboard
+The three remaining cards now each receive trend + trendLabel="vs last year":
+This Year → compares this year's total vs last year's total
+Monthly Average → compares this year's avg vs last year's avg
+Total Expenses → compares this year's entry count vs last year's count
+
+
+Income page features:
+4 stat cards: Total Income, This Month, Avg/Month, Entry count
+Table with sortable columns: Title/Date, Amount, Notes, Description, Source, Actions
+3-state sort cycle (↓ → ↑ → reset), same as Expenses
+Filters: Source, Month, From, To with active indicator
+Full-text search across all fields
+Color-coded source badges (Salary, Freelance, Business, Investment, Rental, Gift, Other)
+Monthly breakdown table at the bottom (bank-statement style, current month highlighted in green)
+CSV export
+Pagination (30 per page) > per month if more than 30 entries
+
+
+Expenses and Income pages:
+Behavior logic (PAGE_SIZE raised from 15 → 30):
+    ≤ 30 entries → normal pagination (Prev / Next, 30 per page)
+    30 entries → pagination disappears; rows are grouped under month header bands
+Month header band shows:
+    Month name (e.g. March 2026)
+    Entry count and total amount for that month (right-aligned)
+Entries within each month group are sorted newest-first (same as the existing sort). The existing Monthly Breakdown summary table at the bottom still appears as before.
+
+
+Expenses page updates:
+Title/Date(4) | Amount(2) | Category(2) | Note(2) | Actions(2)
+The 12-column grid is currently full (4+2+2+2+2). I'll compress Title/Date to 3 and Actions to 1 to make room for a Description column.
+Title / Date → Amount → Note → Description → Category → Actions
+The filter panel now has 4 fields: Category → Month → From → To. Selecting a month (e.g. 2026-03) instantly narrows results to that month, and it works alongside the other filters. The month filter also activates the blue dot indicator and the
+The search box now matches against all of: title, date, amount, note, description, and category name. The results count in the header also updates accordingly.
+Column sort now follows the 3-click cycle:
+    Click	State	        Icon
+    1st	    Descending ↓	↓ (blue)
+    2nd	    Ascending ↑	    ↑ (blue)
+    3rd	    Reset	        ⇅ (grey)
+"Expenses by Category" section now appears in Net Summary (above the monthly breakdown), with:
+Left: scrollable table showing each category's icon, name, and total spent — plus a grand total row in the footer
+Right: horizontal bar chart with each bar colored using the category's own color, sized dynamically to fit all categories
+A Monthly Breakdown table now appears below the expense list with:
+    Month column — current month has a blue dot indicator
+    Transactions column — count of entries for that month
+    Total column — sum for that month
+    Total row in the footer — grand total of transactions and amount across all shown months
+The table respects whatever filters/search are active, so filtering by category or date range will update the breakdown accordingly. Most recent month is shown first.
+
 
 What the Bank page includes:
 Custom dropdown to switch between banks, with edit/delete per bank
@@ -238,24 +320,6 @@ Proper validation errors in modals with ConfirmDialog component (same as Loan)
 Toast notifications on add/update/delete
 
 
-Note page features:
-Quick-add bar — click "Take a note..." to expand inline; auto-saves on close
-Google Keep-style masonry grid with pin/archive/delete/color-change actions appearing on hover
-9 color themes — default, red, orange, yellow, green, teal, blue, purple, pink
-Pin/Unpin — pinned notes float to a separate "Pinned" section
-Archive — archive removes notes from main view; toggle Archive button reveals them separately
-Search — real-time filter by title + content
-Sort — Last edited / Date created / Title A→Z dropdown
-Grid ↔ List view toggle
-Edit modal — click any card to open full-screen edit with color picker + pin toggle
-Delete with confirmation dialog
-Toast notifications on all actions
-Firestore rule added for notes/{noteId}, NoteProvider wired in App.jsx, "Note" nav item in Sidebar
-Cancel button → always calls reset() — discards without saving
-Escape key → same, discards without saving
-Clicking outside → still auto-saves (intentional)
-
-
 For Me page Features:
 Table columns: Date | Amount | Name | Description — all sortable (3-click cycle: desc → asc → reset)
 Stats bar: Total Entries · Total Amount · Unique People
@@ -274,6 +338,43 @@ Name autocomplete in the add/edit modal
 Light pink bar (full width) = grand total (Rs 170) — acts as the reference/background
 Dark pink bar (proportional fill) = each person's share (Ram Rs 150 → ~88% wide, Shyam Rs 20 → ~12% wide)
 A Grand Total reference row at the top showing the full light pink bar
+
+
+Categories modal:
+Emoji picker:
+    8 category tabs (Money & Finance, Food & Drink, Travel, Home & Life, Health, Entertainment, Tech & Work, People & Care) — tap a tab to switch
+    8-column grid showing 12 emojis per group (96 total)
+    "Paste any emoji…" text input + Use button at the bottom — any emoji from your keyboard, clipboard, or system picker works
+Color picker:
+    20 preset color swatches (expanded from 10)
+    A + dashed-circle button at the end opens the native OS color wheel for any custom color
+    A small hex code text field below so you can type a precise hex value like #ff6b35
+category editing bug fix don't show values of current selected category in the edit form to avoid confusion and accidental overwriting of existing data.
+editing name, emoji, color, should reflect changes in expenses
+
+
+Budget page updates:
+Added a Remove button (with a trash icon) next to "Edit budget" — it only appears when a budget is already set for that category/month.
+Clicking it calls deleteBudget from the context (which removes the Firestore document), then shows a "Budget removed." toast.
+The page works normally as before when no budget is set.
+
+
+Note page features:
+Quick-add bar — click "Take a note..." to expand inline; auto-saves on close
+Google Keep-style masonry grid with pin/archive/delete/color-change actions appearing on hover
+9 color themes — default, red, orange, yellow, green, teal, blue, purple, pink
+Pin/Unpin — pinned notes float to a separate "Pinned" section
+Archive — archive removes notes from main view; toggle Archive button reveals them separately
+Search — real-time filter by title + content
+Sort — Last edited / Date created / Title A→Z dropdown
+Grid ↔ List view toggle
+Edit modal — click any card to open full-screen edit with color picker + pin toggle
+Delete with confirmation dialog
+Toast notifications on all actions
+Firestore rule added for notes/{noteId}, NoteProvider wired in App.jsx, "Note" nav item in Sidebar
+Cancel button → always calls reset() — discards without saving
+Escape key → same, discards without saving
+Clicking outside → still auto-saves (intentional)
 
 
 Net Summary page is live at /net-summary in the sidebar.
@@ -316,19 +417,8 @@ A wa.me/?text=... link that opens WhatsApp with the pre-filled message (no phone
 The green WhatsApp button is shown on desktop; on mobile it appears as a row item labelled "Send Message".
 The footer row has an empty col-span-2 placeholder for the new column.
 
-Collapse/Expand sidebar toggle
-Hover tooltips : When collapsed, hovering over any nav icon shows a floating label tooltip to the right of the icon with an arrow pointer.
-Profile section (bottom)
-Shows user's Google profile picture (or initials avatar if no photo) + name + email when expanded
-Just the avatar when collapsed (with title tooltip)
-Clicking opens a dropdown menu with:
-    Signed in as header (name + email)
-    View Profile → navigates to /profile
-    Logout (red) → signs out and redirects to /login
-Sidebar — theme toggle button added above the profile section. In expanded mode it shows the icon + "Dark Mode" / "Light Mode" label. In collapsed mode it shows just the icon with a tooltip on hover.
-Layout — Navbar removed entirely. On desktop the sidebar is always visible so no header is needed. On mobile a slim top bar (lg:hidden) shows only the hamburger button to open the sidebar.
 
-
+profile page features:
 Active currency badge (always visible)
 Search box to filter the list
 2-column visual picker with symbol + code + label, checkmark on active selection
@@ -342,86 +432,97 @@ USD → $ 100.00
 etc...
 
 
-Categories modal:
-Emoji picker:
-    8 category tabs (Money & Finance, Food & Drink, Travel, Home & Life, Health, Entertainment, Tech & Work, People & Care) — tap a tab to switch
-    8-column grid showing 12 emojis per group (96 total)
-    "Paste any emoji…" text input + Use button at the bottom — any emoji from your keyboard, clipboard, or system picker works
-Color picker:
-    20 preset color swatches (expanded from 10)
-    A + dashed-circle button at the end opens the native OS color wheel for any custom color
-    A small hex code text field below so you can type a precise hex value like #ff6b35
-category editing bug fix don't show values of current selected category in the edit form to avoid confusion and accidental overwriting of existing data.
-editing name, emoji, color, should reflect changes in expenses
+create a yearly summary page with total expenses, loans, savings, etc. and graphs
+user can choose the year in their profile settings and the dashboard and summary page will show data for that year by default so that in the future when they have multiple years of data, they can easily switch between years to see their financial history and progress over time. when user choose 2026 in profile settings, the dashboard and summary page will show data for 2026 by default. user can still change the year on the dashboard and summary page to view data for other years, but it will always default to the year they selected in their profile settings when they first visit those pages. this allows users to easily focus on their current year's financial data while still having access to their historical data when needed.
+Profile — year picker (2020–next year) persists to Firestore
+Dashboard — YearSelector in header; all stats, charts, and category breakdown filtered by selected year
+Income / Expenses — YearSelector in header; search results pre-filtered by year
+Bank — YearSelector in actions row; monthly grouping filtered by year
+Lend / Loan — YearSelector in header; filteredLends/filteredLoans scoped to year
+Saving — YearSelector in header; filteredSavings scoped to year
+ForMe — YearSelector in header; filtered scoped to year (uses toInputDate() for Firestore Timestamps)
+NetSummary — YearSelector in header; lend/loan rows, monthly chart, and category breakdown all scoped to year
+Every page initializes its local year from the activeYear context (the profile setting) and syncs on change, but the user can freely override it per-page.
 
 
-Expenses page updates:
-Title/Date(4) | Amount(2) | Category(2) | Note(2) | Actions(2)
-The 12-column grid is currently full (4+2+2+2+2). I'll compress Title/Date to 3 and Actions to 1 to make room for a Description column.
-Title / Date → Amount → Note → Description → Category → Actions
-The filter panel now has 4 fields: Category → Month → From → To. Selecting a month (e.g. 2026-03) instantly narrows results to that month, and it works alongside the other filters. The month filter also activates the blue dot indicator and the
-The search box now matches against all of: title, date, amount, note, description, and category name. The results count in the header also updates accordingly.
-Column sort now follows the 3-click cycle:
-    Click	State	        Icon
-    1st	    Descending ↓	↓ (blue)
-    2nd	    Ascending ↑	    ↑ (blue)
-    3rd	    Reset	        ⇅ (grey)
-"Expenses by Category" section now appears in Net Summary (above the monthly breakdown), with:
-Left: scrollable table showing each category's icon, name, and total spent — plus a grand total row in the footer
-Right: horizontal bar chart with each bar colored using the category's own color, sized dynamically to fit all categories
-A Monthly Breakdown table now appears below the expense list with:
-    Month column — current month has a blue dot indicator
-    Transactions column — count of entries for that month
-    Total column — sum for that month
-    Total row in the footer — grand total of transactions and amount across all shown months
-The table respects whatever filters/search are active, so filtering by category or date range will update the breakdown accordingly. Most recent month is shown first.
+delete/export data of selected year in json and excel format
+Export {year} Data supports BS year format  
+Downloads a JSON file named expense-tracker-2025.json (or whatever year is active)
+Includes all expenses, income, lends, loans, savings, saving sources, and for-me, all banks records for that year
+Delete {year} Data
+Shows an inline confirmation panel with a clear warning before doing anything
+On confirm, deletes all records across all 7 data types in parallel
+Shows "Deleting..." state on the button while in progress
+Toast on success or failure
 
 
-Budget page updates:
-Added a Remove button (with a trash icon) next to "Edit budget" — it only appears when a budget is already set for that category/month.
-Clicking it calls deleteBudget from the context (which removes the Firestore document), then shows a "Budget removed." toast.
-The page works normally as before when no budget is set.
+Profile picture change:
+Avatar now has a hover overlay with a camera icon — click it to open a file picker
+Selected image uploads to Firebase Storage at users/{uid}/profile
+After upload, both Firebase Auth's photoURL and Firestore profile are updated simultaneously
+The new photo appears immediately everywhere (Dashboard, Profile) without requiring a reload
+Important: You need to enable Firebase Storage rules to allow authenticated users to write to their own folder. Go to Firebase Console → Storage → Rules and add:
+match /users/{userId}/{allPaths=**} {
+  allow read, write: if request.auth != null && request.auth.uid == userId;
+}
+"Remove photo" link appears next to the account badge in the profile card — only visible when a photo is currently set
+Clicking it saves null to Firestore and clears avatarURL → Navbar, Sidebar, and Profile avatar immediately switch to the initials fallback
+After removing, the user can still upload a new photo at any time
+Also fixed the underlying avatarURL logic in AuthContext — it's now cleanly null (show initials) vs a URL/base64 (show image), used consistently across all three components
+Added a small pencil (Pencil) icon inline next to the user's name in the avatar card. Clicking it replaces the name with a compact text input (pre-filled with the current name) plus a check button to save and an X button to cancel.
+Saving calls the same updateUserProfile + updateUserInfo logic and shows a toast on success.
+Cleaned up the now-unused User and Save lucide imports.
+Below the expense stats cards, a new "Income & Bank" card shows three coloured sub-cards:
+    This Month Income (green) — sum of incomes for the current calendar month, respecting BS/AD mode.
+    Year Income (blue) — total income for the active year, also BS-aware.
+    Bank Balance (purple) — the current closing balance of the selected bank (computed from openingBalance + all deposits - withdrawals), with a spinner while entries load.
+A small bank dropdown sits below the three cards so the user can switch between their banks without leaving the page. If no banks are added, a friendly placeholder message is shown.
+Fetches entries from all banks in parallel using getBankEntriesOnce(user.uid, b.id) — not just the currently selected bank
+Filters by year using the same matchFn (respects BS/AD calendar mode)
+Deletes matching entries via deleteBankEntry(user.uid, b.id, e.id) alongside all the other data deletions in a single Promise.all
+show income & bank summary acording to selected date
 
 
-Dashboard page updates:
-Category Breakdown toggle — now defaults to Monthly with a Monthly / Yearly pill toggle in the top-right corner of the chart card. Switching to Yearly aggregates all expenses from the current year.
-Monthly Expenses showing current month — the root cause was a timezone bug: new Date().toISOString() converts to UTC, so in Nepal (UTC+5:45) "March 1 local" = "Feb 28 UTC", making March invisible. 
-The Spending Trend chart now has a 6 Months / 1 Year toggle in the top-right corner — defaults to 6 months, switching to 1 Year shows all 12 months.
-Bank Trend area chart now appears below Spending Trend with:
-    Green area — monthly deposit totals
-    Red area — monthly withdrawal totals
-    6 Months / 1 Year toggle (same as spending trend)
-    Title shows the currently selected bank name (e.g. "Bank Trend — My SBI Account")
-    Legend labels "Deposit" and "Withdraw"
-The Bank Trend card now shows a bank selector dropdown in the header when you have multiple banks — switching it instantly updates the chart without leaving the dashboard. If you only have one bank, the name is shown as plain text.
-income trend line chart added below the bank trend with:
-    Green line — monthly income totals
-    6 Months / 1 Year toggle (same as spending trend)
-    Title "Income Trend"
-    Legend label "Income"
-in dashboard by default select year value for category breakdown, income trend, spending trend, bank trend charts to show more data and give a better overview of the trends. users can still switch to 6 months view if they want to focus on recent activity, but showing 1 year by default provides a more comprehensive picture of their financial habits and patterns over time.
+International/Gregorian, Bikram Sambat, and Nepali month support:
+In Profile settings, users can now select their preferred calendar system: International (Gregorian), Bikram Sambat, or Thai Solar Calendar (Buddhist Era). This choice will affect how dates are displayed across the app, including in the Dashboard charts, monthly breakdowns, and date filters. For example, if a user selects Bikram Sambat, the month names in the category breakdown and monthly breakdown tables will switch to their Nepali equivalents (e.g. "बैशाख" or Baisakh instead of "April"). The date pickers in the add/edit modals will also adapt to show the appropriate calendar system. This allows users in Nepal to view their financial data in a format that is culturally familiar and easier for them to understand at a glance.
+For currenltly implement International/Gregorian calendar and Bikram Sambat calendar with month name support in the dashboard category breakdown and monthly breakdown tables. In the profile settings, users can select their preferred calendar system, and the app will adapt the date displays accordingly. For example, if a user selects Bikram Sambat, the month names in the category breakdown and monthly breakdown tables will switch to their Nepali equivalents (e.g. "बैशाख" or Baisakh instead of "April"). The date pickers in the add/edit modals will also adapt to show the appropriate calendar system. This allows users in Nepal to view their financial data in a format that is culturally familiar and easier for them to understand at a glance.
+Iran & Afghanistan → Solar Hijri calendar (starts at the Islamic Hijra, year begins at the March equinox).
+Ethiopia → Ethiopian calendar (about 7–8 years behind Gregorian, with 13 months).
+Nepal → Vikram Samvat and Nepal Sambat
+Thailand → Thai Solar Calendar (Buddhist Era)
+Japan → Japanese Era Calendar
+North Korea	→ Juche Calendar
+
+New files:
+calendarUtils.js — BS conversion algorithm with adToBs() and getMonthLabel(yyyyMM, calendar, format). Covers BS years 2075–2090 with verified month-length lookup table. Anchor: April 14, 2025 = BS 2082-01-01.
+CalendarContext.jsx — CalendarProvider that loads/saves the preference from Firestore, exposes { calendar, updateCalendar, monthLabel }.
+https://www.npmjs.com/package/bikram-sambat-js
+The bug is in getMonthLabel — it uses the 15th of the Gregorian month as the representative day. But BS month boundaries fall around the 13th–17th of the Gregorian month, so March 15 tips into Chaitra while March 1–13 is Falgun. Using day 01 fixes this: the BS month that March 1 falls in is the correct label for all March data.
+https://nepalidatepicker.sajanmaharjan.com.np/v5/
+{"inline": true, "mode": "dark", "miniEnglishDates": true}
+{"inline": true, "miniEnglishDates": true}
+Add the BS date picker to the Expenses modal (ExpenseModal.jsx) - similar to what was done for IncomeModal
+Change the date display in the Expenses page date column to use dateLabel()  
 
 
-Income page features:
-4 stat cards: Total Income, This Month, Avg/Month, Entry count
-Table with sortable columns: Title/Date, Amount, Notes, Description, Source, Actions
-3-state sort cycle (↓ → ↑ → reset), same as Expenses
-Filters: Source, Month, From, To with active indicator
-Full-text search across all fields
-Color-coded source badges (Salary, Freelance, Business, Investment, Rental, Gift, Other)
-Monthly breakdown table at the bottom (bank-statement style, current month highlighted in green)
-CSV export
-Pagination (30 per page) > per month if more than 30 entries
+BS full system implementation
+The user wants to implement a Bikram Sambat (BS) date system where:
+    Users can choose between "AD" (international/Gregorian) and "BS" (Bikram Sambat) calendar systems
+    When BS is chosen, years are shown as individual years (2080, 2081, 2082, 2083, 2084...) not as "2082/83" format
+    Data is stored and queried using BS months (Baisakh, Jestha, Ashadh, Shrawan, Bhadra, Ashwin, Kartik, Mangsir, Poush, Magh, Falgun, Chaitra) with their actual date ranges
+    The income trend graph needs to display data grouped by BS months rather than converting to international dates, which is currently causing incorrect data visualization
+The following BS date formats are now supported in the import modal:
+    Format	        Example
+    BS YYYY-MM-DD	2082-06-15
+    BS YYYY/MM/DD	2082/06/15
+    BS DD/MM/YYYY	15/06/2082
+    BS MM/DD/YYYY	06/15/2082
+    BS DD-MM-YYYY	15-06-2082
+    BS MM-DD-YYYY	06-15-2082
+Auto-detect also now handles BS dates automatically — any YYYY-MM-DD or YYYY/MM/DD with a year ≥ 2070 is treated as BS and converted to AD before saving. When BS calendar is selected, the modal pre-selects BS YYYY-MM-DD as the default.
 
 
-Expenses and Income pages:
-Behavior logic (PAGE_SIZE raised from 15 → 30):
-    ≤ 30 entries → normal pagination (Prev / Next, 30 per page)
-    30 entries → pagination disappears; rows are grouped under month header bands
-Month header band shows:
-    Month name (e.g. March 2026)
-    Entry count and total amount for that month (right-aligned)
-Entries within each month group are sorted newest-first (same as the existing sort). The existing Monthly Breakdown summary table at the bottom still appears as before.
+user should be able to delete specific page data from profile settings for example if user want to delete only loan data then they can go to profile settings and click on delete loan data and it will delete all loan data of that user without affecting other data like expenses, income, etc. this will give users more control over their data and allow them to easily remove any specific type of data they no longer want to keep in the app without having to delete their entire account or manually delete each entry one by one. this feature is implemented in profile settings with a clear warning and confirmation dialog before deletion to prevent accidental data loss.
 
 
 import button to (income, expenses, bank, lend, loan, saving, for me)pages to import from CSV file exported from other apps like Splitwise, Google Sheets, etc. with mapping of columns to date (supports YYYY-MM-DD, MM/DD/YYYY, all format), amount, source, description fields. this will make it easier for users to migrate their existing data into the app without having to manually enter each record. the import process should also handle duplicates gracefully (e.g. by skipping or updating existing records based on a unique identifier) and provide feedback on how many records were imported successfully vs skipped due to duplicates or errors. ask user to confirm the duplicate insertion before proceeding to avoid accidental overwrites.
@@ -467,12 +568,12 @@ Active operator button highlights in brighter orange
 
 quick-add feature:
 add (plus icon) in the actions column of income, expenses, bank, lend, loan, saving, for me pages to quickly add an entry to those pages without having to go through the full add entry modal. this quick-add clicks "Add", the entry should be created immediately and the form should reset for the next entry. this will allow users to quickly log their transactions on the go without interrupting their workflow or having to navigate away from the current page.
-
 income/loan/saving ↔ bank(deposit) -> choose bank
 expense/lend ↔ bank(withdraw) -> choose bank
 for expenses use title value as description in bank entry
 from any page if user want to insert it to bank then ask for which bank and then insert it in that bank
-
+page
+----------------
 pages = income, expenses, bank, lend, loan, saving, for me
 income table heading = title/date, amount, notes, description, source
 expense table heading = title/date, amount, note, description, category
@@ -482,14 +583,12 @@ loan table heading = date, name, borrowed, reason, paid, due, description
 saving table heading = date, amount, expend on, description
 for me table heading = date, amount, name, description
 if both page have same heading then insert data in same column otherwise use validation rule:
-
 valid
 ----------
 expend on/ reason -> note/notes
 withdraw/deposit -> amount
 lent/borrowed -> amount
 name -> notes/note/description (whichever is empty, if not don't insert in notes/description to avoid overwriting existing data)
-
 not valid
 ----------
 source != category of income & expense
@@ -517,107 +616,6 @@ On submit, the entry is saved directly to the chosen bank using addBankEntrySvc(
 Validation ensures a bank must be selected before the entry can be submitted.
 
 
-
-create a yearly summary page with total expenses, loans, savings, etc. and graphs
-user can choose the year in their profile settings and the dashboard and summary page will show data for that year by default so that in the future when they have multiple years of data, they can easily switch between years to see their financial history and progress over time. when user choose 2026 in profile settings, the dashboard and summary page will show data for 2026 by default. user can still change the year on the dashboard and summary page to view data for other years, but it will always default to the year they selected in their profile settings when they first visit those pages. this allows users to easily focus on their current year's financial data while still having access to their historical data when needed.
-Profile — year picker (2020–next year) persists to Firestore
-Dashboard — YearSelector in header; all stats, charts, and category breakdown filtered by selected year
-Income / Expenses — YearSelector in header; search results pre-filtered by year
-Bank — YearSelector in actions row; monthly grouping filtered by year
-Lend / Loan — YearSelector in header; filteredLends/filteredLoans scoped to year
-Saving — YearSelector in header; filteredSavings scoped to year
-ForMe — YearSelector in header; filtered scoped to year (uses toInputDate() for Firestore Timestamps)
-NetSummary — YearSelector in header; lend/loan rows, monthly chart, and category breakdown all scoped to year
-Every page initializes its local year from the activeYear context (the profile setting) and syncs on change, but the user can freely override it per-page.
-
-
-delete/export data of selected year in json and excel format
-Export {year} Data supports BS year format  
-Downloads a JSON file named expense-tracker-2025.json (or whatever year is active)
-Includes all expenses, income, lends, loans, savings, saving sources, and for-me, all banks records for that year
-
-Delete {year} Data
-Shows an inline confirmation panel with a clear warning before doing anything
-On confirm, deletes all records across all 7 data types in parallel
-Shows "Deleting..." state on the button while in progress
-Toast on success or failure
-
-
-login using google, Email/Password, Microsoft, Apple, Twitter, github
-
-
-Profile picture change:
-Avatar now has a hover overlay with a camera icon — click it to open a file picker
-Selected image uploads to Firebase Storage at users/{uid}/profile
-After upload, both Firebase Auth's photoURL and Firestore profile are updated simultaneously
-The new photo appears immediately everywhere (Dashboard, Profile) without requiring a reload
-Important: You need to enable Firebase Storage rules to allow authenticated users to write to their own folder. Go to Firebase Console → Storage → Rules and add:
-match /users/{userId}/{allPaths=**} {
-  allow read, write: if request.auth != null && request.auth.uid == userId;
-}
-"Remove photo" link appears next to the account badge in the profile card — only visible when a photo is currently set
-Clicking it saves null to Firestore and clears avatarURL → Navbar, Sidebar, and Profile avatar immediately switch to the initials fallback
-After removing, the user can still upload a new photo at any time
-Also fixed the underlying avatarURL logic in AuthContext — it's now cleanly null (show initials) vs a URL/base64 (show image), used consistently across all three components
-Added a small pencil (Pencil) icon inline next to the user's name in the avatar card. Clicking it replaces the name with a compact text input (pre-filled with the current name) plus a check button to save and an X button to cancel.
-Saving calls the same updateUserProfile + updateUserInfo logic and shows a toast on success.
-Cleaned up the now-unused User and Save lucide imports.
-Below the expense stats cards, a new "Income & Bank" card shows three coloured sub-cards:
-    This Month Income (green) — sum of incomes for the current calendar month, respecting BS/AD mode.
-    Year Income (blue) — total income for the active year, also BS-aware.
-    Bank Balance (purple) — the current closing balance of the selected bank (computed from openingBalance + all deposits - withdrawals), with a spinner while entries load.
-A small bank dropdown sits below the three cards so the user can switch between their banks without leaving the page. If no banks are added, a friendly placeholder message is shown.
-Fetches entries from all banks in parallel using getBankEntriesOnce(user.uid, b.id) — not just the currently selected bank
-Filters by year using the same matchFn (respects BS/AD calendar mode)
-Deletes matching entries via deleteBankEntry(user.uid, b.id, e.id) alongside all the other data deletions in a single Promise.all
-show income & bank summary acording to selected date
-
-
-International/Gregorian, Bikram Sambat, and Nepali month support:
-In Profile settings, users can now select their preferred calendar system: International (Gregorian), Bikram Sambat, or Thai Solar Calendar (Buddhist Era). This choice will affect how dates are displayed across the app, including in the Dashboard charts, monthly breakdowns, and date filters. For example, if a user selects Bikram Sambat, the month names in the category breakdown and monthly breakdown tables will switch to their Nepali equivalents (e.g. "बैशाख" or Baisakh instead of "April"). The date pickers in the add/edit modals will also adapt to show the appropriate calendar system. This allows users in Nepal to view their financial data in a format that is culturally familiar and easier for them to understand at a glance.
-For currenltly implement International/Gregorian calendar and Bikram Sambat calendar with month name support in the dashboard category breakdown and monthly breakdown tables. In the profile settings, users can select their preferred calendar system, and the app will adapt the date displays accordingly. For example, if a user selects Bikram Sambat, the month names in the category breakdown and monthly breakdown tables will switch to their Nepali equivalents (e.g. "बैशाख" or Baisakh instead of "April"). The date pickers in the add/edit modals will also adapt to show the appropriate calendar system. This allows users in Nepal to view their financial data in a format that is culturally familiar and easier for them to understand at a glance.
-
-Iran & Afghanistan → Solar Hijri calendar (starts at the Islamic Hijra, year begins at the March equinox).
-Ethiopia → Ethiopian calendar (about 7–8 years behind Gregorian, with 13 months).
-Nepal → Vikram Samvat and Nepal Sambat
-Thailand → Thai Solar Calendar (Buddhist Era)
-Japan → Japanese Era Calendar
-North Korea	→ Juche Calendar
-
-New files:
-calendarUtils.js — BS conversion algorithm with adToBs() and getMonthLabel(yyyyMM, calendar, format). Covers BS years 2075–2090 with verified month-length lookup table. Anchor: April 14, 2025 = BS 2082-01-01.
-CalendarContext.jsx — CalendarProvider that loads/saves the preference from Firestore, exposes { calendar, updateCalendar, monthLabel }.
-https://www.npmjs.com/package/bikram-sambat-js
-The bug is in getMonthLabel — it uses the 15th of the Gregorian month as the representative day. But BS month boundaries fall around the 13th–17th of the Gregorian month, so March 15 tips into Chaitra while March 1–13 is Falgun. Using day 01 fixes this: the BS month that March 1 falls in is the correct label for all March data.
-https://nepalidatepicker.sajanmaharjan.com.np/v5/
-{"inline": true, "mode": "dark", "miniEnglishDates": true}
-{"inline": true, "miniEnglishDates": true}
-
-Add the BS date picker to the Expenses modal (ExpenseModal.jsx) - similar to what was done for IncomeModal
-Change the date display in the Expenses page date column to use dateLabel()  
-
-
-
-BS full system implementation
-The user wants to implement a Bikram Sambat (BS) date system where:
-    Users can choose between "AD" (international/Gregorian) and "BS" (Bikram Sambat) calendar systems
-    When BS is chosen, years are shown as individual years (2080, 2081, 2082, 2083, 2084...) not as "2082/83" format
-    Data is stored and queried using BS months (Baisakh, Jestha, Ashadh, Shrawan, Bhadra, Ashwin, Kartik, Mangsir, Poush, Magh, Falgun, Chaitra) with their actual date ranges
-    The income trend graph needs to display data grouped by BS months rather than converting to international dates, which is currently causing incorrect data visualization
-
-in dashboard for small devices in year changing show year value in center and previous & next icon at the start and end of container
-in income, lend, loan, saving, for me page for small devices hide the text of import and export and only show icon same like in expense page, income 
-The following BS date formats are now supported in the import modal:
-    Format	        Example
-    BS YYYY-MM-DD	2082-06-15
-    BS YYYY/MM/DD	2082/06/15
-    BS DD/MM/YYYY	15/06/2082
-    BS MM/DD/YYYY	06/15/2082
-    BS DD-MM-YYYY	15-06-2082
-    BS MM-DD-YYYY	06-15-2082
-Auto-detect also now handles BS dates automatically — any YYYY-MM-DD or YYYY/MM/DD with a year ≥ 2070 is treated as BS and converted to AD before saving. When BS calendar is selected, the modal pre-selects BS YYYY-MM-DD as the default.
-
-
 first letter always capital in table data of table for example if user enter ram in name, notes, note, description, title field then it should show Ram in the table to maintain consistency and also it will look better. this feature is implemented in all pages income, expenses, bank, lend, loan, saving, for me.
 Only raises the very first character — "hello dear" → "Hello dear", "ICU dear" → "ICU dear" (already uppercase, untouched).
 Applied to all 7 pages (mobile cards + desktop rows + summary panels + charts):
@@ -631,11 +629,6 @@ Applied to all 7 pages (mobile cards + desktop rows + summary panels + charts):
     For Me	name, description + person summary/chart
 
 
-user should be able to delete specific page data from profile settings for example if user want to delete only loan data then they can go to profile settings and click on delete loan data and it will delete all loan data of that user without affecting other data like expenses, income, etc. this will give users more control over their data and allow them to easily remove any specific type of data they no longer want to keep in the app without having to delete their entire account or manually delete each entry one by one. this feature is implemented in profile settings with a clear warning and confirmation dialog before deletion to prevent accidental data loss.
+implement this feature "Progressive Web App (PWA) install feature. so that user will be able to install the app  
 
 
-↓ 100.0% vs last month in all card in dashboard vs last year in all other 3 remaining card in dashboard
-The three remaining cards now each receive trend + trendLabel="vs last year":
-This Year → compares this year's total vs last year's total
-Monthly Average → compares this year's avg vs last year's avg
-Total Expenses → compares this year's entry count vs last year's count
