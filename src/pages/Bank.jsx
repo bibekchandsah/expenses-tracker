@@ -10,7 +10,7 @@ import { useBanks } from '../context/BankContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatDate, capFirst } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
 import { safeADToBS, getBSYearRange, adDateToBSMonthKey, getBSMonthLabel } from '../utils/calendarUtils';
@@ -691,7 +691,7 @@ export default function Bank() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{dateLabel(entry.date)}</p>
-                            <p className="text-sm text-gray-900 dark:text-white font-medium truncate mt-0.5" title={entry.description}>{entry.description}</p>
+                            <p className="text-sm text-gray-900 dark:text-white font-medium truncate mt-0.5" title={capFirst(entry.description)}>{capFirst(entry.description)}</p>
                           </div>
                           <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                             {+entry.deposit > 0 && (
@@ -721,7 +721,7 @@ export default function Bank() {
 
                         {/* Description */}
                         <div className="col-span-4">
-                          <p className="text-sm text-gray-900 dark:text-white font-medium truncate" title={entry.description}>{entry.description}</p>
+                          <p className="text-sm text-gray-900 dark:text-white font-medium truncate" title={capFirst(entry.description)}>{capFirst(entry.description)}</p>
                         </div>
 
                         {/* Deposit */}

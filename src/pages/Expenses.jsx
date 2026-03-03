@@ -9,7 +9,7 @@ import { useToast } from '../components/ui/Toast';
 import ExpenseModal from '../components/ExpenseModal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatDate, capFirst } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
 import { safeADToBS, adDateToBSMonthKey, getBSYearRange, getBSMonthLabel } from '../utils/calendarUtils';
@@ -186,7 +186,7 @@ export default function Expenses() {
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{expense.title}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{capFirst(expense.title)}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{dateLabel(expense.date)}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -198,8 +198,8 @@ export default function Expenses() {
               </div>
               {(expense.notes || expense.description) && (
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  {expense.notes && <span className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Note:</span> {expense.notes}</span>}
-                  {expense.description && <span className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Desc:</span> {expense.description}</span>}
+                  {expense.notes && <span className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Note:</span> {capFirst(expense.notes)}</span>}
+                  {expense.description && <span className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Desc:</span> {capFirst(expense.description)}</span>}
                 </div>
               )}
               <div className="flex items-center gap-1 mt-1.5">
@@ -218,7 +218,7 @@ export default function Expenses() {
               {cat?.icon || '📦'}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{expense.title}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{capFirst(expense.title)}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">{dateLabel(expense.date)}</p>
             </div>
           </div>
@@ -226,10 +226,10 @@ export default function Expenses() {
             <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(expense.amount, currency)}</span>
           </div>
           <div className="col-span-2">
-            {expense.notes ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={expense.notes}>{expense.notes}</span> : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
+            {expense.notes ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={capFirst(expense.notes)}>{capFirst(expense.notes)}</span> : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
           </div>
           <div className="col-span-2">
-            {expense.description ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={expense.description}>{expense.description}</span> : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
+            {expense.description ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={capFirst(expense.description)}>{capFirst(expense.description)}</span> : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
           </div>
           <div className="col-span-2">
             <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: (cat?.color || '#6b7280') + '20', color: cat?.color || '#6b7280' }}>

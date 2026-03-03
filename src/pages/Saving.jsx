@@ -11,7 +11,7 @@ import { useSavings } from '../context/SavingContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatDate, capFirst } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
 import { safeADToBS, getBSYearRange } from '../utils/calendarUtils';
@@ -487,7 +487,7 @@ export default function Saving() {
                         <p className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount, currency)}</p>
                         <div className="flex-shrink-0">
                           {row.expendOn
-                            ? <span className="inline-block px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs">{row.expendOn}</span>
+                            ? <span className="inline-block px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs">{capFirst(row.expendOn)}</span>
                             : <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
                           }
                         </div>
@@ -495,7 +495,7 @@ export default function Saving() {
                       <div className="flex items-center justify-between gap-2 mt-1">
                         <p className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">{dateLabel(row.date)}</p>
                         <div className="flex items-center gap-1 min-w-0">
-                          {row.description && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{row.description}</p>}
+                          {row.description && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{capFirst(row.description)}</p>}
                           <button onClick={() => setQuickAddOpen({ open: true, row: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors flex-shrink-0" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
                           <button onClick={() => setSavingModal({ open: true, item: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors flex-shrink-0" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
                           <button onClick={() => setDeleteTarget(row)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -511,13 +511,13 @@ export default function Saving() {
                       </div>
                       <div className="col-span-3">
                         {row.expendOn
-                          ? <span className="inline-block px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs truncate max-w-full" title={row.expendOn}>{row.expendOn}</span>
+                          ? <span className="inline-block px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs truncate max-w-full" title={capFirst(row.expendOn)}>{capFirst(row.expendOn)}</span>
                           : <span className="text-gray-300 dark:text-gray-600 text-sm">-</span>
                         }
                       </div>
                       <div className="col-span-4 pl-1">
                         {row.description
-                          ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={row.description}>{row.description}</span>
+                          ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={capFirst(row.description)}>{capFirst(row.description)}</span>
                           : <span className="text-gray-300 dark:text-gray-600 text-sm">-</span>
                         }
                       </div>
@@ -578,7 +578,7 @@ export default function Saving() {
                           <span className="text-xs text-gray-400">{dateLabel(src.date)}</span>
                         </div>
                         {src.description && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate" title={src.description}>{src.description}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate" title={capFirst(src.description)}>{capFirst(src.description)}</p>
                         )}
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">

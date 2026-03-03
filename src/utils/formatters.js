@@ -10,6 +10,15 @@ const CURRENCY_SYMBOLS = {
   CZK: 'Kč', PLN: 'zł',  ILS: '₪',   CLP: '$',   COP: '$',
 };
 
+/**
+ * Capitalizes only the very first character of a string, leaving the rest
+ * exactly as entered. So "hello world" → "Hello world", "ICU" → "ICU".
+ */
+export function capFirst(str) {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 export function formatCurrency(amount, currency = 'USD') {
   const num = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,

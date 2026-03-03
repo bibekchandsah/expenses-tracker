@@ -12,7 +12,7 @@ import { useLoans } from '../context/LoanContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatDate, capFirst } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
 import { safeADToBS, getBSYearRange } from '../utils/calendarUtils';
@@ -525,7 +525,7 @@ export default function Lend() {
                             <button
                               onClick={() => { setPersonFilter(p => p === lend.name ? null : lend.name); setSearch(''); }}
                               className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline text-left"
-                            >{lend.name}</button>
+                            >{capFirst(lend.name)}</button>
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(lend.date)}</p>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
@@ -556,8 +556,8 @@ export default function Lend() {
                         </div>
                         {(lend.reason || lend.description) && (
                           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5">
-                            {lend.reason && <p className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Reason:</span> {lend.reason}</p>}
-                            {lend.description && <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1"><span className="text-gray-400 dark:text-gray-500">Note:</span> {lend.description}</p>}
+                            {lend.reason && <p className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Reason:</span> {capFirst(lend.reason)}</p>}
+                            {lend.description && <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1"><span className="text-gray-400 dark:text-gray-500">Note:</span> {capFirst(lend.description)}</p>}
                           </div>
                         )}
                       </div>
@@ -569,14 +569,14 @@ export default function Lend() {
                           <button
                             onClick={() => { setPersonFilter(p => p === lend.name ? null : lend.name); setSearch(''); }}
                             className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline truncate max-w-full text-left"
-                            title={`Filter by ${lend.name}`}
-                          >{lend.name}</button>
+                            title={`Filter by ${capFirst(lend.name)}`}
+                          >{capFirst(lend.name)}</button>
                         </div>
                         <div className="col-span-1 text-right">
                           <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(lend.amount, currency)}</span>
                         </div>
                         <div className="col-span-2">
-                          <span className="text-sm text-gray-600 dark:text-gray-400 truncate block" title={lend.reason}>{lend.reason || '—'}</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400 truncate block" title={lend.reason}>{lend.reason ? capFirst(lend.reason) : '—'}</span>
                         </div>
                         <div className="col-span-1 text-right">
                           {+lend.returnedAmount > 0
@@ -592,7 +592,7 @@ export default function Lend() {
                         </div>
                         <div className="col-span-2 pl-1">
                           {lend.description
-                            ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={lend.description}>{lend.description}</span>
+                            ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={capFirst(lend.description)}>{capFirst(lend.description)}</span>
                             : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
                           }
                         </div>
@@ -669,7 +669,7 @@ export default function Lend() {
                           : <AlertCircle   className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
                         }
                         <span className={`text-sm font-medium truncate ${isActive ? 'text-primary-700 dark:text-primary-400' : 'text-gray-800 dark:text-gray-200'}`}>
-                          {person.name}
+                          {capFirst(person.name)}
                         </span>
                       </div>
                       <div className="text-right">
@@ -727,7 +727,7 @@ export default function Lend() {
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className={`text-xs font-semibold truncate max-w-[55%] ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {person.name}
+                        {capFirst(person.name)}
                       </span>
                       <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
                         {formatCurrency(person.totalReturned, currency)} / {formatCurrency(person.totalLent, currency)}

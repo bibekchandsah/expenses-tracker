@@ -8,7 +8,7 @@ import { useToast } from '../components/ui/Toast';
 import IncomeModal, { INCOME_SOURCES } from '../components/IncomeModal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatDate, capFirst } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
 import { safeADToBS, adDateToBSMonthKey, getBSYearRange, bsMonthsOfYear, getBSMonthLabel } from '../utils/calendarUtils';
@@ -227,7 +227,7 @@ export default function Income() {
       <div className="sm:hidden px-4 py-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{inc.title}</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{capFirst(inc.title)}</p>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(inc.date)}</p>
           </div>
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -241,8 +241,8 @@ export default function Income() {
         </div>
         {(inc.notes || inc.description) && (
           <div className="mt-1.5 space-y-0.5">
-            {inc.notes && <p className="text-xs text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">Notes:</span> {inc.notes}</p>}
-            {inc.description && <p className="text-xs text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">Desc:</span> {inc.description}</p>}
+            {inc.notes && <p className="text-xs text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">Notes:</span> {capFirst(inc.notes)}</p>}
+            {inc.description && <p className="text-xs text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">Desc:</span> {capFirst(inc.description)}</p>}
           </div>
         )}
         <div className="flex items-center gap-1 mt-1.5">
@@ -255,7 +255,7 @@ export default function Income() {
       {/* ── Desktop row (sm+) ── */}
       <div className="hidden sm:grid grid-cols-12 gap-0 px-4 py-3 items-center">
         <div className="col-span-3">
-          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{inc.title}</p>
+          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{capFirst(inc.title)}</p>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(inc.date)}</p>
         </div>
         <div className="col-span-2">
@@ -264,13 +264,13 @@ export default function Income() {
           </span>
         </div>
         <div className="col-span-2">
-          <p className="text-sm text-gray-600 dark:text-gray-300 truncate max-w-[140px]" title={inc.notes || ''}>
-            {inc.notes || <span className="text-gray-300 dark:text-gray-600">—</span>}
+          <p className="text-sm text-gray-600 dark:text-gray-300 truncate max-w-[140px]" title={capFirst(inc.notes) || ''}>
+            {inc.notes ? capFirst(inc.notes) : <span className="text-gray-300 dark:text-gray-600">—</span>}
           </p>
         </div>
         <div className="col-span-2">
-          <p className="text-sm text-gray-600 dark:text-gray-300 truncate max-w-[140px]" title={inc.description || ''}>
-            {inc.description || <span className="text-gray-300 dark:text-gray-600">—</span>}
+          <p className="text-sm text-gray-600 dark:text-gray-300 truncate max-w-[140px]" title={capFirst(inc.description) || ''}>
+            {inc.description ? capFirst(inc.description) : <span className="text-gray-300 dark:text-gray-600">—</span>}
           </p>
         </div>
         <div className="col-span-2">

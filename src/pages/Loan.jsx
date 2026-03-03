@@ -12,7 +12,7 @@ import { useLends } from '../context/LendContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatDate, capFirst } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
 import { safeADToBS, getBSYearRange } from '../utils/calendarUtils';
@@ -523,7 +523,7 @@ export default function Loan() {
                             <button
                               onClick={() => { setPersonFilter(p => p === loan.name ? null : loan.name); setSearch(''); }}
                               className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline text-left"
-                            >{loan.name}</button>
+                            >{capFirst(loan.name)}</button>
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(loan.date)}</p>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
@@ -554,8 +554,8 @@ export default function Loan() {
                         </div>
                         {(loan.reason || loan.description) && (
                           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5">
-                            {loan.reason && <p className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Reason:</span> {loan.reason}</p>}
-                            {loan.description && <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1"><span className="text-gray-400 dark:text-gray-500">Note:</span> {loan.description}</p>}
+                            {loan.reason && <p className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Reason:</span> {capFirst(loan.reason)}</p>}
+                            {loan.description && <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1"><span className="text-gray-400 dark:text-gray-500">Note:</span> {capFirst(loan.description)}</p>}
                           </div>
                         )}
                       </div>
@@ -567,14 +567,14 @@ export default function Loan() {
                           <button
                             onClick={() => { setPersonFilter(p => p === loan.name ? null : loan.name); setSearch(''); }}
                             className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline truncate max-w-full text-left"
-                            title={`Filter by ${loan.name}`}
-                          >{loan.name}</button>
+                            title={`Filter by ${capFirst(loan.name)}`}
+                          >{capFirst(loan.name)}</button>
                         </div>
                         <div className="col-span-1 text-right">
                           <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(loan.amount, currency)}</span>
                         </div>
                         <div className="col-span-2">
-                          <span className="text-sm text-gray-600 dark:text-gray-400 truncate block" title={loan.reason}>{loan.reason || '—'}</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400 truncate block" title={loan.reason}>{loan.reason ? capFirst(loan.reason) : '—'}</span>
                         </div>
                         <div className="col-span-1 text-right">
                           {+loan.paidAmount > 0
@@ -590,7 +590,7 @@ export default function Loan() {
                         </div>
                         <div className="col-span-2 pl-1">
                           {loan.description
-                            ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={loan.description}>{loan.description}</span>
+                            ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={capFirst(loan.description)}>{capFirst(loan.description)}</span>
                             : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
                           }
                         </div>
@@ -668,7 +668,7 @@ export default function Loan() {
                             : <AlertCircle   className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
                           }
                           <span className={`text-sm font-medium truncate ${isActive ? 'text-primary-700 dark:text-primary-400' : 'text-gray-800 dark:text-gray-200'}`}>
-                            {person.name}
+                            {capFirst(person.name)}
                           </span>
                         </div>
                         <div className="text-right">
@@ -725,7 +725,7 @@ export default function Loan() {
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className={`text-xs font-semibold truncate max-w-[55%] ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-700 dark:text-gray-300'}`}>
-                          {person.name}
+                          {capFirst(person.name)}
                         </span>
                         <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
                           {formatCurrency(person.totalPaid, currency)} / {formatCurrency(person.totalBorrowed, currency)}
