@@ -320,7 +320,7 @@ export default function ForMe() {
       await addEntry({
         name:        rec.name,
         amount:      +rec.amount,
-        date:        rec.date,
+        date:        toTimestamp(rec.date),
         description: rec.description || '',
       });
     }
