@@ -608,3 +608,14 @@ The user wants to implement a Bikram Sambat (BS) date system where:
 in dashboard for small devices in year changing show year value in center and previous & next icon at the start and end of container
 in income, lend, loan, saving, for me page for small devices hide the text of import and export and only show icon same like in expense page
 income 
+
+
+first letter always capital in table data of table for example if user enter ram in name, notes, note, description, title field then it should show Ram in the table to maintain consistency and also it will look better. this feature is implemented in all pages income, expenses, bank, lend, loan, saving, for me.
+
+user should be able to delete specific page data from profile settings for example if user want to delete only loan data then they can go to profile settings and click on delete loan data and it will delete all loan data of that user without affecting other data like expenses, income, etc. this will give users more control over their data and allow them to easily remove any specific type of data they no longer want to keep in the app without having to delete their entire account or manually delete each entry one by one. this feature is implemented in profile settings with a clear warning and confirmation dialog before deletion to prevent accidental data loss.
+
+↓ 100.0% vs last month in all card in dashboard vs last year in all other 3 remaining card in dashboard
+The three remaining cards now each receive trend + trendLabel="vs last year":
+This Year → compares this year's total vs last year's total
+Monthly Average → compares this year's avg vs last year's avg
+Total Expenses → compares this year's entry count vs last year's count

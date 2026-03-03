@@ -87,7 +87,25 @@ export default function Dashboard() {
       ? yearTotal / Math.max(1, new Set(yearExpenses.map(e => adDateToBSMonthKey(e.date))).size)
       : yearTotal / Math.max(1, new Set(yearExpenses.map(e => e.date.slice(0, 7))).size);
 
-    return { monthTotal, yearTotal, trend, avgMonthly, count: monthExpenses.length, yearCount: yearExpenses.length };
+    // Previous year expenses (for year-over-year trend)
+    const prevYearExpenses = isBS
+      ? (() => {
+          const prevRange = getBSYearRange(selectedBSYear - 1);
+          return expenses.filter(e => e.date >= prevRange.start && e.date <= prevRange.end);
+        })()
+      : expenses.filter(e => e.date.startsWith(String(selectedYear - 1)));
+
+    const prevYearTotal = prevYearExpenses.reduce((s, e) => s + +e.amount, 0);
+    const prevYearAvg = isBS
+      ? prevYearTotal / Math.max(1, new Set(prevYearExpenses.map(e => adDateToBSMonthKey(e.date))).size)
+      : prevYearTotal / Math.max(1, new Set(prevYearExpenses.map(e => e.date.slice(0, 7))).size);
+    const prevYearCount = prevYearExpenses.length;
+
+    const yearTrend    = prevYearTotal  ? ((yearTotal   - prevYearTotal)  / prevYearTotal)  * 100 : 0;
+    const avgTrend     = prevYearAvg    ? ((avgMonthly  - prevYearAvg)    / prevYearAvg)    * 100 : 0;
+    const countTrend   = prevYearCount  ? ((yearExpenses.length - prevYearCount) / prevYearCount) * 100 : 0;
+
+    return { monthTotal, yearTotal, trend, avgMonthly, count: monthExpenses.length, yearCount: yearExpenses.length, yearTrend, avgTrend, countTrend };
   }, [expenses, displayMonth, selectedYear, selectedBSYear, bsYearRange, isBS]);
 
   // Category breakdown — this month (within selectedYear) or full year
@@ -233,6 +251,8 @@ export default function Dashboard() {
           value={formatCurrency(stats.yearTotal, currency)}
           icon={Calendar}
           color="purple"
+          trend={stats.yearTrend}
+          trendLabel="vs last year"
           subtitle={isBS ? String(selectedBSYear) : yearLabel(selectedYear)}
         />
         <StatsCard
@@ -240,6 +260,8 @@ export default function Dashboard() {
           value={formatCurrency(stats.avgMonthly, currency)}
           icon={TrendingUp}
           color="green"
+          trend={stats.avgTrend}
+          trendLabel="vs last year"
           subtitle="This year"
         />
         <StatsCard
@@ -247,6 +269,8 @@ export default function Dashboard() {
           value={stats.yearCount}
           icon={ShoppingBag}
           color="orange"
+          trend={stats.countTrend}
+          trendLabel="vs last year"
           subtitle={`In ${isBS ? selectedBSYear : yearLabel(selectedYear)}`}
         />
       </div>

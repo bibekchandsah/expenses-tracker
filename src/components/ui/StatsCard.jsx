@@ -1,4 +1,4 @@
-export default function StatsCard({ title, value, icon: Icon, color = 'blue', trend, subtitle }) {
+export default function StatsCard({ title, value, icon: Icon, color = 'blue', trend, trendLabel = 'vs last month', subtitle }) {
   const colors = {
     blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
     green: 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400',
@@ -16,7 +16,7 @@ export default function StatsCard({ title, value, icon: Icon, color = 'blue', tr
           {subtitle && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{subtitle}</p>}
           {trend !== undefined && (
             <p className={`text-xs font-medium mt-1 ${trend >= 0 ? 'text-red-500' : 'text-green-500'}`}>
-              {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}% vs last month
+              {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}% {trendLabel}
             </p>
           )}
         </div>
