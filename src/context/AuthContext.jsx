@@ -94,26 +94,29 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function signInWithEmail(email, password) {
+  async function signInWithEmail(email, password, skipBiometricStore = false) {
     setError(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const result = await signInWithEmailAndPassword(auth, email, password);
       
       // Check if user has biometric enabled and store credentials for future biometric login
-      const userRef = doc(db, 'users', auth.currentUser.uid, 'profile', 'info');
-      const snap = await getDoc(userRef);
-      if (snap.exists() && snap.data().biometricEnabled) {
-        // Store encrypted password for biometric unlock
-        // Note: Using base64 encoding as a simple obfuscation
-        // In production, use proper encryption or avoid storing passwords
-        const credentialId = snap.data().biometricCredentialId;
-        if (credentialId) {
-          localStorage.setItem(`biometric_${email}`, JSON.stringify({
-            credentialId,
-            encryptedPassword: btoa(password),
-          }));
+      // Skip if this sign-in is coming from biometric authentication itself
+      if (!skipBiometricStore && result.user) {
+        const userRef = doc(db, 'users', result.user.uid, 'profile', 'info');
+        const snap = await getDoc(userRef);
+        if (snap.exists() && snap.data().biometricEnabled) {
+          // Store encrypted password for biometric unlock
+          const credentialId = snap.data().biometricCredentialId;
+          if (credentialId) {
+            localStorage.setItem(`biometric_${email}`, JSON.stringify({
+              credentialId,
+              encryptedPassword: btoa(password),
+            }));
+          }
         }
       }
+      
+      return result;
     } catch (err) {
       setError(friendlyError(err));
       throw err;
@@ -282,22 +285,25 @@ export function AuthProvider({ children }) {
       if (!assertion) throw new Error('Biometric authentication failed');
 
       // Biometric verification successful - decrypt and use stored password
-      // Note: This is a simplified approach. The password is base64 encoded (not truly encrypted)
-      // In production, you'd use proper encryption or avoid storing passwords entirely
       const password = atob(encryptedPassword);
       
       // Sign in with Firebase using the retrieved credentials
-      await signInWithEmail(email, password);
+      // Pass skipBiometricStore=true to avoid re-storing credentials
+      await signInWithEmail(email, password, true);
     } catch (err) {
       console.error('Biometric sign-in error:', err);
       if (err.name === 'NotAllowedError') {
-        throw new Error('Biometric authentication was cancelled');
+        const cancelError = new Error('Biometric authentication was cancelled');
+        setError(friendlyError(cancelError));
+        throw cancelError;
       }
-      if (err.message.includes('No biometric credentials')) {
+      if (err.message && err.message.includes('No biometric credentials')) {
+        setError(err.message);
         throw err;
       }
-      setError(friendlyError(err));
-      throw err;
+      const authError = new Error('Biometric authentication failed. Please try again or use email/password.');
+      setError(friendlyError(authError));
+      throw authError;
     }
   }
 

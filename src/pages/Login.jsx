@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { TrendingUp, CheckCircle, Eye, EyeOff, Mail, Lock, User, ArrowLeft, Fingerprint } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -70,6 +70,8 @@ export default function Login() {
     signInWithGoogle, signInWithMicrosoft, signInWithApple, signInWithTwitter, signInWithGitHub,
     signUpWithEmail, signInWithEmail, resetPassword, signInWithBiometric,
   } = useAuth();
+  
+  const navigate = useNavigate();
 
   // 'signin' | 'signup' | 'reset'
   const [mode, setMode] = useState('signin');
@@ -80,7 +82,24 @@ export default function Login() {
   const [localError, setLocalError] = useState('');
   const [biometricAvailable, setBiometricAvailable] = useState(false);
 
-  if (!loading && user) return <Navigate to="/dashboard" replace />;
+  // Redirect to dashboard if user is logged in
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, loading, navigate]);
+
+  // Show loading spinner while checking auth state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <div className="text-center">
+          <div className="w-12 h-12 mx-auto mb-4 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Check biometric availability on mount
   useEffect(() => {
@@ -150,9 +169,9 @@ export default function Login() {
     clearError();
     try {
       await signInWithBiometric(form.email);
+      // Keep busy state to show loading during redirect
     } catch (err) {
       setLocalError(err.message || 'Biometric login failed');
-    } finally {
       setBusy(null);
     }
   }
