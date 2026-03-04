@@ -25,6 +25,8 @@ import {
   Wrench,
   Calculator as CalculatorIcon,
   Star,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -102,6 +104,23 @@ export default function Sidebar({ open, onClose }) {
       try { localStorage.setItem('sidebarCollapsed', String(next)); } catch {}
       return next;
     });
+  }
+
+  // Scroll functions
+  function scrollToTop() {
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+      mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    setToolsOpen(false);
+  }
+
+  function scrollToBottom() {
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+      mainContent.scrollTo({ top: mainContent.scrollHeight, behavior: 'smooth' });
+    }
+    setToolsOpen(false);
   }
 
   // Close dropdowns on outside click
@@ -247,6 +266,27 @@ export default function Sidebar({ open, onClose }) {
                   <CalculatorIcon className="w-4 h-4 text-gray-400" />
                   Calculator
                 </button>
+                
+                {/* Scroll buttons */}
+                <div className="flex items-center border-t border-b border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={scrollToTop}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200
+                               hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-r border-gray-200 dark:border-gray-700"
+                  >
+                    <ArrowUp className="w-4 h-4 text-gray-400" />
+                    Scroll
+                  </button>
+                  <button
+                    onClick={scrollToBottom}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200
+                               hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <ArrowDown className="w-4 h-4 text-gray-400" />
+                    Scroll
+                  </button>
+                </div>
+                
                 <a
                   href="https://github.com/bibekchandsah/expenses-tracker"
                   target="_blank"

@@ -158,6 +158,14 @@ Clicking opens a dropdown menu with:
     Logout (red) → signs out and redirects to /login
 Sidebar — theme toggle button added above the profile section. In expanded mode it shows the icon + "Dark Mode" / "Light Mode" label. In collapsed mode it shows just the icon with a tooltip on hover.
 Layout — Navbar removed entirely. On desktop the sidebar is always visible so no header is needed. On mobile a slim top bar (lg:hidden) shows only the hamburger button to open the sidebar.
+scroll up/down buttons :
+    Smooth scrolling - Uses window.scrollTo with behavior: 'smooth' for a nice animated scroll
+    Scroll Up - Scrolls to the top of the page (top: 0)
+    Scroll Down - Scrolls to the bottom of the page (scrollHeight)
+    Auto-close - The dropdown closes after clicking either scroll button
+    Responsive - Works in both collapsed and expanded sidebar modes
+    Theme support - Properly styled for both light and dark modes
+
 
 
 Dashboard page updates:
