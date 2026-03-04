@@ -265,12 +265,8 @@ export default function Profile() {
         await disableBiometric();
         addToast('Biometric login disabled', 'success');
       } else {
-        const result = await registerBiometric();
-        if (result?.requiresPasswordSignIn) {
-          addToast('Biometric enabled! Sign in with your password once more to complete setup.', 'success');
-        } else {
-          addToast('Biometric login enabled!', 'success');
-        }
+        await registerBiometric();
+        addToast('Biometric login enabled! You can now use biometric to sign in.', 'success');
       }
     } catch (err) {
       addToast(err.message || 'Biometric setup failed', 'error');
@@ -695,8 +691,15 @@ export default function Profile() {
             </span>
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
-            Use fingerprint or face recognition to sign in quickly and securely without entering your password.
+            Use fingerprint or face recognition to sign in quickly and securely. Works with all login methods (email, Google, Microsoft, etc.).
           </p>
+          {biometricEnabled && (
+            <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-xl">
+              <p className="text-xs text-green-700 dark:text-green-400">
+                ✓ Biometric login is active! You can now sign in without entering your password.
+              </p>
+            </div>
+          )}
           <button
             onClick={handleToggleBiometric}
             disabled={enablingBiometric}

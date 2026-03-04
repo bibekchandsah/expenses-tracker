@@ -1,39 +1,57 @@
 # Biometric Authentication Implementation
 
 ## Overview
-Biometric authentication has been implemented using the Web Authentication API (WebAuthn), allowing users to sign in using fingerprint or face recognition instead of passwords.
+Biometric authentication using Web Authentication API (WebAuthn) allows users to sign in with fingerprint or face recognition. Works with all login methods: email/password, Google, Microsoft, Apple, Twitter, and GitHub.
 
-## Features
+## Key Features
 
-### 1. Profile Page - Enable/Disable Biometric
-- Users can enable biometric login from their Profile page after creating an account
-- A toggle button shows the current status (Enabled/Disabled)
-- Only visible on devices that support biometric authentication
-- Credential information is securely stored in Firestore
+### 1. No Email Required
+- Biometric button works without entering email
+- Automatically uses last signed-in email
+- Seamless one-tap login experience
 
-### 2. Login Page - Biometric Sign-In
-- A "Sign in with Biometric" button appears on the login page for supported devices
-- Users must enter their email address first
-- The button uses a gradient purple-to-indigo design to stand out
-- Only shown in sign-in mode (not sign-up or password reset)
+### 2. Works with All Login Methods
+- **Email/Password**: Stores encrypted password after first sign-in
+- **Social Login** (Google, Microsoft, etc.): Ready immediately after enabling
+- No need to sign in again after enabling biometric
+
+### 3. Profile Page - Enable/Disable
+- Simple toggle to enable/disable biometric login
+- Shows current status with visual indicator
+- Only visible on devices with biometric support
+- Works for all authentication methods
+
+### 4. Login Page - One-Tap Sign-In
+- Purple gradient "Sign in with Biometric" button
+- No email entry required (uses last email)
+- Can optionally enter email for specific account
+- Shows clear error messages if setup needed
 
 ## How It Works
 
-### Setup Process
+### For Email/Password Users
 1. User creates account or signs in with email/password
 2. User enables biometric login from Profile page
-3. System registers biometric credential (fingerprint/face)
+3. System registers biometric credential
 4. User signs in with email/password one more time
-5. System stores encrypted credentials in localStorage
-6. Biometric login is now ready to use
+5. System stores encrypted password in localStorage
+6. Biometric login is ready - no email needed!
+
+### For Social Login Users (Google, Microsoft, etc.)
+1. User signs in with social provider
+2. User enables biometric login from Profile page
+3. System registers biometric credential
+4. Biometric login is immediately ready!
+5. No additional sign-in required
 
 ### Login Process
-1. User enters email on login page
-2. Clicks "Sign in with Biometric"
+1. User opens login page
+2. Clicks "Sign in with Biometric" (no email needed)
 3. System prompts for biometric verification
-4. After successful verification, retrieves stored credentials
-5. Automatically signs in to Firebase
-6. User is redirected to dashboard
+4. After successful verification, user is signed in
+5. Redirected to dashboard
+
+**Optional**: User can enter email before clicking biometric button to sign in to a specific account.
 
 ## Technical Implementation
 

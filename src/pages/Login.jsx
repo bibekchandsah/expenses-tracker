@@ -160,15 +160,12 @@ export default function Login() {
   }
 
   async function handleBiometricLogin() {
-    if (!form.email) {
-      setLocalError('Enter your email address first');
-      return;
-    }
     setBusy('biometric');
     setLocalError('');
     clearError();
     try {
-      await signInWithBiometric(form.email);
+      // Pass email if provided, otherwise signInWithBiometric will use last email
+      await signInWithBiometric(form.email || null);
       // Keep busy state to show loading during redirect
     } catch (err) {
       setLocalError(err.message || 'Biometric login failed');
@@ -331,9 +328,9 @@ export default function Login() {
             {mode === 'signin' && biometricAvailable && (
               <button
                 onClick={handleBiometricLogin}
-                disabled={anyBusy || !form.email}
+                disabled={anyBusy}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition-colors mt-3"
-                title={!form.email ? 'Enter your email first' : 'Sign in with biometric'}
+                title="Sign in with biometric"
               >
                 {busy === 'biometric'
                   ? <div className="w-4 h-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
