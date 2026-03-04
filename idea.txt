@@ -570,6 +570,35 @@ The Calculator now supports touch events for both dragging and resizing. The cha
     Added touchmove and touchend event listeners with proper cleanup
     Used { passive: false } for touchmove to allow preventDefault() and prevent scrolling during drag/resize
 The calculator will now work smoothly on touch screen devices.
+The calculator now has a dropdown menu in the header that allows switching between 5 different calculator types:
+    Basic Calculator - The original calculator with standard arithmetic operations
+    Discount Calculator - Calculate discounts, savings, and final prices
+    Currency Converter - Convert between different currencies with custom exchange rates
+    Loan/Investment Calculator - Calculate loan payments or investment returns with compound interest
+    Investment Type Selection (only for investments, not loans):
+        One-time Investment: Calculates compound interest on a single initial investment
+        Recurring Investment: Calculates the future value of regular monthly investments (like SIP/systematic investment plans)
+    Date Calculator - Calculate date differences or add days to a date
+Each calculator has its own UI and logic:
+    The dropdown appears when clicking on the calculator type name in the header
+    Touch and mouse events are supported for the dropdown
+    Each specialized calculator has input fields, calculate buttons, and result displays
+    The basic calculator retains keyboard support
+    All calculators are draggable and resizable
+The currency converter now has automatic exchange rate fetching with these features:
+    "Get Rate" button - Fetches real-time exchange rates from a free API (exchangerate-api.com)
+    Loading state - Shows "Fetching..." while getting the rate
+    Error handling - If the API fails, it shows an error message and users can enter the rate manually
+    Rate display - Shows the current exchange rate (e.g., "1 USD = 0.92 EUR")
+    Manual override - Users can still manually enter or edit the exchange rate if needed
+    More currencies - Added more popular currencies (20 total including AED, SGD, HKD, NZD, SEK, NOK, DKK, MXN, BRL, ZAR)
+    Conversion summary - Shows a clear summary of the conversion at the bottom
+The API used is free and provides:
+    Real-time exchange rates
+    1500 requests per month on the free tier
+    No API key required
+    Supports all major currencies
+Users can now simply click "Get Rate" to automatically fetch the current exchange rate, making the converter much more user-friendly!
 
 
 quick-add feature:
