@@ -28,10 +28,13 @@ export default function Calculator({ onClose }) {
 
   const calcTypes = [
     { id: 'basic', label: 'Calculator' },
+    { id: 'scientific', label: 'Scientific Calculator' },
     { id: 'discount', label: 'Discount Calculator' },
     { id: 'currency', label: 'Currency Converter' },
     { id: 'loan', label: 'Loan/Investment Calculator' },
     { id: 'date', label: 'Date Calculator' },
+    { id: 'bmi', label: 'BMI Calculator' },
+    { id: 'age', label: 'Age Calculator' },
   ];
 
   /* ── calc state ─────────────────────────────────────────────────── */
@@ -43,6 +46,11 @@ export default function Calculator({ onClose }) {
   // for equation sub-line display
   const [leftStr,            setLeftStr]            = useState('');
   const [equationStr,        setEquationStr]        = useState('');
+  
+  /* ── scientific calculator state ────────────────────────────────── */
+  const [memory,             setMemory]             = useState(0);
+  const [angleMode,          setAngleMode]          = useState('deg'); // deg or rad
+  const [scientificHistory,  setScientificHistory]  = useState('');
 
   /* ── discount calculator state ──────────────────────────────────── */
   const [originalPrice, setOriginalPrice] = useState('');
@@ -73,6 +81,18 @@ export default function Calculator({ onClose }) {
   const [daysToAdd, setDaysToAdd] = useState('');
   const [dateCalcMode, setDateCalcMode] = useState('difference'); // difference or add
   const [dateResult, setDateResult] = useState(null);
+
+  /* ── BMI calculator state ───────────────────────────────────────── */
+  const [bmiUnit, setBmiUnit] = useState('metric'); // metric or imperial
+  const [height, setHeight] = useState('');
+  const [heightFeet, setHeightFeet] = useState('');
+  const [heightInches, setHeightInches] = useState('');
+  const [weight, setWeight] = useState('');
+  const [bmiResult, setBmiResult] = useState(null);
+
+  /* ── Age calculator state ───────────────────────────────────────── */
+  const [birthDate, setBirthDate] = useState('');
+  const [ageResult, setAgeResult] = useState(null);
 
   /* ── drag / resize state ────────────────────────────────────────── */
   const [pos,  setPos]  = useState({
@@ -176,6 +196,144 @@ export default function Calculator({ onClose }) {
     setLeftStr('');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [display, prevValue, operator, leftStr, runOp]);
+
+  /* ── scientific calculator functions ────────────────────────────── */
+  const scientificOp = useCallback((operation) => {
+    const current = parseFloat(display);
+    if (isNaN(current)) return;
+    
+    let result;
+    const radians = angleMode === 'deg' ? (current * Math.PI) / 180 : current;
+    
+    switch (operation) {
+      case 'sin':
+        result = Math.sin(radians);
+        setScientificHistory(`sin(${display})`);
+        break;
+      case 'cos':
+        result = Math.cos(radians);
+        setScientificHistory(`cos(${display})`);
+        break;
+      case 'tan':
+        result = Math.tan(radians);
+        setScientificHistory(`tan(${display})`);
+        break;
+      case 'log':
+        result = Math.log10(current);
+        setScientificHistory(`log(${display})`);
+        break;
+      case 'ln':
+        result = Math.log(current);
+        setScientificHistory(`ln(${display})`);
+        break;
+      case 'sqrt':
+        result = Math.sqrt(current);
+        setScientificHistory(`√(${display})`);
+        break;
+      case 'square':
+        result = current * current;
+        setScientificHistory(`(${display})²`);
+        break;
+      case 'cube':
+        result = current * current * current;
+        setScientificHistory(`(${display})³`);
+        break;
+      case 'reciprocal':
+        result = 1 / current;
+        setScientificHistory(`1/(${display})`);
+        break;
+      case 'factorial':
+        if (current < 0 || !Number.isInteger(current)) {
+          result = NaN;
+        } else {
+          result = 1;
+          for (let i = 2; i <= current; i++) result *= i;
+        }
+        setScientificHistory(`${display}!`);
+        break;
+      case 'exp':
+        result = Math.exp(current);
+        setScientificHistory(`e^(${display})`);
+        break;
+      case 'abs':
+        result = Math.abs(current);
+        setScientificHistory(`|${display}|`);
+        break;
+      default:
+        return;
+    }
+    
+    setDisplay(fmt(result));
+    setJustCalculated(true);
+  }, [display, angleMode]);
+
+  const insertConstant = useCallback((constant) => {
+    let value;
+    switch (constant) {
+      case 'pi':
+        value = Math.PI;
+        setScientificHistory('π');
+        break;
+      case 'e':
+        value = Math.E;
+        setScientificHistory('e');
+        break;
+      default:
+        return;
+    }
+    setDisplay(fmt(value));
+    setJustCalculated(true);
+  }, []);
+
+  const powerOp = useCallback(() => {
+    const current = parseFloat(display);
+    setPrevValue(current);
+    setLeftStr(display);
+    setOperator('^');
+    setWaitingForOperand(true);
+    setJustCalculated(false);
+    setScientificHistory('');
+  }, [display]);
+
+  const calculatePower = useCallback(() => {
+    if (operator === '^' && prevValue !== null) {
+      const current = parseFloat(display);
+      const result = Math.pow(prevValue, current);
+      setScientificHistory(`${leftStr}^${display}`);
+      setDisplay(fmt(result));
+      setPrevValue(null);
+      setOperator(null);
+      setWaitingForOperand(false);
+      setJustCalculated(true);
+      setLeftStr('');
+    } else {
+      calculate();
+    }
+  }, [display, prevValue, operator, leftStr, calculate]);
+
+  // Memory functions
+  const memoryAdd = useCallback(() => {
+    const current = parseFloat(display);
+    if (!isNaN(current)) {
+      setMemory(prev => prev + current);
+    }
+  }, [display]);
+
+  const memorySubtract = useCallback(() => {
+    const current = parseFloat(display);
+    if (!isNaN(current)) {
+      setMemory(prev => prev - current);
+    }
+  }, [display]);
+
+  const memoryRecall = useCallback(() => {
+    setDisplay(fmt(memory));
+    setJustCalculated(true);
+  }, [memory]);
+
+  const memoryClear = useCallback(() => {
+    setMemory(0);
+  }, []);
 
   /* ── discount calculator logic ──────────────────────────────────── */
   const calculateDiscount = useCallback(() => {
@@ -326,6 +484,103 @@ export default function Calculator({ onClose }) {
     }
   }, [startDate, endDate, daysToAdd, dateCalcMode]);
 
+  /* ── BMI calculator logic ───────────────────────────────────────── */
+  const calculateBMI = useCallback(() => {
+    let heightInMeters, weightInKg;
+    
+    if (bmiUnit === 'metric') {
+      heightInMeters = parseFloat(height) / 100; // cm to meters
+      weightInKg = parseFloat(weight);
+    } else {
+      // Imperial: convert to metric
+      const totalInches = (parseFloat(heightFeet) || 0) * 12 + (parseFloat(heightInches) || 0);
+      heightInMeters = totalInches * 0.0254; // inches to meters
+      weightInKg = parseFloat(weight) * 0.453592; // pounds to kg
+    }
+    
+    if (isNaN(heightInMeters) || isNaN(weightInKg) || heightInMeters <= 0 || weightInKg <= 0) return;
+    
+    const bmi = weightInKg / (heightInMeters * heightInMeters);
+    
+    let category, color, advice;
+    if (bmi < 18.5) {
+      category = 'Underweight';
+      color = '#3B82F6'; // blue
+      advice = 'Consider consulting a healthcare provider for guidance on healthy weight gain.';
+    } else if (bmi < 25) {
+      category = 'Normal weight';
+      color = '#10B981'; // green
+      advice = 'Great! Maintain your healthy lifestyle with balanced diet and regular exercise.';
+    } else if (bmi < 30) {
+      category = 'Overweight';
+      color = '#F59E0B'; // orange
+      advice = 'Consider adopting a healthier diet and increasing physical activity.';
+    } else {
+      category = 'Obese';
+      color = '#EF4444'; // red
+      advice = 'Consult a healthcare provider for personalized advice on weight management.';
+    }
+    
+    setBmiResult({
+      bmi: bmi.toFixed(1),
+      category,
+      color,
+      advice,
+    });
+  }, [bmiUnit, height, heightFeet, heightInches, weight]);
+
+  /* ── Age calculator logic ───────────────────────────────────────── */
+  const calculateAge = useCallback(() => {
+    const birth = new Date(birthDate);
+    if (isNaN(birth.getTime())) return;
+    
+    const today = new Date();
+    
+    // Calculate exact age
+    let years = today.getFullYear() - birth.getFullYear();
+    let months = today.getMonth() - birth.getMonth();
+    let days = today.getDate() - birth.getDate();
+    
+    if (days < 0) {
+      months--;
+      const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      days += lastMonth.getDate();
+    }
+    
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+    
+    // Calculate next birthday
+    let nextBirthday = new Date(today.getFullYear(), birth.getMonth(), birth.getDate());
+    if (nextBirthday < today) {
+      nextBirthday = new Date(today.getFullYear() + 1, birth.getMonth(), birth.getDate());
+    }
+    
+    const daysUntilBirthday = Math.ceil((nextBirthday - today) / (1000 * 60 * 60 * 24));
+    
+    // Calculate total days lived
+    const totalDays = Math.floor((today - birth) / (1000 * 60 * 60 * 24));
+    const totalWeeks = Math.floor(totalDays / 7);
+    const totalMonths = years * 12 + months;
+    
+    setAgeResult({
+      years,
+      months,
+      days,
+      totalDays,
+      totalWeeks,
+      totalMonths,
+      daysUntilBirthday,
+      nextBirthday: nextBirthday.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }),
+    });
+  }, [birthDate]);
+
   /* ── close dropdown on outside click ────────────────────────────── */
   useEffect(() => {
     function handleClickOutside(e) {
@@ -341,7 +596,7 @@ export default function Calculator({ onClose }) {
 
   /* ── keyboard support ───────────────────────────────────────────── */
   useEffect(() => {
-    if (calcType !== 'basic') return;
+    if (calcType !== 'basic' && calcType !== 'scientific') return;
     
     function onKey(e) {
       // Only intercept when calculator is open; don't steal from other inputs
@@ -354,14 +609,21 @@ export default function Calculator({ onClose }) {
       else if (e.key === '-')            { e.preventDefault(); pressOperator('−'); }
       else if (e.key === '*')            { e.preventDefault(); pressOperator('×'); }
       else if (e.key === '/')            { e.preventDefault(); pressOperator('÷'); }
-      else if (e.key === 'Enter' || e.key === '=') { e.preventDefault(); calculate(); }
+      else if (e.key === 'Enter' || e.key === '=') { 
+        e.preventDefault(); 
+        if (calcType === 'scientific' && operator === '^') {
+          calculatePower();
+        } else {
+          calculate();
+        }
+      }
       else if (e.key === 'Backspace')    { e.preventDefault(); backspace(); }
       else if (e.key === 'Escape')       { e.preventDefault(); clearAll(); }
       else if (e.key === '%')            { e.preventDefault(); toPercent(); }
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [calcType, inputDigit, inputDot, pressOperator, calculate, backspace, clearAll, toPercent]);
+  }, [calcType, inputDigit, inputDot, pressOperator, calculate, calculatePower, backspace, clearAll, toPercent, operator]);
 
   /* ── drag ───────────────────────────────────────────────────────── */
   const onDragStart = useCallback((e) => {
@@ -555,6 +817,31 @@ export default function Calculator({ onClose }) {
               <CalcBtn label="=" variant={V.op} className={btnFontSize} onClick={calculate} />
             </div>
           </>
+        ) : calcType === 'scientific' ? (
+          <ScientificCalculator
+            display={display}
+            scientificHistory={scientificHistory}
+            dispFontSize={dispFontSize}
+            memory={memory}
+            angleMode={angleMode}
+            setAngleMode={setAngleMode}
+            operator={operator}
+            waitingForOperand={waitingForOperand}
+            inputDigit={inputDigit}
+            inputDot={inputDot}
+            clearAll={clearAll}
+            backspace={backspace}
+            pressOperator={pressOperator}
+            calculatePower={calculatePower}
+            scientificOp={scientificOp}
+            insertConstant={insertConstant}
+            powerOp={powerOp}
+            memoryAdd={memoryAdd}
+            memorySubtract={memorySubtract}
+            memoryRecall={memoryRecall}
+            memoryClear={memoryClear}
+            onDragStart={onDragStart}
+          />
         ) : calcType === 'discount' ? (
           <DiscountCalculator
             originalPrice={originalPrice}
@@ -610,6 +897,28 @@ export default function Calculator({ onClose }) {
             dateResult={dateResult}
             calculateDate={calculateDate}
           />
+        ) : calcType === 'bmi' ? (
+          <BMICalculator
+            bmiUnit={bmiUnit}
+            setBmiUnit={setBmiUnit}
+            height={height}
+            setHeight={setHeight}
+            heightFeet={heightFeet}
+            setHeightFeet={setHeightFeet}
+            heightInches={heightInches}
+            setHeightInches={setHeightInches}
+            weight={weight}
+            setWeight={setWeight}
+            bmiResult={bmiResult}
+            calculateBMI={calculateBMI}
+          />
+        ) : calcType === 'age' ? (
+          <AgeCalculator
+            birthDate={birthDate}
+            setBirthDate={setBirthDate}
+            ageResult={ageResult}
+            calculateAge={calculateAge}
+          />
         ) : null}
 
         {/* ── resize handle ─────────────────────────────────────────── */}
@@ -629,6 +938,114 @@ export default function Calculator({ onClose }) {
   );
 
   return createPortal(calculator, document.body);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Scientific Calculator
+   ═══════════════════════════════════════════════════════════════════ */
+function ScientificCalculator({ display, scientificHistory, dispFontSize, memory, angleMode, setAngleMode, operator, waitingForOperand, inputDigit, inputDot, clearAll, backspace, pressOperator, calculatePower, scientificOp, insertConstant, powerOp, memoryAdd, memorySubtract, memoryRecall, memoryClear, onDragStart }) {
+  // Responsive button sizing - smaller for narrow windows
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  const isSmallDevice = windowWidth < 400;
+  const btnSize = isSmallDevice ? 'text-xs' : 'text-sm';
+  const btnPadding = isSmallDevice ? 'py-2' : 'py-3';
+  
+  return (
+    <>
+      {/* ── display ───────────────────────────────────────────────── */}
+      <div
+        className="flex-1 flex flex-col justify-end items-end px-4 pb-2 gap-1"
+        onMouseDown={onDragStart}
+        onTouchStart={onDragStart}
+        style={{ cursor: 'grab' }}
+      >
+        <div className="text-gray-500 text-xs h-4 truncate w-full text-right">
+          {scientificHistory}
+        </div>
+        <div className={`text-white font-light w-full text-right leading-none ${dispFontSize} break-all`}>
+          {display}
+        </div>
+        <div className="flex gap-2 mt-1 text-xs">
+          {memory !== 0 && <span className="text-[#FF9F0A]">M</span>}
+          <button
+            onClick={() => setAngleMode(angleMode === 'deg' ? 'rad' : 'deg')}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            {angleMode.toUpperCase()}
+          </button>
+        </div>
+      </div>
+
+      {/* ── button grid ───────────────────────────────────────────── */}
+      <div className={`grid grid-cols-5 ${isSmallDevice ? 'gap-1' : 'gap-1.5'} px-2 pb-2 overflow-y-auto`} style={{ flex: '0 0 auto' }}>
+        {/* Row 1 - Memory & Special */}
+        <ScientificBtn label="MC" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={memoryClear} />
+        <ScientificBtn label="MR" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={memoryRecall} />
+        <ScientificBtn label="M+" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={memoryAdd} />
+        <ScientificBtn label="M-" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={memorySubtract} />
+        <ScientificBtn label="AC" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={clearAll} />
+
+        {/* Row 2 - Trig functions */}
+        <ScientificBtn label="sin" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => scientificOp('sin')} />
+        <ScientificBtn label="cos" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => scientificOp('cos')} />
+        <ScientificBtn label="tan" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => scientificOp('tan')} />
+        <ScientificBtn label="π" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => insertConstant('pi')} />
+        <ScientificBtn label="e" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => insertConstant('e')} />
+
+        {/* Row 3 - Log & Power */}
+        <ScientificBtn label="log" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => scientificOp('log')} />
+        <ScientificBtn label="ln" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => scientificOp('ln')} />
+        <ScientificBtn label="x²" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => scientificOp('square')} />
+        <ScientificBtn label="x³" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => scientificOp('cube')} />
+        <ScientificBtn label="xʸ" variant={V.func} className={`${btnSize} ${btnPadding}`} active={operator === '^' && waitingForOperand} onClick={powerOp} />
+
+        {/* Row 4 - Root & Special */}
+        <ScientificBtn label="√" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => scientificOp('sqrt')} />
+        <ScientificBtn label="1/x" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => scientificOp('reciprocal')} />
+        <ScientificBtn label="n!" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => scientificOp('factorial')} />
+        <ScientificBtn label="eˣ" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => scientificOp('exp')} />
+        <ScientificBtn label="|x|" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => scientificOp('abs')} />
+
+        {/* Row 5 - Numbers & Operators */}
+        <ScientificBtn label="7" variant={V.num} className={`${btnSize} ${btnPadding}`} onClick={() => inputDigit('7')} />
+        <ScientificBtn label="8" variant={V.num} className={`${btnSize} ${btnPadding}`} onClick={() => inputDigit('8')} />
+        <ScientificBtn label="9" variant={V.num} className={`${btnSize} ${btnPadding}`} onClick={() => inputDigit('9')} />
+        <ScientificBtn label="⌫" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={backspace} />
+        <ScientificBtn label="÷" variant={V.op} className={`${btnSize} ${btnPadding}`} active={operator === '÷' && waitingForOperand}
+                 onClick={() => pressOperator('÷')} />
+
+        {/* Row 6 */}
+        <ScientificBtn label="4" variant={V.num} className={`${btnSize} ${btnPadding}`} onClick={() => inputDigit('4')} />
+        <ScientificBtn label="5" variant={V.num} className={`${btnSize} ${btnPadding}`} onClick={() => inputDigit('5')} />
+        <ScientificBtn label="6" variant={V.num} className={`${btnSize} ${btnPadding}`} onClick={() => inputDigit('6')} />
+        <ScientificBtn label="(" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => {}} />
+        <ScientificBtn label="×" variant={V.op} className={`${btnSize} ${btnPadding}`} active={operator === '×' && waitingForOperand}
+                 onClick={() => pressOperator('×')} />
+
+        {/* Row 7 */}
+        <ScientificBtn label="1" variant={V.num} className={`${btnSize} ${btnPadding}`} onClick={() => inputDigit('1')} />
+        <ScientificBtn label="2" variant={V.num} className={`${btnSize} ${btnPadding}`} onClick={() => inputDigit('2')} />
+        <ScientificBtn label="3" variant={V.num} className={`${btnSize} ${btnPadding}`} onClick={() => inputDigit('3')} />
+        <ScientificBtn label=")" variant={V.func} className={`${btnSize} ${btnPadding}`} onClick={() => {}} />
+        <ScientificBtn label="−" variant={V.op} className={`${btnSize} ${btnPadding}`} active={operator === '−' && waitingForOperand}
+                 onClick={() => pressOperator('−')} />
+
+        {/* Row 8 */}
+        <ScientificBtn label="0" variant={V.num} className={`${btnSize} ${btnPadding} col-span-2`} onClick={() => inputDigit('0')} />
+        <ScientificBtn label="." variant={V.num} className={`${btnSize} ${btnPadding}`} onClick={inputDot} />
+        <ScientificBtn label="=" variant={V.op} className={`${btnSize} ${btnPadding}`} onClick={calculatePower} />
+        <ScientificBtn label="+" variant={V.op} className={`${btnSize} ${btnPadding}`} active={operator === '+' && waitingForOperand}
+                 onClick={() => pressOperator('+')} />
+      </div>
+    </>
+  );
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -897,6 +1314,145 @@ function DateCalculator({ startDate, setStartDate, endDate, setEndDate, daysToAd
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   BMI Calculator
+   ═══════════════════════════════════════════════════════════════════ */
+function BMICalculator({ bmiUnit, setBmiUnit, height, setHeight, heightFeet, setHeightFeet, heightInches, setHeightInches, weight, setWeight, bmiResult, calculateBMI }) {
+  return (
+    <div className="flex-1 flex flex-col px-6 py-4 gap-4 overflow-y-auto">
+      <div className="flex gap-2">
+        <button
+          onClick={() => setBmiUnit('metric')}
+          className={`flex-1 py-2 rounded-lg font-semibold transition-colors ${
+            bmiUnit === 'metric' ? 'bg-[#FF9F0A] text-white' : 'bg-[#333333] text-gray-400'
+          }`}
+        >
+          Metric
+        </button>
+        <button
+          onClick={() => setBmiUnit('imperial')}
+          className={`flex-1 py-2 rounded-lg font-semibold transition-colors ${
+            bmiUnit === 'imperial' ? 'bg-[#FF9F0A] text-white' : 'bg-[#333333] text-gray-400'
+          }`}
+        >
+          Imperial
+        </button>
+      </div>
+
+      {bmiUnit === 'metric' ? (
+        <>
+          <InputField label="Height (cm)" value={height} onChange={setHeight} placeholder="170" />
+          <InputField label="Weight (kg)" value={weight} onChange={setWeight} placeholder="70" />
+        </>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <InputField label="Feet" value={heightFeet} onChange={setHeightFeet} placeholder="5" />
+            <InputField label="Inches" value={heightInches} onChange={setHeightInches} placeholder="7" />
+          </div>
+          <InputField label="Weight (lbs)" value={weight} onChange={setWeight} placeholder="154" />
+        </>
+      )}
+      
+      <button
+        onClick={calculateBMI}
+        className="bg-[#FF9F0A] text-white py-3 rounded-lg font-semibold hover:bg-[#ffbd62] transition-colors"
+      >
+        Calculate BMI
+      </button>
+
+      {bmiResult && (
+        <div className="bg-[#2c2c2e] rounded-lg p-4 space-y-3">
+          <div className="text-center">
+            <div className="text-5xl font-bold mb-2" style={{ color: bmiResult.color }}>
+              {bmiResult.bmi}
+            </div>
+            <div className="text-xl font-semibold mb-1" style={{ color: bmiResult.color }}>
+              {bmiResult.category}
+            </div>
+          </div>
+          
+          <div className="pt-3 border-t border-gray-700">
+            <p className="text-gray-400 text-sm leading-relaxed">{bmiResult.advice}</p>
+          </div>
+          
+          <div className="pt-2 border-t border-gray-700">
+            <div className="text-xs text-gray-500 space-y-1">
+              <div className="flex justify-between">
+                <span>Underweight:</span>
+                <span>&lt; 18.5</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Normal:</span>
+                <span>18.5 - 24.9</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Overweight:</span>
+                <span>25 - 29.9</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Obese:</span>
+                <span>≥ 30</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Age Calculator
+   ═══════════════════════════════════════════════════════════════════ */
+function AgeCalculator({ birthDate, setBirthDate, ageResult, calculateAge }) {
+  return (
+    <div className="flex-1 flex flex-col px-6 py-4 gap-4 overflow-y-auto">
+      <DateField label="Date of Birth" value={birthDate} onChange={setBirthDate} />
+      
+      <button
+        onClick={calculateAge}
+        className="bg-[#FF9F0A] text-white py-3 rounded-lg font-semibold hover:bg-[#ffbd62] transition-colors"
+      >
+        Calculate Age
+      </button>
+
+      {ageResult && (
+        <div className="space-y-3">
+          <div className="bg-[#2c2c2e] rounded-lg p-4">
+            <div className="text-center mb-4">
+              <div className="text-4xl font-bold text-[#FF9F0A] mb-1">
+                {ageResult.years} years
+              </div>
+              <div className="text-lg text-gray-300">
+                {ageResult.months} months, {ageResult.days} days
+              </div>
+            </div>
+            
+            <div className="space-y-2 pt-3 border-t border-gray-700">
+              <ResultRow label="Total Months" value={ageResult.totalMonths} />
+              <ResultRow label="Total Weeks" value={ageResult.totalWeeks.toLocaleString()} />
+              <ResultRow label="Total Days" value={ageResult.totalDays.toLocaleString()} />
+            </div>
+          </div>
+
+          <div className="bg-[#2c2c2e] rounded-lg p-4">
+            <div className="text-center">
+              <div className="text-sm text-gray-400 mb-1">Next Birthday</div>
+              <div className="text-lg font-semibold text-white mb-2">
+                {ageResult.nextBirthday}
+              </div>
+              <div className="inline-block bg-[#FF9F0A] text-white px-4 py-2 rounded-full font-semibold">
+                {ageResult.daysUntilBirthday} days to go! 🎉
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── helper components ──────────────────────────────────────────── */
 function InputField({ label, value, onChange, placeholder }) {
   return (
@@ -968,6 +1524,25 @@ function CalcBtn({ label, variant, className = '', active = false, onClick }) {
         ${className}
       `}
       style={{ aspectRatio: label === '0' ? 'unset' : '1 / 1', minHeight: 64 }}
+    >
+      {label}
+    </button>
+  );
+}
+
+/* ── scientific calculator button ───────────────────────────────── */
+function ScientificBtn({ label, variant, className = '', active = false, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        flex items-center justify-center rounded-lg font-medium
+        transition-all duration-75 select-none
+        ${variant}
+        ${active ? 'brightness-150' : ''}
+        ${className}
+      `}
+      style={{ minHeight: 40 }}
     >
       {label}
     </button>

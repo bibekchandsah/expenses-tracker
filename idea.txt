@@ -599,6 +599,69 @@ The API used is free and provides:
     No API key required
     Supports all major currencies
 Users can now simply click "Get Rate" to automatically fetch the current exchange rate, making the converter much more user-friendly!
+BMI Calculator:
+    Toggle between Metric (cm, kg) and Imperial (feet, inches, lbs) units
+    Calculates BMI with proper formula for both unit systems
+    Shows BMI value with color-coded category:
+    Blue for Underweight (< 18.5)
+    Green for Normal weight (18.5 - 24.9)
+    Orange for Overweight (25 - 29.9)
+    Red for Obese (≥ 30)
+    Provides personalized health advice based on category
+    Displays BMI range reference chart
+Age Calculator:
+    Enter date of birth
+    Shows exact age in years, months, and days
+    Displays total age in:
+    Total months
+    Total weeks (formatted with commas)
+    Total days (formatted with commas)
+    Next birthday countdown:
+    Shows the exact date of next birthday
+    Displays days remaining until birthday with a celebration emoji 🎉
+    Clean, easy-to-read layout with highlighted important information
+Both calculators follow the same design pattern as the other calculators with:
+    Smooth transitions
+    Touch and mouse support
+    Responsive layouts
+    Clear visual hierarchy
+    Color-coded results for better readability
+The calculator now has 7 different modes accessible from the dropdown menu!
+Scientific Calculator with all the requested features:
+Trigonometric Functions:
+    sin, cos, tan (with degree/radian mode toggle)
+    Angle mode indicator (DEG/RAD) that can be toggled by clicking
+Logarithms:
+    log (base 10)
+    ln (natural logarithm)
+Powers and Roots:
+    x² (square)
+    x³ (cube)
+    xʸ (power to any exponent)
+    √ (square root)
+    1/x (reciprocal)
+Constants:
+    π (pi = 3.14159...)
+    e (Euler's number = 2.71828...)
+Memory Functions:
+    MC (Memory Clear) - Clears memory
+    MR (Memory Recall) - Recalls stored value
+    M+ (Memory Add) - Adds current value to memory
+    M- (Memory Subtract) - Subtracts current value from memory
+    Memory indicator "M" shows when memory has a value
+Additional Scientific Functions:
+    n! (factorial)
+    eˣ (exponential)
+    |x| (absolute value)
+Features:
+    5-column grid layout for all the scientific functions
+    History display showing the last operation performed
+    Angle mode toggle (DEG/RAD) visible in the display area
+    Memory indicator shows when memory contains a value
+    All basic calculator functions (0-9, +, -, ×, ÷, =, ., ⌫, AC)
+    Keyboard support for numbers and basic operations
+    Parentheses buttons (placeholder for future enhancement)
+    Compact button sizing to fit all functions
 
 
 quick-add feature:
