@@ -273,7 +273,126 @@ export default function NetSummary() {
               No results for &ldquo;{search}&rdquo;
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* ── Mobile cards (xs / small screens) ── */}
+            <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-700/50">
+              {filtered.map(row => {
+                const netPositive = row.net >= 0;
+                const todayStr = new Date().toISOString().slice(0, 10);
+                const displayDate = (() => {
+                  if (calendar === 'bs') {
+                    const bs = safeADToBS(todayStr);
+                    if (bs) { const [y, m, d] = bs.split('-'); return `${d}/${m}/${y}`; }
+                  }
+                  const [y, m, d] = todayStr.split('-');
+                  return `${d}/${m}/${y}`;
+                })();
+                const absNet = Math.abs(row.net);
+                const waMessage = `Date: ${displayDate}\nHi ${row.name}, Just a gentle reminder about the money ${currency} ${absNet.toFixed(2)}. Need that money back. Can you take care of it soon?`;
+                const waUrl = `https://wa.me/?text=${encodeURIComponent(waMessage)}`;
+                return (
+                  <div key={row.name} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                    {/* Name */}
+                    <p className="text-sm font-bold text-gray-900 dark:text-white mb-2">{row.name}</p>
+
+                    {/* Row 1: Borrowed | To Give */}
+                    <div className="grid grid-cols-2 gap-x-2 mb-1">
+                      <div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Borrowed: </span>
+                        <span className={`text-xs font-semibold tabular-nums ${row.borrowed > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                          {row.borrowed > 0 ? formatCurrency(row.borrowed, currency) : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">To Give: </span>
+                        <span className={`text-xs font-semibold tabular-nums ${row.toGive > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                          {row.toGive > 0 ? formatCurrency(row.toGive, currency) : '—'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Lent | To Receive */}
+                    <div className="grid grid-cols-2 gap-x-2 mb-2">
+                      <div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Lent: </span>
+                        <span className={`text-xs font-semibold tabular-nums ${row.lent > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                          {row.lent > 0 ? formatCurrency(row.lent, currency) : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">To Receive: </span>
+                        <span className={`text-xs font-semibold tabular-nums ${row.toReceive > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                          {row.toReceive > 0 ? formatCurrency(row.toReceive, currency) : '—'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Row 3: Net | WhatsApp */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Net: </span>
+                        <span className={`text-xs font-black tabular-nums ${netPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {netPositive ? '+' : ''}{formatCurrency(row.net, currency)}
+                        </span>
+                      </div>
+                      <a
+                        href={waUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`Send WhatsApp reminder to ${row.name}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-green-500 hover:bg-green-600 rounded-xl transition-colors whitespace-nowrap"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        WhatsApp
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+              {/* Mobile footer totals */}
+              <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-t-2 border-gray-200 dark:border-gray-700">
+                <p className="text-xs font-black text-gray-600 dark:text-gray-300 uppercase mb-2">
+                  {filtered.length} {filtered.length === 1 ? 'person' : 'people'}
+                </p>
+                <div className="grid grid-cols-2 gap-x-2 mb-1">
+                  <div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Borrowed: </span>
+                    <span className="text-xs font-bold tabular-nums text-orange-600 dark:text-orange-400">
+                      {formatCurrency(filtered.reduce((s, r) => s + r.borrowed, 0), currency)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">To Give: </span>
+                    <span className="text-xs font-bold tabular-nums text-red-600 dark:text-red-400">
+                      {formatCurrency(filtered.reduce((s, r) => s + r.toGive, 0), currency)}
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-x-2 mb-1">
+                  <div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Lent: </span>
+                    <span className="text-xs font-bold tabular-nums text-blue-600 dark:text-blue-400">
+                      {formatCurrency(filtered.reduce((s, r) => s + r.lent, 0), currency)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">To Receive: </span>
+                    <span className="text-xs font-bold tabular-nums text-green-600 dark:text-green-400">
+                      {formatCurrency(filtered.reduce((s, r) => s + r.toReceive, 0), currency)}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Net: </span>
+                  <span className={`text-xs font-black tabular-nums ${filtered.reduce((s, r) => s + r.net, 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {formatCurrency(filtered.reduce((s, r) => s + r.net, 0), currency)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Desktop table (sm and above) ── */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
                   <tr className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
@@ -368,6 +487,7 @@ export default function NetSummary() {
                 </tfoot>
               </table>
             </div>
+            </>
           )}
         </div>
       )}

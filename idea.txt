@@ -132,8 +132,35 @@ Set Callback URL to the Firebase redirect URI (https://<project>.firebaseapp.com
 Copy API Key (Client ID) + API Secret → paste into Firebase Console → Twitter sign-in method
 
 Biometric login:
-
-
+Uses Web Authentication API (WebAuthn) for secure biometric authentication
+Platform authenticator support (Touch ID, Face ID, Windows Hello, fingerprint readers)
+Automatic detection of biometric capabilities
+Secure credential storage in Firestore
+Clean, intuitive UI that matches your app's design
+How it works:
+    When you enable biometric login in Profile, it registers your fingerprint/face with WebAuthn
+    The next time you sign in with email/password, it stores your credentials securely in localStorage
+    After that, you can use biometric login - it verifies your fingerprint/face, retrieves the stored credentials, and signs you in automatically
+The implementation is secure because:
+    WebAuthn ensures biometric data never leaves your device
+    Credentials require biometric verification to access
+    Each device stores its own credentials
+For social login logic:
+    Social login users: When they enable biometric and then sign in with their social provider (Google, etc.), the session info is stored
+    When using biometric: It checks if they have an active Firebase session
+    If session is active: Biometric verification succeeds and they're in!
+    If session expired: Shows a clear message to sign in with their provider once
+    The key insight is that Firebase automatically maintains sessions across browser sessions using IndexedDB. So if a social login user:
+        Signs in with Google
+        Enables biometric
+        Closes browser
+        Opens browser again
+        Clicks biometric button
+Firebase will still have their session active (unless they explicitly signed out or it expired after a long time), so biometric will work!
+    Shows Which Account Will Be Used ✓
+    The login page now displays: "Will sign in as: [email]"
+    Shows a hint: "Enter a different email above to switch accounts"
+    If you enter a different email, it warns you that biometric is set up for a different account
 
 
 
