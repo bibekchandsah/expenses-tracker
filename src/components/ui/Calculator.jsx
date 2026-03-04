@@ -158,37 +158,51 @@ export default function Calculator({ onClose }) {
 
   /* ── drag ───────────────────────────────────────────────────────── */
   const onDragStart = useCallback((e) => {
-    if (e.button !== 0) return;
+    if (e.type === 'mousedown' && e.button !== 0) return;
     e.preventDefault();
-    dragInfo.current = { offsetX: e.clientX - pos.x, offsetY: e.clientY - pos.y };
+    
+    const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+    const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+    dragInfo.current = { offsetX: clientX - pos.x, offsetY: clientY - pos.y };
 
     function onMove(ev) {
       if (!dragInfo.current) return;
-      const newX = Math.min(Math.max(0, ev.clientX - dragInfo.current.offsetX), window.innerWidth  - (calcRef.current?.offsetWidth  ?? 320));
-      const newY = Math.min(Math.max(0, ev.clientY - dragInfo.current.offsetY), window.innerHeight - (calcRef.current?.offsetHeight ?? 500));
+      const moveX = ev.type === 'touchmove' ? ev.touches[0].clientX : ev.clientX;
+      const moveY = ev.type === 'touchmove' ? ev.touches[0].clientY : ev.clientY;
+      const newX = Math.min(Math.max(0, moveX - dragInfo.current.offsetX), window.innerWidth  - (calcRef.current?.offsetWidth  ?? 320));
+      const newY = Math.min(Math.max(0, moveY - dragInfo.current.offsetY), window.innerHeight - (calcRef.current?.offsetHeight ?? 500));
       setPos({ x: newX, y: newY });
     }
     function onUp() {
       dragInfo.current = null;
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup',   onUp);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend',  onUp);
     }
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup',   onUp);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend',  onUp);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pos]);
 
   /* ── resize ─────────────────────────────────────────────────────── */
   const onResizeStart = useCallback((e) => {
-    if (e.button !== 0) return;
+    if (e.type === 'mousedown' && e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
-    resizeInfo.current = { startX: e.clientX, startY: e.clientY, startW: size.w, startH: size.h };
+    
+    const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+    const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+    resizeInfo.current = { startX: clientX, startY: clientY, startW: size.w, startH: size.h };
 
     function onMove(ev) {
       if (!resizeInfo.current) return;
-      const dx = ev.clientX - resizeInfo.current.startX;
-      const dy = ev.clientY - resizeInfo.current.startY;
+      const moveX = ev.type === 'touchmove' ? ev.touches[0].clientX : ev.clientX;
+      const moveY = ev.type === 'touchmove' ? ev.touches[0].clientY : ev.clientY;
+      const dx = moveX - resizeInfo.current.startX;
+      const dy = moveY - resizeInfo.current.startY;
       setSize({
         w: Math.min(Math.max(280, resizeInfo.current.startW + dx), 560),
         h: Math.min(Math.max(440, resizeInfo.current.startH + dy), 900),
@@ -198,9 +212,13 @@ export default function Calculator({ onClose }) {
       resizeInfo.current = null;
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup',   onUp);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend',  onUp);
     }
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup',   onUp);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend',  onUp);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [size]);
 
@@ -233,12 +251,14 @@ export default function Calculator({ onClose }) {
         <div
           className="flex items-center justify-between px-4 pt-3 pb-1 cursor-grab active:cursor-grabbing"
           onMouseDown={onDragStart}
+          onTouchStart={onDragStart}
         >
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest select-none">
             Calculator
           </span>
           <button
             onMouseDown={e => e.stopPropagation()}
+            onTouchStart={e => e.stopPropagation()}
             onClick={onClose}
             className="p-1 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
           >
@@ -250,6 +270,7 @@ export default function Calculator({ onClose }) {
         <div
           className="flex-1 flex flex-col justify-end items-end px-6 pb-2 gap-1"
           onMouseDown={onDragStart}
+          onTouchStart={onDragStart}
           style={{ cursor: 'grab' }}
         >
           {/* sub-expression / equation */}
@@ -308,6 +329,7 @@ export default function Calculator({ onClose }) {
         <div
           className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize z-10"
           onMouseDown={onResizeStart}
+          onTouchStart={onResizeStart}
           style={{ pointerEvents: 'auto' }}
         >
           <svg viewBox="0 0 12 12" className="w-full h-full text-gray-600">

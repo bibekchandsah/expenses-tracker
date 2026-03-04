@@ -564,6 +564,12 @@ Equation sub-line now shows:
     After pressing =: the full equation 77 + 77 = (exactly like the image), then the result 154 on the main display
     Sub-line clears when you start a new calculation
 Active operator button highlights in brighter orange
+The Calculator now supports touch events for both dragging and resizing. The changes include:
+    Added onTouchStart handlers alongside onMouseDown for drag and resize initiation
+    Updated event handlers to detect touch vs mouse events and extract coordinates from touches[0] for touch events
+    Added touchmove and touchend event listeners with proper cleanup
+    Used { passive: false } for touchmove to allow preventDefault() and prevent scrolling during drag/resize
+The calculator will now work smoothly on touch screen devices.
 
 
 quick-add feature:
