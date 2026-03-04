@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { TrendingUp, CheckCircle, Eye, EyeOff, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import { TrendingUp, CheckCircle, Eye, EyeOff, Mail, Lock, User, ArrowLeft, Fingerprint } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const features = [
@@ -68,7 +68,7 @@ export default function Login() {
   const {
     user, loading, error, clearError,
     signInWithGoogle, signInWithMicrosoft, signInWithApple, signInWithTwitter, signInWithGitHub,
-    signUpWithEmail, signInWithEmail, resetPassword,
+    signUpWithEmail, signInWithEmail, resetPassword, signInWithBiometric,
   } = useAuth();
 
   // 'signin' | 'signup' | 'reset'
@@ -78,8 +78,20 @@ export default function Login() {
   const [resetSent, setResetSent] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [localError, setLocalError] = useState('');
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
 
   if (!loading && user) return <Navigate to="/dashboard" replace />;
+
+  // Check biometric availability on mount
+  useEffect(() => {
+    const checkBiometric = async () => {
+      if (window.PublicKeyCredential) {
+        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        setBiometricAvailable(available);
+      }
+    };
+    checkBiometric();
+  }, []);
 
   function changeMode(m) {
     setMode(m);
@@ -126,6 +138,23 @@ export default function Login() {
       else                   await signInWithEmail(form.email, form.password);
     } catch { /* shown via context */ }
     finally { setBusy(null); }
+  }
+
+  async function handleBiometricLogin() {
+    if (!form.email) {
+      setLocalError('Enter your email address first');
+      return;
+    }
+    setBusy('biometric');
+    setLocalError('');
+    clearError();
+    try {
+      await signInWithBiometric(form.email);
+    } catch (err) {
+      setLocalError(err.message || 'Biometric login failed');
+    } finally {
+      setBusy(null);
+    }
   }
 
   const anyBusy = busy !== null;
@@ -278,6 +307,22 @@ export default function Login() {
                 {mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Send reset link' : 'Sign in with Email'}
               </button>
             </form>
+
+            {/* Biometric Login */}
+            {mode === 'signin' && biometricAvailable && (
+              <button
+                onClick={handleBiometricLogin}
+                disabled={anyBusy || !form.email}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition-colors mt-3"
+                title={!form.email ? 'Enter your email first' : 'Sign in with biometric'}
+              >
+                {busy === 'biometric'
+                  ? <div className="w-4 h-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  : <Fingerprint className="w-4 h-4" />
+                }
+                Sign in with Biometric
+              </button>
+            )}
 
             {/* Mode toggle */}
             <div className="flex items-center justify-center gap-1 mt-4 text-sm">

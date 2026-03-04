@@ -763,3 +763,5 @@ Responsive:
     Only shows on large screens (lg breakpoint and above)
     On mobile, maintains the original stacked layout
 The divider is positioned between the main loan table and the lender summary panel, allowing users to customize how much space each section takes up based on their preference!
+
+

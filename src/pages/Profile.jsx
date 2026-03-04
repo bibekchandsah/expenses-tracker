@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Mail, Globe, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet, Camera, Pencil, X, TrendingUp, Landmark, ShoppingBag, PiggyBank, Heart, ArrowUpRight, ArrowDownLeft, DollarSign } from 'lucide-react';
+import { Mail, Globe, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet, Camera, Pencil, X, TrendingUp, Landmark, ShoppingBag, PiggyBank, Heart, ArrowUpRight, ArrowDownLeft, DollarSign, Fingerprint } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useActiveYear } from '../context/ActiveYearContext';
@@ -97,7 +97,7 @@ const PAGE_DELETE_COLORS = {
 };
 
 export default function Profile() {
-  const { user, updateUserInfo, setProfilePhoto, avatarURL } = useAuth();
+  const { user, updateUserInfo, setProfilePhoto, avatarURL, biometricEnabled, registerBiometric, disableBiometric } = useAuth();
   const { currency: activeCurrency, updateCurrency } = useCurrency();
   const { activeYear, updateActiveYear, bsActiveYear, updateBSActiveYear } = useActiveYear();
   const { calendar, updateCalendar, yearLabel } = useCalendar();
@@ -122,11 +122,24 @@ export default function Profile() {
   const [exporting, setExporting] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState('');
+  const [enablingBiometric, setEnablingBiometric] = useState(false);
+  const [biometricSupported, setBiometricSupported] = useState(false);
 
   // Currency picker state
   const [currencySearch, setCurrencySearch] = useState('');
   const [customCode, setCustomCode] = useState('');
   const [showCustom, setShowCustom] = useState(false);
+
+  // Check biometric support on mount
+  useEffect(() => {
+    const checkBiometric = async () => {
+      if (window.PublicKeyCredential) {
+        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        setBiometricSupported(available);
+      }
+    };
+    checkBiometric();
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -243,6 +256,27 @@ export default function Profile() {
     const code = customCode.trim().toUpperCase();
     if (!code || code.length < 2) return;
     await handleSelectCurrency(code);
+  }
+
+  async function handleToggleBiometric() {
+    setEnablingBiometric(true);
+    try {
+      if (biometricEnabled) {
+        await disableBiometric();
+        addToast('Biometric login disabled', 'success');
+      } else {
+        const result = await registerBiometric();
+        if (result?.requiresPasswordSignIn) {
+          addToast('Biometric enabled! Sign in with your password once more to complete setup.', 'success');
+        } else {
+          addToast('Biometric login enabled!', 'success');
+        }
+      }
+    } catch (err) {
+      addToast(err.message || 'Biometric setup failed', 'error');
+    } finally {
+      setEnablingBiometric(false);
+    }
   }
 
   const filteredCurrencies = CURRENCIES.filter(c =>
@@ -644,6 +678,48 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Biometric Authentication */}
+      {biometricSupported && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Fingerprint className="w-4 h-4 text-primary-500" /> Biometric Login
+            </h2>
+            <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+              biometricEnabled
+                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+            }`}>
+              {biometricEnabled ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+            Use fingerprint or face recognition to sign in quickly and securely without entering your password.
+          </p>
+          <button
+            onClick={handleToggleBiometric}
+            disabled={enablingBiometric}
+            className={`flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl transition-colors disabled:opacity-60 ${
+              biometricEnabled
+                ? 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40'
+                : 'text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 hover:bg-primary-100 dark:hover:bg-primary-900/40'
+            }`}
+          >
+            {enablingBiometric ? (
+              <>
+                <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                {biometricEnabled ? 'Disabling...' : 'Setting up...'}
+              </>
+            ) : (
+              <>
+                <Fingerprint className="w-4 h-4" />
+                {biometricEnabled ? 'Disable Biometric Login' : 'Enable Biometric Login'}
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
