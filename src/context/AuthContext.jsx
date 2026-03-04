@@ -70,11 +70,11 @@ export function AuthProvider({ children }) {
     setError(null);
     try {
       const result = await signInWithPopup(auth, provider);
-      
+
       // Store last email for biometric login
       if (result.user?.email) {
         localStorage.setItem('biometric_last_email', result.user.email);
-        
+
         // Check if user has biometric enabled and store session info
         const userRef = doc(db, 'users', result.user.uid, 'profile', 'info');
         const snap = await getDoc(userRef);
@@ -94,7 +94,7 @@ export function AuthProvider({ children }) {
           }
         }
       }
-      
+
       return result;
     } catch (err) {
       setError(friendlyError(err));
@@ -102,11 +102,11 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function signInWithGoogle()    { return signInWithProvider(googleProvider);    }
+  async function signInWithGoogle() { return signInWithProvider(googleProvider); }
   async function signInWithMicrosoft() { return signInWithProvider(microsoftProvider); }
-  async function signInWithApple()     { return signInWithProvider(appleProvider);     }
-  async function signInWithTwitter()   { return signInWithProvider(twitterProvider);   }
-  async function signInWithGitHub()    { return signInWithProvider(githubProvider);    }
+  async function signInWithApple() { return signInWithProvider(appleProvider); }
+  async function signInWithTwitter() { return signInWithProvider(twitterProvider); }
+  async function signInWithGitHub() { return signInWithProvider(githubProvider); }
 
   async function signUpWithEmail(name, email, password) {
     setError(null);
@@ -124,10 +124,10 @@ export function AuthProvider({ children }) {
     setError(null);
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
-      
+
       // Store last email for biometric login
       localStorage.setItem('biometric_last_email', email);
-      
+
       // Check if user has biometric enabled and store credentials for future biometric login
       // Skip if this sign-in is coming from biometric authentication itself
       if (!skipBiometricStore && result.user) {
@@ -146,7 +146,7 @@ export function AuthProvider({ children }) {
           }
         }
       }
-      
+
       return result;
     } catch (err) {
       setError(friendlyError(err));
@@ -187,7 +187,7 @@ export function AuthProvider({ children }) {
   // Biometric authentication functions
   async function registerBiometric() {
     if (!user) throw new Error('User must be logged in');
-    
+
     // Check if WebAuthn is supported
     if (!window.PublicKeyCredential) {
       throw new Error('Biometric authentication is not supported on this device/browser');
@@ -230,7 +230,7 @@ export function AuthProvider({ children }) {
       // Store credential ID in Firestore
       const credentialId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
       const publicKey = btoa(String.fromCharCode(...new Uint8Array(credential.response.getPublicKey())));
-      
+
       const ref = doc(db, 'users', user.uid, 'profile', 'info');
       await setDoc(ref, {
         biometricCredentialId: credentialId,
@@ -241,7 +241,7 @@ export function AuthProvider({ children }) {
 
       // Store email for biometric login (so user doesn't need to type it)
       localStorage.setItem('biometric_last_email', user.email);
-      
+
       // For social login users, store a session token instead of password
       // Generate a random session token
       const sessionToken = btoa(crypto.getRandomValues(new Uint8Array(32)).join(','));
@@ -253,7 +253,7 @@ export function AuthProvider({ children }) {
       }));
 
       setBiometricEnabled(true);
-      
+
       // Social login users are ready immediately, no password needed
       return { requiresPasswordSignIn: false };
     } catch (err) {
@@ -297,11 +297,11 @@ export function AuthProvider({ children }) {
   async function signInWithBiometric(emailParam) {
     // Use provided email or get last used email from localStorage
     const email = emailParam || localStorage.getItem('biometric_last_email');
-    
+
     if (!email) {
       throw new Error('No email found. Please sign in once with your account to enable biometric login.');
     }
-    
+
     // Check if WebAuthn is supported
     if (!window.PublicKeyCredential) {
       throw new Error('Biometric authentication is not supported on this device/browser');
@@ -312,23 +312,25 @@ export function AuthProvider({ children }) {
       // Check if user has stored credentials for this email
       const storedData = localStorage.getItem(`biometric_${email}`);
       if (!storedData) {
-        throw new Error('No biometric credentials found. Please enable biometric login from your Profile page.');
+        throw new Error(`No biometric setup found for ${email}. Please sign in and enable biometric from your Profile page.`);
       }
 
       const { credentialId, encryptedPassword, uid, isSocialLogin, providerId } = JSON.parse(storedData);
-      
+
       // Create challenge for authentication
       const challenge = new Uint8Array(32);
       crypto.getRandomValues(challenge);
 
-      // Request biometric authentication
+      // Request biometric authentication.
+      // NOTE: We intentionally omit `allowCredentials` so that the platform
+      // authenticator (Windows Hello / Touch ID) always appears in the dialog.
+      // Passing a specific credential ID can cause Windows Hello to hide itself
+      // when it doesn't recognise the ID, leaving only external options visible.
+      // After the user authenticates we verify the returned credential ID matches
+      // the one we registered, to ensure the correct account's credential is used.
       const publicKeyOptions = {
         challenge,
         rpId: window.location.hostname,
-        allowCredentials: [{
-          type: 'public-key',
-          id: Uint8Array.from(atob(credentialId), c => c.charCodeAt(0)),
-        }],
         userVerification: 'required',
         timeout: 60000,
       };
@@ -339,21 +341,28 @@ export function AuthProvider({ children }) {
 
       if (!assertion) throw new Error('Biometric authentication failed');
 
+      // Verify the returned credential matches the one registered for this account.
+      const returnedId = btoa(String.fromCharCode(...new Uint8Array(assertion.rawId)));
+      if (returnedId !== credentialId) {
+        throw new Error('The biometric credential used does not match the one registered for this account. Please use the correct Windows Hello / biometric for this account.');
+      }
+
       // Biometric verification successful!
       if (isSocialLogin) {
         // For social login users, Firebase maintains the session automatically
         // Check if user is already signed in with an active session
         const currentUser = auth.currentUser;
-        
+
         if (currentUser && currentUser.uid === uid) {
           // Perfect! User has an active session and biometric verified
           // Just return - they're already signed in
           return;
         }
-        
+
         // Session expired or user signed out
         // They need to sign in with their social provider once to restore session
-        throw new Error(`Your session has expired. Please sign in with ${getProviderName(providerId)} to restore your session. Biometric will work automatically next time.`);
+        const providerName = getProviderName(providerId);
+        throw new Error(`Please sign in with ${providerName} to continue. Your session has expired or you signed out. After signing in, biometric will work again.`);
       } else {
         // For email/password users, decrypt and use stored password
         if (!encryptedPassword) {
@@ -369,7 +378,7 @@ export function AuthProvider({ children }) {
         setError(friendlyError(cancelError));
         throw cancelError;
       }
-      if (err.message && (err.message.includes('No biometric credentials') || err.message.includes('session has expired') || err.message.includes('sign in with'))) {
+      if (err.message && (err.message.includes('No biometric') || err.message.includes('Please sign in') || err.message.includes('session has expired'))) {
         setError(err.message);
         throw err;
       }
@@ -414,14 +423,14 @@ export function AuthProvider({ children }) {
 function friendlyError(err) {
   const code = err?.code || '';
   const map = {
-    'auth/user-not-found':       'No account found with this email.',
-    'auth/wrong-password':       'Incorrect password.',
+    'auth/user-not-found': 'No account found with this email.',
+    'auth/wrong-password': 'Incorrect password.',
     'auth/email-already-in-use': 'An account with this email already exists.',
-    'auth/weak-password':        'Password must be at least 6 characters.',
-    'auth/invalid-email':        'Please enter a valid email address.',
+    'auth/weak-password': 'Password must be at least 6 characters.',
+    'auth/invalid-email': 'Please enter a valid email address.',
     'auth/popup-closed-by-user': 'Sign-in was cancelled.',
     'auth/account-exists-with-different-credential': 'An account already exists with a different sign-in method.',
-    'auth/invalid-credential':   'Incorrect email or password.',
+    'auth/invalid-credential': 'Incorrect email or password.',
   };
   return map[code] || err.message;
 }

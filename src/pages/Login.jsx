@@ -81,6 +81,7 @@ export default function Login() {
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [localError, setLocalError] = useState('');
   const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEmail, setBiometricEmail] = useState('');
 
   // Redirect to dashboard if user is logged in
   useEffect(() => {
@@ -107,6 +108,12 @@ export default function Login() {
       if (window.PublicKeyCredential) {
         const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
         setBiometricAvailable(available);
+        
+        // Get the last email used for biometric
+        if (available) {
+          const lastEmail = localStorage.getItem('biometric_last_email');
+          setBiometricEmail(lastEmail || '');
+        }
       }
     };
     checkBiometric();
@@ -164,8 +171,10 @@ export default function Login() {
     setLocalError('');
     clearError();
     try {
-      // Pass email if provided, otherwise signInWithBiometric will use last email
-      await signInWithBiometric(form.email || null);
+      // Always use the enrolled biometric email, not whatever is typed in the form.
+      // The biometric credential is tied to a specific account; using a different
+      // email would either fail or silently log in as the wrong user.
+      await signInWithBiometric(biometricEmail || null);
       // Keep busy state to show loading during redirect
     } catch (err) {
       setLocalError(err.message || 'Biometric login failed');
@@ -326,18 +335,32 @@ export default function Login() {
 
             {/* Biometric Login */}
             {mode === 'signin' && biometricAvailable && (
-              <button
-                onClick={handleBiometricLogin}
-                disabled={anyBusy}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition-colors mt-3"
-                title="Sign in with biometric"
-              >
-                {busy === 'biometric'
-                  ? <div className="w-4 h-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  : <Fingerprint className="w-4 h-4" />
-                }
-                Sign in with Biometric
-              </button>
+              <div className="mt-3">
+                <button
+                  onClick={handleBiometricLogin}
+                  disabled={anyBusy}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition-colors"
+                  title="Sign in with biometric"
+                >
+                  {busy === 'biometric'
+                    ? <div className="w-4 h-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    : <Fingerprint className="w-4 h-4" />
+                  }
+                  Sign in with Biometric
+                </button>
+                {biometricEmail && !form.email && (
+                  <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+                    Will sign in as: <span className="font-medium text-gray-700 dark:text-gray-300">{biometricEmail}</span>
+                    <br />
+                    <span className="text-gray-400 dark:text-gray-500">Enter a different email above to switch accounts</span>
+                  </p>
+                )}
+                {form.email && form.email !== biometricEmail && biometricEmail && (
+                  <p className="text-xs text-center text-amber-600 dark:text-amber-400 mt-2">
+                    ⚠️ Biometric will sign in as <span className="font-semibold">{biometricEmail}</span>, not {form.email}
+                  </p>
+                )}
+              </div>
             )}
 
             {/* Mode toggle */}

@@ -131,6 +131,9 @@ In app settings → User authentication settings → enable OAuth 2.0
 Set Callback URL to the Firebase redirect URI (https://<project>.firebaseapp.com/__/auth/handler)
 Copy API Key (Client ID) + API Secret → paste into Firebase Console → Twitter sign-in method
 
+Biometric login:
+
+
 
 
 
