@@ -242,6 +242,10 @@ export default function Saving() {
   const [sortDir, setSortDir] = useState('desc');
   const [search,  setSearch]  = useState('');
   const [yearFilter, setYearFilter] = useState(() => isBS ? bsActiveYear : activeYear);
+  const [sidePanelWidth, setSidePanelWidth] = useState(() => {
+    try { return parseInt(localStorage.getItem('savingSidePanelWidth')) || 288; } catch { return 288; }
+  });
+  const [isResizing, setIsResizing] = useState(false);
 
   useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
 
@@ -315,6 +319,35 @@ export default function Saving() {
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     a.download = 'savings.csv';
     a.click();
+  }
+
+  // Resize handler
+  function handleResizeStart(e) {
+    e.preventDefault();
+    setIsResizing(true);
+    const startX = e.clientX || e.touches?.[0]?.clientX;
+    const startWidth = sidePanelWidth;
+
+    function handleMouseMove(ev) {
+      const currentX = ev.clientX || ev.touches?.[0]?.clientX;
+      const diff = startX - currentX;
+      const newWidth = Math.min(Math.max(240, startWidth + diff), 500);
+      setSidePanelWidth(newWidth);
+    }
+
+    function handleMouseUp() {
+      setIsResizing(false);
+      try { localStorage.setItem('savingSidePanelWidth', String(sidePanelWidth)); } catch {}
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleMouseMove);
+      document.removeEventListener('touchend', handleMouseUp);
+    }
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('touchmove', handleMouseMove);
+    document.addEventListener('touchend', handleMouseUp);
   }
 
   async function handleCSVImport(records) {
@@ -425,7 +458,7 @@ export default function Saving() {
           </button>
         </div>
       ) : (
-        <div className="flex flex-col lg:flex-row gap-4 lg:items-start">
+        <div className="flex flex-col lg:flex-row gap-4 lg:items-start lg:gap-0">
 
           {/* Main Table */}
           <div className="flex-1 min-w-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -545,9 +578,26 @@ export default function Saving() {
             )}
           </div>
 
+          {/* ── Resizable Divider ── */}
+          {showSidePanel && (
+            <div
+              onMouseDown={handleResizeStart}
+              onTouchStart={handleResizeStart}
+              className={`hidden lg:block flex-shrink-0 cursor-col-resize transition-all relative self-stretch ${isResizing ? 'bg-primary-500/10' : 'hover:bg-primary-500/5'}`}
+              style={{ width: '8px', padding: '6px', touchAction: 'none' }}
+            >
+              {/* Visible handle - with top and bottom spacing */}
+              <div className={`absolute left-1/2 -translate-x-1/2 w-0.5 transition-colors ${isResizing ? 'bg-primary-500' : 'bg-gray-300 dark:bg-gray-600 hover:bg-primary-400 dark:hover:bg-primary-500'}`} 
+                   style={{ top: '10%', bottom: '10%' }} />
+              
+              {/* Expanded hover area for easier grabbing */}
+              <div className="absolute inset-0 -left-2 -right-2" />
+            </div>
+          )}
+
           {/* Right Panel: Saving Sources */}
           {showSidePanel && (
-            <div className="w-full lg:w-72 flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden" style={{ width: window.innerWidth >= 1024 ? `${sidePanelWidth}px` : '100%' }}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                 <div>
                   <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Saved Money From</h3>

@@ -738,3 +738,28 @@ Applied to all 7 pages (mobile cards + desktop rows + summary panels + charts):
 implement this feature "Progressive Web App (PWA) install feature. so that user will be able to install the app  
 
 
+added a resizable divider to the Loan page. Here's what I implemented:
+Features:
+Resizable Divider:
+    A thin vertical divider between the main table and the right sidebar
+    Hover effect: Changes color and width on hover (transparent → primary color)
+    Visual indicator: Shows a small icon when hovering to indicate it's draggable
+Drag to Resize:
+    Click and drag (or touch and drag on mobile) to adjust the sidebar width
+    Minimum width: 240px
+    Maximum width: 500px
+    Smooth resizing with cursor feedback
+Persistent Width:
+    Saves the sidebar width to localStorage
+    Remembers your preferred width across sessions
+Touch Support:
+    Works on both desktop (mouse) and touch devices
+    Uses touchAction: 'none' to prevent scrolling while resizing
+Visual Feedback:
+    Divider becomes more visible when hovering
+    Shows active state while resizing
+    Icon appears on hover to indicate draggability
+Responsive:
+    Only shows on large screens (lg breakpoint and above)
+    On mobile, maintains the original stacked layout
+The divider is positioned between the main loan table and the lender summary panel, allowing users to customize how much space each section takes up based on their preference!
