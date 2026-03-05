@@ -80,7 +80,7 @@ function prefill(targetPage, sourceRow) {
     const base = { date: today, amount: '' };
     switch (targetPage) {
       case 'income':   return { ...base, title: '', source: '', notes: '', description: '' };
-      case 'expenses': return { ...base, title: '', category: '', note: '', description: '' };
+      case 'expenses': return { ...base, title: '', category: '', notes: '', description: '' };
       case 'bank':     return { date: today, type: 'deposit', amount: '', description: '', bankId: '' };
       case 'lend':     return { ...base, name: '', reason: '', description: '' };
       case 'loan':     return { ...base, name: '', reason: '', description: '' };
@@ -96,7 +96,7 @@ function prefill(targetPage, sourceRow) {
   const nameish = sourceRow.name || sourceRow.title || sourceRow.expendOn || '';
   switch (targetPage) {
     case 'income':   return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, title: nameish || sourceRow.description || '', source: '', notes: sourceRow.notes || sourceRow.reason || '', description };
-    case 'expenses': return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, title: nameish || sourceRow.description || '', category: '', note: sourceRow.note || sourceRow.notes|| sourceRow.reason || '', description };
+    case 'expenses': return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, title: nameish || sourceRow.description || '', category: '', notes: sourceRow.note || sourceRow.notes || sourceRow.reason || '', description };
     case 'bank':     return { date, type: 'deposit', amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, description: nameish+' '+sourceRow.reason || description, bankId: '' };
     case 'lend':     return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, name: nameish, reason: sourceRow.reason || sourceRow.note || sourceRow.notes || '', description };
     case 'loan':     return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, name: nameish, reason: sourceRow.reason || sourceRow.note || sourceRow.notes || '', description };
@@ -471,11 +471,11 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
               </div>
             )}
 
-            {/* Note (expenses) */}
+            {/* Notes (expenses) */}
             {targetPage === 'expenses' && (
               <div>
-                <label className={LABEL_CLS}>Note</label>
-                <input type="text" placeholder="Note" value={form.note || ''} onChange={e => set('note', e.target.value)} className={INPUT_CLS} />
+                <label className={LABEL_CLS}>Notes</label>
+                <input type="text" placeholder="Notes" value={form.notes || ''} onChange={e => set('notes', e.target.value)} className={INPUT_CLS} />
               </div>
             )}
 
