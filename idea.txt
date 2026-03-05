@@ -750,6 +750,7 @@ Bank dropdown is shown as the first field when targetPage === 'bank', listing al
 If no banks have been added yet, a warning message is shown instead of the dropdown.
 On submit, the entry is saved directly to the chosen bank using addBankEntrySvc(user.uid, form.bankId, data) — this doesn't interfere with the Bank page's currently selected bank in the context.
 Validation ensures a bank must be selected before the entry can be submitted.
+The QuickAdd modal now shows name suggestions for Lend, Loan, and For Me — same autocomplete behavior as the full modals: suggestions appear as you type, are case-deduplicated, and clicking one fills the field.
 
 
 first letter always capital in table data of table for example if user enter ram in name, notes, note, description, title field then it should show Ram in the table to maintain consistency and also it will look better. this feature is implemented in all pages income, expenses, bank, lend, loan, saving, for me.
@@ -763,6 +764,8 @@ Applied to all 7 pages (mobile cards + desktop rows + summary panels + charts):
     Loan	name, reason, description + person summary/chart
     Saving	expendOn, description + sources description
     For Me	name, description + person summary/chart
+name in lend, loan, for-me & net-summary pages make first letter auto capitalized first letter of word in the table and person summary/chart to maintain consistency and improve readability. This means that if a user enters a name like "ram sah" in the lend, loan, or for me pages, it will automatically display as "Ram Sah" in the tables and any related summaries or charts. This small enhancement helps to create a more polished and professional look throughout the app while ensuring that names are consistently formatted across all relevant sections.
+The map key now uses trim().toLowerCase() so "Ram Sah", "ram sah", "RAM SAH" all merge into one row. The displayed name comes from the first entry encountered for that person.
 
 
 implement this feature "Progressive Web App (PWA) install feature. so that user will be able to install the app  
@@ -795,10 +798,8 @@ Responsive:
 The divider is positioned between the main loan table and the lender summary panel, allowing users to customize how much space each section takes up based on their preference!
 
 
-name in lend, loan, for-me & net-summary pages make first letter auto capitalized first letter of word in the table and person summary/chart to maintain consistency and improve readability. This means that if a user enters a name like "ram sah" in the lend, loan, or for me pages, it will automatically display as "Ram Sah" in the tables and any related summaries or charts. This small enhancement helps to create a more polished and professional look throughout the app while ensuring that names are consistently formatted across all relevant sections.
-The map key now uses trim().toLowerCase() so "Ram Sah", "ram sah", "RAM SAH" all merge into one row. The displayed name comes from the first entry encountered for that person.
 
 
-name suggestion for quick add in lend, loan, for me pages:
-When using the quick add feature for the lend, loan, or for me pages, the name field will now have an auto-suggestion dropdown that appears as you type. This dropdown will show previously entered names from your existing records in those pages, allowing you to quickly select a name without having to type it out fully. For example, if you start typing "Ra", it might suggest "Ram Sah", "Rita Devi", etc., based on your past entries. This feature helps to speed up data entry and maintain consistency in naming across your records.
+
+
 
