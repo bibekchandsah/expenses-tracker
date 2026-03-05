@@ -5,7 +5,7 @@ import { useLoans } from '../context/LoanContext';
 import { useExpenses } from '../context/ExpenseContext';
 import { useCategories } from '../context/CategoryContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, capWords } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
 import { useActiveYear } from '../context/ActiveYearContext';
@@ -67,15 +67,15 @@ export default function NetSummary() {
       : arr.filter(l => l.date?.startsWith(String(yearFilter)));
 
     filterByYear(lends).forEach(l => {
-      const k = l.name;
-      if (!map[k]) map[k] = { name: k, lent: 0, returned: 0, borrowed: 0, paid: 0 };
+      const k = (l.name || '').trim().toLowerCase();
+      if (!map[k]) map[k] = { name: l.name, lent: 0, returned: 0, borrowed: 0, paid: 0 };
       map[k].lent     += +l.amount         || 0;
       map[k].returned += +l.returnedAmount || 0;
     });
 
     filterByYear(loans).forEach(l => {
-      const k = l.name;
-      if (!map[k]) map[k] = { name: k, lent: 0, returned: 0, borrowed: 0, paid: 0 };
+      const k = (l.name || '').trim().toLowerCase();
+      if (!map[k]) map[k] = { name: l.name, lent: 0, returned: 0, borrowed: 0, paid: 0 };
       map[k].borrowed += +l.amount     || 0;
       map[k].paid     += +l.paidAmount || 0;
     });
@@ -293,7 +293,7 @@ export default function NetSummary() {
                 return (
                   <div key={row.name} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                     {/* Name */}
-                    <p className="text-sm font-bold text-gray-900 dark:text-white mb-2">{row.name}</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white mb-2">{capWords(row.name)}</p>
 
                     {/* Row 1: Borrowed | To Give */}
                     <div className="grid grid-cols-2 gap-x-2 mb-1">
@@ -422,7 +422,7 @@ export default function NetSummary() {
                     const waUrl = `https://wa.me/?text=${encodeURIComponent(waMessage)}`;
                     return (
                       <tr key={row.name} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                        <td className="px-5 py-3.5 font-semibold text-gray-900 dark:text-white whitespace-nowrap">{row.name}</td>
+                        <td className="px-5 py-3.5 font-semibold text-gray-900 dark:text-white whitespace-nowrap">{capWords(row.name)}</td>
                         <td className="px-5 py-3.5 text-right tabular-nums">
                           <span className={`font-semibold ${row.borrowed > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 dark:text-gray-500'}`}>
                             {row.borrowed > 0 ? formatCurrency(row.borrowed, currency) : '—'}

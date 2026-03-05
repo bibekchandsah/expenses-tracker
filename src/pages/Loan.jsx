@@ -12,7 +12,7 @@ import { useLends } from '../context/LendContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { formatCurrency, formatDate, capFirst } from '../utils/formatters';
+import { formatCurrency, formatDate, capFirst, capWords } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
 import { safeADToBS, getBSYearRange } from '../utils/calendarUtils';
@@ -248,12 +248,17 @@ export default function Loan() {
   const bsYearRange = useMemo(() => isBS ? getBSYearRange(yearFilter) : null, [isBS, yearFilter]);
 
   // Unique names for autocomplete — merged from both Loan and Lend pages
-  const existingNames = useMemo(() => [
-    ...new Set([
-      ...loans.map(l => l.name),
-      ...lends.map(l => l.name),
-    ])
-  ].filter(Boolean).sort(), [loans, lends]);
+  const existingNames = useMemo(() => {
+    const seen = new Set();
+    return [...loans.map(l => l.name), ...lends.map(l => l.name)]
+      .filter(Boolean)
+      .reduce((acc, n) => {
+        const key = n.trim().toLowerCase();
+        if (!seen.has(key)) { seen.add(key); acc.push(capWords(n.trim())); }
+        return acc;
+      }, [])
+      .sort();
+  }, [loans, lends]);
 
   function handleSort(col) {
     if (sortCol === col) {
@@ -280,7 +285,7 @@ export default function Loan() {
           String(l.amount).includes(q)
         )
       : personFilter
-        ? yearLoans.filter(l => l.name === personFilter)
+        ? yearLoans.filter(l => (l.name || '').trim().toLowerCase() === personFilter)
         : yearLoans;
 
     if (!sortCol) return data;
@@ -305,9 +310,10 @@ export default function Loan() {
       : loans.filter(l => l.date?.startsWith(String(yearFilter)));
     const map = {};
     yearLoans.forEach(l => {
-      if (!map[l.name]) map[l.name] = { name: l.name, totalBorrowed: 0, totalPaid: 0 };
-      map[l.name].totalBorrowed += +l.amount     || 0;
-      map[l.name].totalPaid     += +l.paidAmount || 0;
+      const key = (l.name || '').trim().toLowerCase();
+      if (!map[key]) map[key] = { key, name: l.name, totalBorrowed: 0, totalPaid: 0 };
+      map[key].totalBorrowed += +l.amount     || 0;
+      map[key].totalPaid     += +l.paidAmount || 0;
     });
     return Object.values(map)
       .map(p => ({ ...p, remaining: p.totalBorrowed - p.totalPaid }))
@@ -506,7 +512,7 @@ export default function Loan() {
               {personFilter && (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-lg text-sm border border-primary-200 dark:border-primary-800 flex-shrink-0">
                   <User className="w-3.5 h-3.5" />
-                  <span className="max-w-[100px] truncate">{personFilter}</span>
+                  <span className="max-w-[100px] truncate">{capWords(personFilter)}</span>
                   <button onClick={() => setPersonFilter(null)} className="hover:text-primary-900"><X className="w-3.5 h-3.5" /></button>
                 </div>
               )}
@@ -555,9 +561,9 @@ export default function Loan() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <button
-                              onClick={() => { setPersonFilter(p => p === loan.name ? null : loan.name); setSearch(''); }}
+                              onClick={() => { setPersonFilter(p => p === (loan.name || '').trim().toLowerCase() ? null : (loan.name || '').trim().toLowerCase()); setSearch(''); }}
                               className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline text-left"
-                            >{capFirst(loan.name)}</button>
+                            >{capWords(loan.name)}</button>
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(loan.date)}</p>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
@@ -599,10 +605,10 @@ export default function Loan() {
                         <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">{dateLabel(loan.date)}</div>
                         <div className="col-span-2">
                           <button
-                            onClick={() => { setPersonFilter(p => p === loan.name ? null : loan.name); setSearch(''); }}
+                            onClick={() => { setPersonFilter(p => p === (loan.name || '').trim().toLowerCase() ? null : (loan.name || '').trim().toLowerCase()); setSearch(''); }}
                             className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline truncate max-w-full text-left"
-                            title={`Filter by ${capFirst(loan.name)}`}
-                          >{capFirst(loan.name)}</button>
+                            title={`Filter by ${capWords(loan.name)}`}
+                          >{capWords(loan.name)}</button>
                         </div>
                         <div className="col-span-1 text-right">
                           <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(loan.amount, currency)}</span>
@@ -702,11 +708,11 @@ export default function Loan() {
                   </div>
                   {lenderSummary.map(person => {
                     const isSettled = person.remaining <= 0;
-                    const isActive  = personFilter === person.name;
+                    const isActive  = personFilter === person.key;
                     return (
-                      <button
-                        key={person.name}
-                        onClick={() => { setPersonFilter(p => p === person.name ? null : person.name); setSearch(''); }}
+                      <div
+                        key={person.key}
+                        onClick={() => { setPersonFilter(p => p === person.key ? null : person.key); setSearch(''); }}
                         className={`w-full grid grid-cols-4 gap-1 px-4 py-3 text-left transition-colors ${
                           isActive
                             ? 'bg-primary-50 dark:bg-primary-900/30'
@@ -719,7 +725,7 @@ export default function Loan() {
                             : <AlertCircle   className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
                           }
                           <span className={`text-sm font-medium truncate ${isActive ? 'text-primary-700 dark:text-primary-400' : 'text-gray-800 dark:text-gray-200'}`}>
-                            {capFirst(person.name)}
+                            {capWords(person.name)}
                           </span>
                         </div>
                         <div className="text-right">
@@ -731,7 +737,7 @@ export default function Loan() {
                             : <span className="text-xs font-bold text-red-600 dark:text-red-400">{formatCurrency(person.remaining, currency)}</span>
                           }
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                   <div className="grid grid-cols-4 gap-1 px-4 py-3 bg-gray-50 dark:bg-gray-700/40 text-xs font-black text-gray-700 dark:text-gray-200 uppercase">
@@ -767,16 +773,16 @@ export default function Loan() {
               {chartOpen && (
               <div className="px-4 py-3 space-y-3">
                 {lenderSummary.map(person => {
-                  const isActive = personFilter === person.name;
+                  const isActive = personFilter === person.key;
                   return (
-                    <button
-                      key={person.name}
-                      onClick={() => { setPersonFilter(p => p === person.name ? null : person.name); setSearch(''); }}
+                    <div
+                      key={person.key}
+                      onClick={() => { setPersonFilter(p => p === person.key ? null : person.key); setSearch(''); }}
                       className={`w-full text-left rounded-lg px-1 py-0.5 transition-colors ${isActive ? 'ring-1 ring-primary-400' : ''}`}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className={`text-xs font-semibold truncate max-w-[55%] ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-700 dark:text-gray-300'}`}>
-                          {capFirst(person.name)}
+                          {capWords(person.name)}
                         </span>
                         <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
                           {formatCurrency(person.totalPaid, currency)} / {formatCurrency(person.totalBorrowed, currency)}
@@ -792,7 +798,7 @@ export default function Loan() {
                           style={{ width: `${person.totalBorrowed > 0 ? (Math.min(person.totalPaid, person.totalBorrowed) / person.totalBorrowed) * 100 : 0}%`, backgroundColor: '#7c3aed' }}
                         />
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>

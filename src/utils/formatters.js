@@ -19,6 +19,15 @@ export function capFirst(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+/**
+ * Capitalizes the first letter of every word — "ram sah" → "Ram Sah".
+ * Leaves other characters untouched so "ICU" stays "ICU".
+ */
+export function capWords(str) {
+  if (!str) return str;
+  return str.replace(/(^|\s)(\S)/g, (_, space, ch) => space + ch.toUpperCase());
+}
+
 export function formatCurrency(amount, currency = 'USD') {
   const num = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,

@@ -12,7 +12,7 @@ import { useLoans } from '../context/LoanContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { formatCurrency, formatDate, capFirst } from '../utils/formatters';
+import { formatCurrency, formatDate, capFirst, capWords } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
 import { safeADToBS, getBSYearRange } from '../utils/calendarUtils';
@@ -248,12 +248,17 @@ export default function Lend() {
   const bsYearRange = useMemo(() => isBS ? getBSYearRange(yearFilter) : null, [isBS, yearFilter]);
 
   // Unique names for autocomplete — merged from both Lend and Loan pages
-  const existingNames = useMemo(() => [
-    ...new Set([
-      ...lends.map(l => l.name),
-      ...loans.map(l => l.name),
-    ])
-  ].filter(Boolean).sort(), [lends, loans]);
+  const existingNames = useMemo(() => {
+    const seen = new Set();
+    return [...lends.map(l => l.name), ...loans.map(l => l.name)]
+      .filter(Boolean)
+      .reduce((acc, n) => {
+        const key = n.trim().toLowerCase();
+        if (!seen.has(key)) { seen.add(key); acc.push(capWords(n.trim())); }
+        return acc;
+      }, [])
+      .sort();
+  }, [lends, loans]);
 
   // Sort
   function handleSort(col) {
@@ -282,7 +287,7 @@ export default function Lend() {
           String(l.amount).includes(q)
         )
       : personFilter
-        ? yearLends.filter(l => l.name === personFilter)
+        ? yearLends.filter(l => (l.name || '').trim().toLowerCase() === personFilter)
         : yearLends;
 
     if (!sortCol) return data;
@@ -307,9 +312,10 @@ export default function Lend() {
       : lends.filter(l => l.date?.startsWith(String(yearFilter)));
     const map = {};
     yearLends.forEach(l => {
-      if (!map[l.name]) map[l.name] = { name: l.name, totalLent: 0, totalReturned: 0 };
-      map[l.name].totalLent     += +l.amount          || 0;
-      map[l.name].totalReturned += +l.returnedAmount  || 0;
+      const key = (l.name || '').trim().toLowerCase();
+      if (!map[key]) map[key] = { key, name: l.name, totalLent: 0, totalReturned: 0 };
+      map[key].totalLent     += +l.amount          || 0;
+      map[key].totalReturned += +l.returnedAmount  || 0;
     });
     return Object.values(map)
       .map(p => ({ ...p, remaining: p.totalLent - p.totalReturned }))
@@ -517,7 +523,7 @@ export default function Lend() {
               {personFilter && (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-lg text-sm border border-primary-200 dark:border-primary-800 flex-shrink-0">
                   <User className="w-3.5 h-3.5" />
-                  <span className="max-w-[100px] truncate">{personFilter}</span>
+                  <span className="max-w-[100px] truncate">{capWords(personFilter)}</span>
                   <button onClick={() => setPersonFilter(null)} className="hover:text-primary-900"><X className="w-3.5 h-3.5" /></button>
                 </div>
               )}
@@ -557,9 +563,9 @@ export default function Lend() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <button
-                              onClick={() => { setPersonFilter(p => p === lend.name ? null : lend.name); setSearch(''); }}
+                              onClick={() => { setPersonFilter(p => p === (lend.name || '').trim().toLowerCase() ? null : (lend.name || '').trim().toLowerCase()); setSearch(''); }}
                               className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline text-left"
-                            >{capFirst(lend.name)}</button>
+                            >{capWords(lend.name)}</button>
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(lend.date)}</p>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
@@ -601,10 +607,10 @@ export default function Lend() {
                         <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">{dateLabel(lend.date)}</div>
                         <div className="col-span-2">
                           <button
-                            onClick={() => { setPersonFilter(p => p === lend.name ? null : lend.name); setSearch(''); }}
+                            onClick={() => { setPersonFilter(p => p === (lend.name || '').trim().toLowerCase() ? null : (lend.name || '').trim().toLowerCase()); setSearch(''); }}
                             className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline truncate max-w-full text-left"
-                            title={`Filter by ${capFirst(lend.name)}`}
-                          >{capFirst(lend.name)}</button>
+                            title={`Filter by ${capWords(lend.name)}`}
+                          >{capWords(lend.name)}</button>
                         </div>
                         <div className="col-span-1 text-right">
                           <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(lend.amount, currency)}</span>
@@ -703,11 +709,11 @@ export default function Lend() {
                 </div>
                 {personSummary.map(person => {
                   const isSettled = person.remaining <= 0;
-                  const isActive  = personFilter === person.name;
+                  const isActive  = personFilter === person.key;
                   return (
                     <button
-                      key={person.name}
-                      onClick={() => { setPersonFilter(p => p === person.name ? null : person.name); setSearch(''); }}
+                      key={person.key}
+                      onClick={() => { setPersonFilter(p => p === person.key ? null : person.key); setSearch(''); }}
                       className={`w-full grid grid-cols-4 gap-1 px-4 py-3 text-left transition-colors ${
                         isActive
                           ? 'bg-primary-50 dark:bg-primary-900/30'
@@ -720,7 +726,7 @@ export default function Lend() {
                           : <AlertCircle   className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
                         }
                         <span className={`text-sm font-medium truncate ${isActive ? 'text-primary-700 dark:text-primary-400' : 'text-gray-800 dark:text-gray-200'}`}>
-                          {capFirst(person.name)}
+                          {capWords(person.name)}
                         </span>
                       </div>
                       <div className="text-right">
@@ -769,16 +775,16 @@ export default function Lend() {
             {chartOpen && (
             <div className="px-4 py-3 space-y-3">
               {personSummary.map(person => {
-                const isActive = personFilter === person.name;
+                const isActive = personFilter === person.key;
                 return (
                   <button
-                    key={person.name}
-                    onClick={() => { setPersonFilter(p => p === person.name ? null : person.name); setSearch(''); }}
+                    key={person.key}
+                    onClick={() => { setPersonFilter(p => p === person.key ? null : person.key); setSearch(''); }}
                     className={`w-full text-left group rounded-lg px-1 py-0.5 transition-colors ${isActive ? 'ring-1 ring-primary-400' : ''}`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className={`text-xs font-semibold truncate max-w-[55%] ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {capFirst(person.name)}
+                        {capWords(person.name)}
                       </span>
                       <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
                         {formatCurrency(person.totalReturned, currency)} / {formatCurrency(person.totalLent, currency)}

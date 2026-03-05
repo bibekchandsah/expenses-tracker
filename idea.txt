@@ -795,3 +795,10 @@ Responsive:
 The divider is positioned between the main loan table and the lender summary panel, allowing users to customize how much space each section takes up based on their preference!
 
 
+name in lend, loan, for-me & net-summary pages make first letter auto capitalized first letter of word in the table and person summary/chart to maintain consistency and improve readability. This means that if a user enters a name like "ram sah" in the lend, loan, or for me pages, it will automatically display as "Ram Sah" in the tables and any related summaries or charts. This small enhancement helps to create a more polished and professional look throughout the app while ensuring that names are consistently formatted across all relevant sections.
+The map key now uses trim().toLowerCase() so "Ram Sah", "ram sah", "RAM SAH" all merge into one row. The displayed name comes from the first entry encountered for that person.
+
+
+name suggestion for quick add in lend, loan, for me pages:
+When using the quick add feature for the lend, loan, or for me pages, the name field will now have an auto-suggestion dropdown that appears as you type. This dropdown will show previously entered names from your existing records in those pages, allowing you to quickly select a name without having to type it out fully. For example, if you start typing "Ra", it might suggest "Ram Sah", "Rita Devi", etc., based on your past entries. This feature helps to speed up data entry and maintain consistency in naming across your records.
+

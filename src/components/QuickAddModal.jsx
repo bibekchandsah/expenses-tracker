@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Plus, ArrowDown, ArrowUp, ChevronLeft } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { X, Plus, ArrowDown, ArrowUp, ChevronLeft, User } from 'lucide-react';
 import { useToast } from './ui/Toast';
 import { useAuth } from '../context/AuthContext';
 import { useIncomes } from '../context/IncomeContext';
@@ -14,6 +14,7 @@ import { useCalendar } from '../context/CalendarContext';
 import NepaliDatePickerInput from './ui/NepaliDatePickerInput';
 import { INCOME_SOURCES } from './IncomeModal';
 import { addBankEntry as addBankEntrySvc } from '../services/bankService';
+import { capWords } from '../utils/formatters';
 
 const TODAY = () => {
   const d = new Date();
@@ -114,17 +115,35 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
   const { addIncome }                           = useIncomes();
   const { addExpense }                          = useExpenses();
   const { banks }                               = useBanks();
-  const { addLend }                             = useLends();
-  const { addLoan }                             = useLoans();
+  const { addLend, lends }                      = useLends();
+  const { addLoan, loans }                      = useLoans();
   const { addSaving }                           = useSavings();
-  const { addEntry: addForMeEntry }             = useForMe();
+  const { addEntry: addForMeEntry, entries: forMeEntries } = useForMe();
   const { categories }                          = useCategories();
 
+  // ── Deduplicated name suggestions from existing records ────────
+  const existingNames = useMemo(() => {
+    const seen = new Set();
+    return [
+      ...(lends || []).map(l => l.name),
+      ...(loans || []).map(l => l.name),
+      ...(forMeEntries || []).map(e => e.name),
+    ]
+      .filter(Boolean)
+      .reduce((acc, n) => {
+        const key = n.trim().toLowerCase();
+        if (!seen.has(key)) { seen.add(key); acc.push(capWords(n.trim())); }
+        return acc;
+      }, [])
+      .sort();
+  }, [lends, loans, forMeEntries]);
+
   // ── Component state ──────────────────────────────────────────
-  const [targetPage, setTargetPage] = useState(null);   // null = page-picker step
-  const [form,       setForm]       = useState({});
-  const [saving,     setSaving]     = useState(false);
-  const [count,      setCount]      = useState(0);
+  const [targetPage,   setTargetPage]   = useState(null);   // null = page-picker step
+  const [form,         setForm]         = useState({});
+  const [saving,       setSaving]       = useState(false);
+  const [count,        setCount]        = useState(0);
+  const [nameSuggest,  setNameSuggest]  = useState(false);
   const { calendar, dateLabel } = useCalendar();
 
   // Reset everything when modal opens/closes
@@ -365,13 +384,38 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
               </div>
             )}
 
-            {/* Name (lend / loan / forMe) */}
-            {(targetPage === 'lend' || targetPage === 'loan' || targetPage === 'forMe') && (
-              <div>
-                <label className={LABEL_CLS}>{targetPage === 'forMe' ? 'Name' : 'Name *'}</label>
-                <input type="text" placeholder="Person's name" value={form.name || ''} onChange={e => set('name', e.target.value)} className={INPUT_CLS} />
-              </div>
-            )}
+            {/* Name (lend / loan / forMe) with autocomplete */}
+            {(targetPage === 'lend' || targetPage === 'loan' || targetPage === 'forMe') && (() => {
+              const suggestions = existingNames.filter(n =>
+                n.toLowerCase().includes((form.name || '').toLowerCase()) &&
+                n.toLowerCase() !== (form.name || '').trim().toLowerCase()
+              );
+              return (
+                <div className="relative">
+                  <label className={LABEL_CLS}>{targetPage === 'forMe' ? 'Name' : 'Name *'}</label>
+                  <input
+                    type="text"
+                    placeholder="Person's name"
+                    value={form.name || ''}
+                    onChange={e => { set('name', e.target.value); setNameSuggest(true); }}
+                    onFocus={() => setNameSuggest(true)}
+                    onBlur={() => setTimeout(() => setNameSuggest(false), 150)}
+                    className={INPUT_CLS}
+                  />
+                  {nameSuggest && form.name && suggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg z-20 overflow-hidden">
+                      {suggestions.map(n => (
+                        <button key={n} type="button"
+                          onMouseDown={() => { set('name', n); setNameSuggest(false); }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                          <User className="w-3.5 h-3.5 opacity-50" /> {n}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Person (forMe) */}
             {targetPage === 'forMe' && (
