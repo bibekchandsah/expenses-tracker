@@ -21,12 +21,35 @@ import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
 
 // ── Add/Edit Bank Modal ─────────────────────────────────────────
 function BankModal({ isOpen, bank, onClose, onSave }) {
-  const [form, setForm] = useState({ name: '', openingBalance: '' });
+  const [form, setForm] = useState({ 
+    name: '', 
+    openingBalance: '', 
+    accountHolder: '', 
+    accountNumber: '', 
+    branch: '', 
+    ifscCode: '' 
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (isOpen) setForm(bank ? { name: bank.name, openingBalance: String(bank.openingBalance || 0) } : { name: '', openingBalance: '' });
+    if (isOpen) {
+      setForm(bank ? { 
+        name: bank.name, 
+        openingBalance: String(bank.openingBalance || 0),
+        accountHolder: bank.accountHolder || '',
+        accountNumber: bank.accountNumber || '',
+        branch: bank.branch || '',
+        ifscCode: bank.ifscCode || ''
+      } : { 
+        name: '', 
+        openingBalance: '', 
+        accountHolder: '', 
+        accountNumber: '', 
+        branch: '', 
+        ifscCode: '' 
+      });
+    }
     setError('');
   }, [isOpen, bank]);
 
@@ -53,7 +76,7 @@ function BankModal({ isOpen, bank, onClose, onSave }) {
             <X className="w-5 h-5" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bank / Account Name *</label>
             <input
@@ -66,6 +89,59 @@ function BankModal({ isOpen, bank, onClose, onSave }) {
             />
             {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Account Holder Name <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={form.accountHolder}
+              onChange={e => setForm(f => ({ ...f, accountHolder: e.target.value }))}
+              placeholder="e.g. John Doe"
+              className="w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Account Number <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={form.accountNumber}
+              onChange={e => setForm(f => ({ ...f, accountNumber: e.target.value }))}
+              placeholder="e.g. 1234567890"
+              className="w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Branch <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={form.branch}
+              onChange={e => setForm(f => ({ ...f, branch: e.target.value }))}
+              placeholder="e.g. Main Branch, Downtown"
+              className="w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              IFSC / CIF ID <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={form.ifscCode}
+              onChange={e => setForm(f => ({ ...f, ifscCode: e.target.value }))}
+              placeholder="e.g. HDFC0001234"
+              className="w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Opening Balance <span className="text-gray-400 font-normal">(optional)</span>
@@ -81,6 +157,7 @@ function BankModal({ isOpen, bank, onClose, onSave }) {
             />
             <p className="text-xs text-gray-400 mt-1">Starting balance before any transactions</p>
           </div>
+
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose} className="flex-1 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors">Cancel</button>
             <button type="submit" disabled={saving} className="flex-1 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-xl transition-colors">
@@ -410,7 +487,17 @@ export default function Bank() {
   }, [entries, selectedBank, yearFilter]);
 
   async function handleSaveBank(data) {
-    if (editingBank) { await updateBank(editingBank.id, { name: data.name, openingBalance: +data.openingBalance || 0 }); addToast('Bank updated!'); }
+    if (editingBank) { 
+      await updateBank(editingBank.id, { 
+        name: data.name, 
+        openingBalance: +data.openingBalance || 0,
+        accountHolder: data.accountHolder || '',
+        accountNumber: data.accountNumber || '',
+        branch: data.branch || '',
+        ifscCode: data.ifscCode || ''
+      }); 
+      addToast('Bank updated!'); 
+    }
     else { await addBank(data); addToast('Bank added!'); }
   }
 

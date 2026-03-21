@@ -835,7 +835,17 @@ The animation is now complete and working across all your stat cards on Dashboar
 <------------------------------------ bank page -------------------------------------------->
 add new input box in adding and editing bank, name, branch, account number, CIFID/IFSC
 
+Account Holder Name - for the person who owns the account
+Account Number - the bank account number
+Branch - the bank branch name/location
+IFSC / CIF ID - for Indian banks (IFSC code) or Customer ID
+All fields are optional except the Bank/Account Name. The modal now:
 
+Has a scrollable form area (max-h-[70vh] overflow-y-auto) to accommodate all fields
+Saves all the new fields to Firestore
+Loads existing values when editing a bank
+Maintains the same styling and UX
+The new fields will be stored in the bank document and can be displayed or used for reference later if needed.
 
 
 <------------------------------------- interest page ------------------------------------------->

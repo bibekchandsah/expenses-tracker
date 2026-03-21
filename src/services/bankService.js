@@ -34,6 +34,10 @@ export async function addBank(uid, bank) {
   return addDoc(banksRef(uid), {
     name: bank.name,
     openingBalance: +bank.openingBalance || 0,
+    accountHolder: bank.accountHolder || '',
+    accountNumber: bank.accountNumber || '',
+    branch: bank.branch || '',
+    ifscCode: bank.ifscCode || '',
     createdAt: serverTimestamp(),
   });
 }
