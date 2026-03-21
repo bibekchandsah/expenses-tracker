@@ -1,4 +1,5 @@
 ﻿import { useState, useMemo, useEffect } from 'react';
+import CountUpValue from '../components/ui/CountUpValue';
 import { ArrowUp, ArrowDown, ChevronsUpDown, BarChart3, TrendingUp, TrendingDown, Users, Calendar, Tag, MessageCircle } from 'lucide-react';
 import { useLends } from '../context/LendContext';
 import { useLoans } from '../context/LoanContext';
@@ -210,23 +211,23 @@ export default function NetSummary() {
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1"><Users className="w-3.5 h-3.5" /> People</p>
-          <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{totals.people}</p>
+          <CountUpValue value={totals.people} className="text-lg font-bold text-gray-900 dark:text-white mt-1 block" />
         </div>
         <div className="bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-200 dark:border-blue-800 p-4">
           <p className="text-xs text-blue-700 dark:text-blue-400 font-medium">Total Lent</p>
-          <p className="text-lg font-bold text-blue-700 dark:text-blue-400 mt-1">{formatCurrency(totals.lent, currency)}</p>
+          <CountUpValue value={formatCurrency(totals.lent, currency)} className="text-lg font-bold text-blue-700 dark:text-blue-400 mt-1 block" />
         </div>
         <div className="bg-orange-50 dark:bg-orange-900/10 rounded-2xl border border-orange-200 dark:border-orange-800 p-4">
           <p className="text-xs text-orange-700 dark:text-orange-400 font-medium">Total Borrowed</p>
-          <p className="text-lg font-bold text-orange-700 dark:text-orange-400 mt-1">{formatCurrency(totals.borrowed, currency)}</p>
+          <CountUpValue value={formatCurrency(totals.borrowed, currency)} className="text-lg font-bold text-orange-700 dark:text-orange-400 mt-1 block" />
         </div>
         <div className="bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-200 dark:border-green-800 p-4">
           <p className="text-xs text-green-700 dark:text-green-400 font-medium flex items-center gap-1"><TrendingUp className="w-3.5 h-3.5" /> To Receive</p>
-          <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">{formatCurrency(totals.netPositive, currency)}</p>
+          <CountUpValue value={formatCurrency(totals.netPositive, currency)} className="text-lg font-bold text-green-700 dark:text-green-400 mt-1 block" />
         </div>
         <div className="bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-200 dark:border-red-800 p-4">
           <p className="text-xs text-red-700 dark:text-red-400 font-medium flex items-center gap-1"><TrendingDown className="w-3.5 h-3.5" /> To Give</p>
-          <p className="text-lg font-bold text-red-700 dark:text-red-400 mt-1">{formatCurrency(totals.netNegative, currency)}</p>
+          <CountUpValue value={formatCurrency(totals.netNegative, currency)} className="text-lg font-bold text-red-700 dark:text-red-400 mt-1 block" />
         </div>
       </div>
 

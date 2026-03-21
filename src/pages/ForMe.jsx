@@ -1,4 +1,5 @@
 ﻿import { useState, useMemo, useEffect } from 'react';
+import CountUpValue from '../components/ui/CountUpValue';
 import {
   Heart, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, ChevronDown,
@@ -432,19 +433,19 @@ export default function ForMe() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Entries</p>
-          <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{stats.count}</p>
+          <CountUpValue value={stats.count} className="text-lg font-bold text-gray-900 dark:text-white mt-1 block" />
         </div>
         <div className="bg-pink-50 dark:bg-pink-900/10 rounded-2xl border border-pink-200 dark:border-pink-800 p-4">
           <p className="text-xs text-pink-700 dark:text-pink-400 font-medium">Total Amount</p>
-          <p className="text-lg font-bold text-pink-600 dark:text-pink-400 mt-1">{formatCurrency(stats.total, currency)}</p>
+          <CountUpValue value={formatCurrency(stats.total, currency)} className="text-lg font-bold text-pink-600 dark:text-pink-400 mt-1 block" />
         </div>
         <div className="bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-200 dark:border-blue-800 p-4">
           <p className="text-xs text-blue-700 dark:text-blue-400 font-medium">People</p>
-          <p className="text-lg font-bold text-blue-700 dark:text-blue-400 mt-1">{stats.people}</p>
+          <CountUpValue value={stats.people} className="text-lg font-bold text-blue-700 dark:text-blue-400 mt-1 block" />
         </div>
         <div className="bg-orange-50 dark:bg-orange-900/10 rounded-2xl border border-orange-200 dark:border-orange-800 p-4">
           <p className="text-xs text-orange-700 dark:text-orange-400 font-medium">Highest</p>
-          <p className="text-lg font-bold text-orange-600 dark:text-orange-400 mt-1">{formatCurrency(stats.highest, currency)}</p>
+          <CountUpValue value={formatCurrency(stats.highest, currency)} className="text-lg font-bold text-orange-600 dark:text-orange-400 mt-1 block" />
         </div>
       </div>
 

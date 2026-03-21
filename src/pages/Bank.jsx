@@ -1,4 +1,5 @@
 ﻿import { useState, useMemo, useEffect } from 'react';
+import CountUpValue from '../components/ui/CountUpValue';
 import {
   Building2, Plus, Edit2, Trash2, X, ChevronDown,
   ArrowDownCircle, ArrowUpCircle, Wallet, Download, Upload,
@@ -574,27 +575,25 @@ export default function Bank() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Opening Balance</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(selectedBank.openingBalance || 0, currency)}</p>
+                <CountUpValue value={formatCurrency(selectedBank.openingBalance || 0, currency)} className="text-lg font-bold text-gray-900 dark:text-white mt-1 block" />
               </div>
               <div className="bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-200 dark:border-green-800 p-4">
                 <p className="text-xs text-green-700 dark:text-green-400 font-medium flex items-center gap-1">
                   <ArrowDownCircle className="w-3.5 h-3.5" /> Total Deposits
                 </p>
-                <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">{formatCurrency(stats.totalDeposit, currency)}</p>
+                <CountUpValue value={formatCurrency(stats.totalDeposit, currency)} className="text-lg font-bold text-green-700 dark:text-green-400 mt-1 block" />
               </div>
               <div className="bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-200 dark:border-red-800 p-4">
                 <p className="text-xs text-red-700 dark:text-red-400 font-medium flex items-center gap-1">
                   <ArrowUpCircle className="w-3.5 h-3.5" /> Total Withdrawals
                 </p>
-                <p className="text-lg font-bold text-red-700 dark:text-red-400 mt-1">{formatCurrency(stats.totalWithdraw, currency)}</p>
+                <CountUpValue value={formatCurrency(stats.totalWithdraw, currency)} className="text-lg font-bold text-red-700 dark:text-red-400 mt-1 block" />
               </div>
               <div className={`rounded-2xl border p-4 ${stats.currentBalance >= 0 ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800' : 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800'}`}>
                 <p className={`text-xs font-medium flex items-center gap-1 ${stats.currentBalance >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>
                   <Wallet className="w-3.5 h-3.5" /> Current Balance
                 </p>
-                <p className={`text-lg font-bold mt-1 ${stats.currentBalance >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>
-                  {formatCurrency(stats.currentBalance, currency)}
-                </p>
+                <CountUpValue value={formatCurrency(stats.currentBalance, currency)} className={`text-lg font-bold mt-1 block ${stats.currentBalance >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`} />
               </div>
             </div>
           )}

@@ -1,4 +1,5 @@
 ﻿import { useState, useMemo, useEffect } from 'react';
+import CountUpValue from '../components/ui/CountUpValue';
 import {
   Wallet, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, CheckCircle2, AlertCircle, ChevronDown,
@@ -456,19 +457,19 @@ export default function Loan() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Borrowed</p>
-          <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(stats.totalBorrowed, currency)}</p>
+          <CountUpValue value={formatCurrency(stats.totalBorrowed, currency)} className="text-lg font-bold text-gray-900 dark:text-white mt-1 block" />
         </div>
         <div className="bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-200 dark:border-green-800 p-4">
           <p className="text-xs text-green-700 dark:text-green-400 font-medium">Paid Back</p>
-          <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">{formatCurrency(stats.totalPaid, currency)}</p>
+          <CountUpValue value={formatCurrency(stats.totalPaid, currency)} className="text-lg font-bold text-green-700 dark:text-green-400 mt-1 block" />
         </div>
         <div className="bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-200 dark:border-red-800 p-4">
           <p className="text-xs text-red-700 dark:text-red-400 font-medium">To Pay</p>
-          <p className="text-lg font-bold text-red-700 dark:text-red-400 mt-1">{formatCurrency(stats.totalRemaining, currency)}</p>
+          <CountUpValue value={formatCurrency(stats.totalRemaining, currency)} className="text-lg font-bold text-red-700 dark:text-red-400 mt-1 block" />
         </div>
         <div className="bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-200 dark:border-blue-800 p-4">
           <p className="text-xs text-blue-700 dark:text-blue-400 font-medium">Lenders</p>
-          <p className="text-lg font-bold text-blue-700 dark:text-blue-400 mt-1">{stats.lendersCount}</p>
+          <CountUpValue value={stats.lendersCount} className="text-lg font-bold text-blue-700 dark:text-blue-400 mt-1 block" />
         </div>
       </div>
 

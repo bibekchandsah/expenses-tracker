@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import CountUpValue from '../components/ui/CountUpValue';
 import { Plus, Search, SlidersHorizontal, X, Download, Edit2, Trash2, Upload, Zap } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
@@ -331,19 +332,19 @@ export default function Income() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-200 dark:border-gray-700">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Total Income</p>
-          <p className="text-xl font-bold text-green-600 dark:text-green-400 mt-1">{formatCurrency(stats.total, currency)}</p>
+          <CountUpValue value={formatCurrency(stats.total, currency)} className="text-xl font-bold text-green-600 dark:text-green-400 mt-1 block" />
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-200 dark:border-gray-700">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">This Month</p>
-          <p className="text-xl font-bold text-green-600 dark:text-green-400 mt-1">{formatCurrency(stats.thisMonthAmt, currency)}</p>
+          <CountUpValue value={formatCurrency(stats.thisMonthAmt, currency)} className="text-xl font-bold text-green-600 dark:text-green-400 mt-1 block" />
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-200 dark:border-gray-700">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Avg / Month</p>
-          <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(stats.avgMonthly, currency)}</p>
+          <CountUpValue value={formatCurrency(stats.avgMonthly, currency)} className="text-xl font-bold text-gray-900 dark:text-white mt-1 block" />
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-200 dark:border-gray-700">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Entries</p>
-          <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">{stats.count}</p>
+          <CountUpValue value={stats.count} className="text-xl font-bold text-gray-900 dark:text-white mt-1 block" />
         </div>
       </div>
 

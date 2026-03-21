@@ -801,5 +801,77 @@ The divider is positioned between the main loan table and the lender summary pan
 
 
 
+<----------------------- counting effect on cards ------------------------------------->
+dashboard, income cards, bank cards, lend cards, loan cards, saving cards, for me cards, net summary cards
+
+useCountUp.js
+ — a useCountUp(target, duration) hook that animates from 0 to the target value using a cubic ease-out over 800ms via requestAnimationFrame
+CountUpValue.jsx
+ — a lightweight component that parses formatted strings (like Rs 1,234.00) into prefix/number/suffix, animates the number, then re-assembles the formatted output
+StatsCard updated to use useCountUp directly for the dashboard cards
+All inline stat cards across Income, Bank, Lend, Loan, Saving, ForMe, and NetSummary now use CountUpValue
+Every card will animate from 0 to its real value when the page loads or the year filter changes.
+
+Before: prevTarget.current = null → on first mount with data already loaded, target !== null so it animates... but the issue was actually that React's StrictMode or the router was keeping the old component instance alive between navigations, so prevTarget.current already held the real value and the target === prevTarget.current check blocked re-animation.
+
+After: prevTarget.current = undefined → on every fresh mount (new page), prevTarget resets to undefined, so to !== undefined always triggers the animation regardless of whether the data was already in context.
+
+Navigate between pages now and every stat card will animate from 0 each time you land on a page.
+
+I've changed the default duration from 800ms to 1500ms (1.5 seconds). This will make the counting animation slower and more noticeable. The animation now:
+
+Takes 1.5 seconds to count from 0 to the target value
+Uses a cubic ease-out for smooth deceleration at the end
+Works on page load, navigation, and filter changes
+If you want it even slower, you can adjust the duration parameter. For example:
+
+1500 = 1.5 seconds (current)
+2000 = 2 seconds (slower)
+1200 = 1.2 seconds (slightly faster)
+The animation is now complete and working across all your stat cards on Dashboard, Income, Bank, Lend, Loan, Saving, ForMe, and NetSummary pages! 
 
 
+
+<------------------------------------ bank page -------------------------------------------->
+add new input box in adding and editing bank, name, branch, account number, CIFID/IFSC
+
+
+
+
+<------------------------------------- interest page ------------------------------------------->
+Add interest page including all types
+
+simple interest
+---------------------
+principle
+annual rate %
+period unit (day, week, month, quaters, year)
+Duration:- years: Months: Days:
+result:- interest earned, principle amount, total value
+
+A = P (1+rt)
+where,
+P = Principal Amount
+R = Rate of interest
+t = Number of years
+A = Total accrued amount (Both principal and interest)
+
+
+compound interest
+----------------------------
+principle amount
+annual rate %
+period unit (day, week, month, quaters, year)
+compound frequency (daily, weekly, monthly, quaters, semi-annually, yearly)
+Duration:- years: Months: Days:
+result:- interest earned, principle amount, total value
+
+Compound Interest = P × (1 + r/n)^(nt) – P
+Where:
+P = Principal amount
+r = Annual interest rate (in decimal)
+n = Number of times interest is compounded per year
+t = Number of years
+
+
+date | name | principle amount | rate% (in decimal) | duration | total value 
