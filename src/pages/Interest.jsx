@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Percent, Plus, Edit2, Trash2, X, Info, Zap, Calculator, TrendingUp } from 'lucide-react';
+import { Percent, Plus, Edit2, Trash2, X, Info, Zap, Calculator, TrendingUp, User, ChevronDown, PanelRightClose, PanelRightOpen, Search } from 'lucide-react';
 import { useInterest } from '../context/InterestContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -25,6 +25,7 @@ const COMPOUND_FREQUENCIES = [
 const EMPTY_FORM = {
   name: '',
   date: new Date().toISOString().split('T')[0],
+  transactionType: 'given', // 'given' or 'taken'
   principal: '',
   rate: '',
   years: '',
@@ -57,6 +58,7 @@ function InterestModal({ isOpen, record, onClose, onSave }) {
       setForm({
         name: record.name,
         date: record.date,
+        transactionType: record.transactionType || 'given',
         principal: String(record.principal),
         rate: String(record.rate),
         years: String(years),
@@ -128,6 +130,7 @@ function InterestModal({ isOpen, record, onClose, onSave }) {
       await onSave({
         name: form.name,
         date: form.date,
+        transactionType: form.transactionType,
         type: calcType,
         principal: result.principal,
         rate: parseFloat(form.rate),
@@ -198,6 +201,45 @@ function InterestModal({ isOpen, record, onClose, onSave }) {
               className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.name ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
             />
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+          </div>
+
+          {/* Transaction Type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Transaction Type <span className="text-red-400">*</span>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, transactionType: 'given' }))}
+                className={`py-3 px-4 rounded-xl text-sm font-medium transition-all border-2 ${
+                  form.transactionType === 'given'
+                    ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-400'
+                    : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-1">
+                  <TrendingUp className="w-5 h-5" />
+                  <span>Given / Invested</span>
+                  <span className="text-xs opacity-75">Money lent out</span>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, transactionType: 'taken' }))}
+                className={`py-3 px-4 rounded-xl text-sm font-medium transition-all border-2 ${
+                  form.transactionType === 'taken'
+                    ? 'bg-red-50 dark:bg-red-900/20 border-red-500 text-red-700 dark:text-red-400'
+                    : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-1">
+                  <TrendingUp className="w-5 h-5 rotate-180" />
+                  <span>Taken / Borrowed</span>
+                  <span className="text-xs opacity-75">Money borrowed</span>
+                </div>
+              </button>
+            </div>
           </div>
 
           {/* Date */}
@@ -455,8 +497,18 @@ function InfoModal({ isOpen, record, onClose }) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Date</p>
-              <p className="text-sm text-gray-900 dark:text-white">{dateLabel(record.date)}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Transaction Type</p>
+              {record.transactionType === 'given' ? (
+                <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                  <TrendingUp className="w-4 h-4" />
+                  <span className="text-sm font-semibold">Given / Invested</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400">
+                  <TrendingUp className="w-4 h-4 rotate-180" />
+                  <span className="text-sm font-semibold">Taken / Borrowed</span>
+                </div>
+              )}
             </div>
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Type</p>
@@ -471,6 +523,10 @@ function InfoModal({ isOpen, record, onClose }) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Date</p>
+              <p className="text-sm text-gray-900 dark:text-white">{dateLabel(record.date)}</p>
+            </div>
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Principal</p>
               <p className="text-base font-bold text-gray-900 dark:text-white">{formatCurrency(record.principal, currency)}</p>
@@ -573,28 +629,97 @@ export default function Interest() {
   const [editingRecord, setEditingRecord] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [personFilter, setPersonFilter] = useState(null);
+  const [showSidePanel, setShowSidePanel] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [chartOpen, setChartOpen] = useState(true);
+  const [includeInterest, setIncludeInterest] = useState(true);
+  const [search, setSearch] = useState('');
+  const [sidePanelWidth, setSidePanelWidth] = useState(() => {
+    try { return parseInt(localStorage.getItem('interestSidePanelWidth')) || 288; } catch { return 288; }
+  });
+  const [isResizing, setIsResizing] = useState(false);
 
   useEffect(() => {
     setYearFilter(isBS ? bsActiveYear : activeYear);
   }, [activeYear, bsActiveYear, calendar]);
 
   const filteredRecords = useMemo(() => {
-    const filtered = records.filter(r => r.date?.startsWith(String(yearFilter)));
+    const q = search.trim().toLowerCase();
+    const yearRecords = records.filter(r => r.date?.startsWith(String(yearFilter)));
+    
+    let data = yearRecords;
+    
+    // Apply search filter
+    if (q) {
+      data = data.filter(r => {
+        const formattedYears = r.years ? r.years.toFixed(2) : '';
+        return (
+          r.name.toLowerCase().includes(q) ||
+          r.date.includes(q) ||
+          (r.info && r.info.toLowerCase().includes(q)) ||
+          String(r.principal).includes(q) ||
+          String(r.rate).includes(q) ||
+          String(r.total).includes(q) ||
+          String(r.interest).includes(q) ||
+          String(r.years).includes(q) ||
+          formattedYears.includes(q) ||
+          r.type.toLowerCase().includes(q) ||
+          (r.transactionType === 'given' ? 'given' : 'taken').includes(q)
+        );
+      });
+    }
+    
+    // Apply person filter
+    if (personFilter) {
+      data = data.filter(r => (r.name || '').trim().toLowerCase() === personFilter);
+    }
+    
     console.log('Interest filtering:', { 
       totalRecords: records.length, 
       yearFilter, 
-      filteredCount: filtered.length,
+      filteredCount: data.length,
       sampleDates: records.slice(0, 3).map(r => r.date)
     });
-    return filtered;
-  }, [records, yearFilter]);
+    
+    return data;
+  }, [records, yearFilter, personFilter, search]);
+
+  // Per-person summary
+  const personSummary = useMemo(() => {
+    const yearRecords = records.filter(r => r.date?.startsWith(String(yearFilter)));
+    const map = {};
+    yearRecords.forEach(r => {
+      const key = (r.name || '').trim().toLowerCase();
+      if (!map[key]) map[key] = { key, name: r.name, totalGiven: 0, totalTaken: 0, principalGiven: 0, principalTaken: 0, interestGiven: 0, interestTaken: 0 };
+      if (r.transactionType === 'given') {
+        map[key].totalGiven += +r.total || 0;
+        map[key].principalGiven += +r.principal || 0;
+        map[key].interestGiven += +r.interest || 0;
+      } else {
+        map[key].totalTaken += +r.total || 0;
+        map[key].principalTaken += +r.principal || 0;
+        map[key].interestTaken += +r.interest || 0;
+      }
+    });
+    return Object.values(map)
+      .map(p => ({ 
+        ...p, 
+        netAmount: (includeInterest ? p.totalGiven : p.principalGiven) - (includeInterest ? p.totalTaken : p.principalTaken)
+      }))
+      .sort((a, b) => Math.abs(b.netAmount) - Math.abs(a.netAmount));
+  }, [records, yearFilter, includeInterest]);
 
   const stats = useMemo(() => {
     const total = filteredRecords.reduce((s, r) => s + (r.total || 0), 0);
     const totalInterest = filteredRecords.reduce((s, r) => s + (r.interest || 0), 0);
     const totalPrincipal = filteredRecords.reduce((s, r) => s + (r.principal || 0), 0);
-    return { total, totalInterest, totalPrincipal, count: filteredRecords.length };
-  }, [filteredRecords]);
+    const totalGiven = filteredRecords.filter(r => r.transactionType === 'given').reduce((s, r) => s + (includeInterest ? (r.total || 0) : (r.principal || 0)), 0);
+    const totalTaken = filteredRecords.filter(r => r.transactionType === 'taken').reduce((s, r) => s + (includeInterest ? (r.total || 0) : (r.principal || 0)), 0);
+    const principalGiven = filteredRecords.filter(r => r.transactionType === 'given').reduce((s, r) => s + (r.principal || 0), 0);
+    const principalTaken = filteredRecords.filter(r => r.transactionType === 'taken').reduce((s, r) => s + (r.principal || 0), 0);
+    return { total, totalInterest, totalPrincipal, totalGiven, totalTaken, principalGiven, principalTaken, count: filteredRecords.length };
+  }, [filteredRecords, includeInterest]);
 
   async function handleSave(data) {
     if (editingRecord) {
@@ -610,6 +735,35 @@ export default function Interest() {
     await deleteRecord(deleteTarget.id);
     setDeleteTarget(null);
     addToast('Record deleted', 'success');
+  }
+
+  // Resize handler
+  function handleResizeStart(e) {
+    e.preventDefault();
+    setIsResizing(true);
+    const startX = e.clientX || e.touches?.[0]?.clientX;
+    const startWidth = sidePanelWidth;
+
+    function handleMouseMove(ev) {
+      const currentX = ev.clientX || ev.touches?.[0]?.clientX;
+      const diff = startX - currentX;
+      const newWidth = Math.min(Math.max(240, startWidth + diff), 500);
+      setSidePanelWidth(newWidth);
+    }
+
+    function handleMouseUp() {
+      setIsResizing(false);
+      try { localStorage.setItem('interestSidePanelWidth', String(sidePanelWidth)); } catch {}
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleMouseMove);
+      document.removeEventListener('touchend', handleMouseUp);
+    }
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('touchmove', handleMouseMove);
+    document.addEventListener('touchend', handleMouseUp);
   }
 
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
@@ -675,19 +829,60 @@ export default function Interest() {
           </button>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          {filteredRecords.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-14 text-center px-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">No records found for year {yearFilter}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try selecting a different year or add a new entry</p>
+        <div className="flex flex-col lg:flex-row gap-4 lg:items-start lg:gap-0">
+          {/* ── Left: Main Table ── */}
+          <div className="flex-1 min-w-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {/* Search + active filter */}
+            <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => { setSearch(e.target.value); setPersonFilter(null); }}
+                  placeholder="Search by type, date (YYYY-MM-DD), name, amount, rate, duration..."
+                  className="w-full pl-9 pr-9 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                />
+                {search && (
+                  <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => setShowSidePanel(o => !o)}
+                title={showSidePanel ? 'Hide panel' : 'Show panel'}
+                className="flex-shrink-0 p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                {showSidePanel
+                  ? <PanelRightClose className="w-4 h-4" />
+                  : <PanelRightOpen  className="w-4 h-4" />}
+              </button>
+              {personFilter && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-lg text-sm border border-primary-200 dark:border-primary-800 flex-shrink-0">
+                  <User className="w-3.5 h-3.5" />
+                  <span className="max-w-[100px] truncate">{capFirst(personFilter)}</span>
+                  <button onClick={() => setPersonFilter(null)} className="hover:text-primary-900"><X className="w-3.5 h-3.5" /></button>
+                </div>
+              )}
             </div>
-          ) : (
-            <>
+
+            {filteredRecords.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-14 text-center px-4">
+                <Search className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">No records found</p>
+                {(search || personFilter) && (
+                  <button onClick={() => { setSearch(''); setPersonFilter(null); }} className="mt-2 text-xs text-primary-600 hover:underline">Clear filter</button>
+                )}
+              </div>
+            ) : (
+              <>
           {/* Desktop Table */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
                 <tr className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-3 text-left">Type</th>
                   <th className="px-5 py-3 text-left">Date</th>
                   <th className="px-5 py-3 text-left">Name</th>
                   <th className="px-5 py-3 text-right">Principal</th>
@@ -701,6 +896,19 @@ export default function Interest() {
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
                 {filteredRecords.map(record => (
                   <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
+                    <td className="px-5 py-3">
+                      {record.transactionType === 'given' ? (
+                        <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                          <TrendingUp className="w-4 h-4" />
+                          <span className="text-xs font-medium">Given</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400">
+                          <TrendingUp className="w-4 h-4 rotate-180" />
+                          <span className="text-xs font-medium">Taken</span>
+                        </div>
+                      )}
+                    </td>
                     <td className="px-5 py-3 text-gray-600 dark:text-gray-400">{dateLabel(record.date)}</td>
                     <td className="px-5 py-3">
                       <div>
@@ -771,7 +979,20 @@ export default function Interest() {
             {filteredRecords.map(record => (
               <div key={record.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      {record.transactionType === 'given' ? (
+                        <div className="flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full">
+                          <TrendingUp className="w-3 h-3" />
+                          <span className="text-xs font-medium">Given</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full">
+                          <TrendingUp className="w-3 h-3 rotate-180" />
+                          <span className="text-xs font-medium">Taken</span>
+                        </div>
+                      )}
+                    </div>
                     <p className="font-semibold text-gray-900 dark:text-white">{capFirst(record.name)}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{dateLabel(record.date)}</p>
                   </div>
@@ -842,6 +1063,161 @@ export default function Interest() {
             ))}
           </div>
             </>
+          )}
+          </div>
+
+          {/* ── Resizable Divider ── */}
+          {showSidePanel && (
+            <div
+              onMouseDown={handleResizeStart}
+              onTouchStart={handleResizeStart}
+              className={`hidden lg:block flex-shrink-0 cursor-col-resize transition-all relative self-stretch ${isResizing ? 'bg-primary-500/10' : 'hover:bg-primary-500/5'}`}
+              style={{ width: '8px', padding: '6px', touchAction: 'none' }}
+            >
+              <div className={`absolute left-1/2 -translate-x-1/2 w-0.5 transition-colors ${isResizing ? 'bg-primary-500' : 'bg-gray-300 dark:bg-gray-600 hover:bg-primary-400 dark:hover:bg-primary-500'}`} 
+                   style={{ top: '10%', bottom: '10%' }} />
+              <div className="absolute inset-0 -left-2 -right-2" />
+            </div>
+          )}
+
+          {/* ── Right: Person Summary Panel + Chart ── */}
+          {showSidePanel && (
+          <div className="flex-shrink-0 flex flex-col gap-4" style={{ width: window.innerWidth >= 1024 ? `${sidePanelWidth}px` : '100%' }}>
+            {/* Person Summary */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <button
+                className="w-full flex items-center justify-between px-5 py-3.5 border-b border-gray-200 dark:border-gray-700"
+                onClick={() => setPanelOpen(o => !o)}
+              >
+                <span className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <User className="w-4 h-4 text-primary-600" /> Person Summary
+                </span>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${panelOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {panelOpen && (
+                <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                  {/* Include Interest Checkbox */}
+                  <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-700/40">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={includeInterest}
+                        onChange={(e) => setIncludeInterest(e.target.checked)}
+                        className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                      />
+                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Include Interest</span>
+                    </label>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-1 px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-700/40">
+                    <div>Name</div>
+                    <div className="text-right">Given</div>
+                    <div className="text-right">Taken</div>
+                  </div>
+                  {personSummary.map(person => {
+                    const isActive = personFilter === person.key;
+                    const givenAmount = includeInterest ? person.totalGiven : person.principalGiven;
+                    const takenAmount = includeInterest ? person.totalTaken : person.principalTaken;
+                    return (
+                      <button
+                        key={person.key}
+                        onClick={() => { setPersonFilter(p => p === person.key ? null : person.key); }}
+                        className={`w-full grid grid-cols-3 gap-1 px-4 py-3 text-left transition-colors ${
+                          isActive
+                            ? 'bg-primary-50 dark:bg-primary-900/30'
+                            : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className={`text-sm font-medium truncate ${isActive ? 'text-primary-700 dark:text-primary-400' : 'text-gray-800 dark:text-gray-200'}`}>
+                            {capFirst(person.name)}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-semibold text-green-600 dark:text-green-400">{formatCurrency(givenAmount, currency)}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-semibold text-red-600 dark:text-red-400">{formatCurrency(takenAmount, currency)}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  <div className="grid grid-cols-3 gap-1 px-4 py-3 bg-gray-50 dark:bg-gray-700/40 text-xs font-black text-gray-700 dark:text-gray-200 uppercase">
+                    <div>Total</div>
+                    <div className="text-right text-green-600 dark:text-green-400">{formatCurrency(stats.totalGiven, currency)}</div>
+                    <div className="text-right text-red-600 dark:text-red-400">{formatCurrency(stats.totalTaken, currency)}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Given vs Taken Chart */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <button
+                className="w-full flex items-center justify-between px-5 py-3.5 border-b border-gray-200 dark:border-gray-700"
+                onClick={() => setChartOpen(o => !o)}
+              >
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">Given vs Taken</span>
+                <div className="flex items-center gap-3">
+                  {chartOpen && (
+                    <>
+                      <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                        <span className="inline-block w-3 h-2.5 rounded-sm bg-green-500" /> Given
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                        <span className="inline-block w-3 h-2.5 rounded-sm bg-red-500" /> Taken
+                      </span>
+                    </>
+                  )}
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${chartOpen ? 'rotate-180' : ''}`} />
+                </div>
+              </button>
+              {chartOpen && (
+                <div className="px-4 py-3 space-y-3">
+                  {personSummary.map(person => {
+                    const isActive = personFilter === person.key;
+                    const givenAmount = includeInterest ? person.totalGiven : person.principalGiven;
+                    const takenAmount = includeInterest ? person.totalTaken : person.principalTaken;
+                    return (
+                      <button
+                        key={person.key}
+                        onClick={() => { setPersonFilter(p => p === person.key ? null : person.key); }}
+                        className={`w-full text-left group rounded-lg px-1 py-0.5 transition-colors ${isActive ? 'ring-1 ring-primary-400' : ''}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-xs font-semibold truncate max-w-[55%] ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                            {capFirst(person.name)}
+                          </span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+                            <span className="text-green-600 dark:text-green-400">{formatCurrency(givenAmount, currency)}</span>
+                            {' / '}
+                            <span className="text-red-600 dark:text-red-400">{formatCurrency(takenAmount, currency)}</span>
+                          </span>
+                        </div>
+                        {/* Merged bar track - Taken as base, Given overlays */}
+                        <div className="w-full h-4 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden relative">
+                          {/* Red bar (Taken) - always full width as base */}
+                          <div
+                            className="absolute left-0 top-0 h-full w-full rounded-full"
+                            style={{ backgroundColor: '#ef4444' }}
+                          />
+                          {/* Green bar (Given) - overlays on top, proportional to taken */}
+                          <div
+                            className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
+                            style={{ 
+                              width: `${takenAmount > 0 ? Math.min((givenAmount / takenAmount) * 100, 100) : (givenAmount > 0 ? 100 : 0)}%`, 
+                              backgroundColor: '#22c55e' 
+                            }}
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
           )}
         </div>
       )}

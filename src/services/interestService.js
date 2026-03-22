@@ -42,6 +42,7 @@ export async function addInterestRecord(uid, record) {
   return addDoc(interestRef(uid), {
     name: record.name,
     date: Timestamp.fromDate(new Date(record.date)),
+    transactionType: record.transactionType || 'given',
     type: record.type,
     principal: +record.principal || 0,
     rate: +record.rate || 0,
@@ -59,6 +60,7 @@ export async function updateInterestRecord(uid, recordId, record) {
   return updateDoc(docRef, {
     name: record.name,
     date: Timestamp.fromDate(new Date(record.date)),
+    transactionType: record.transactionType || 'given',
     type: record.type,
     principal: +record.principal || 0,
     rate: +record.rate || 0,

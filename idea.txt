@@ -961,3 +961,87 @@ The "Till Today" calculation automatically:
 
 Now when you click the Info icon on any record, you'll see both the original calculation and the current value based on today's date!
 
+
+Modal Form: Added a transaction type selector with two options:
+    "Given / Invested" (green) - for money lent out or invested
+    "Taken / Borrowed" (red) - for money borrowed
+    Visual buttons with icons (up arrow for given, down arrow for taken)
+Table Display: Added a new first column "Type" showing:
+    Green up arrow + "Given" for money given/invested
+    Red down arrow + "Taken" for money borrowed
+Mobile Cards: Shows the transaction type as a badge at the top of each card
+Info Modal: Displays the transaction type prominently with the same color coding
+Database: Updated the service to save and retrieve the transactionType field
+The feature helps users clearly distinguish between:
+    Money they've given to others (investments, loans given)
+    Money they've taken from others (loans borrowed)
+This makes it much easier to track both sides of interest-bearing transactions in one place!
+
+Person Summary Panel (collapsible):
+    Shows each person with their total Given and Taken amounts
+    Click on a person to filter the main table
+    Active filter is highlighted
+    Shows totals at the bottom
+Given vs Taken Chart (collapsible):
+    Visual bar chart showing Given (green) vs Taken (red) for each person
+    Two separate bars per person for easy comparison
+    Click on any person to filter the table
+    Shows amounts in the legend
+Layout Features:
+    Resizable sidebar (drag the divider to adjust width)
+    Toggle button to show/hide the sidebar
+    Active person filter shown as a badge in the search area
+    Responsive design (sidebar stacks on mobile)
+Stats Updated:
+    Added totalGiven and totalTaken to the stats
+    Person summary calculates totals per person for both transaction types
+
+
+Single Bar: One bar per person instead of two separate bars
+Green Background: The full bar is green (representing Given amount)
+Red Overlay: The red portion overlays on top (representing Taken amount)
+Visual Interpretation:
+    If the bar is fully green → Only given money, nothing taken
+    If the bar is fully red → Only taken money, nothing given
+    If the bar is mixed → Both given and taken, with proportions visible
+The amounts are still shown in the label above each bar (Given / Taken), and the visual representation makes it easy to see at a glance who you've primarily given money to vs borrowed from.
+
+Red bar (Taken) is the full width base - representing money borrowed
+Green bar (Given) overlays on top - representing money lent/invested
+Visual interpretation:
+    Fully red bar → Only taken money, nothing given
+    Fully green bar → Only given money, nothing taken
+    Mixed bar → Green shows how much of the taken amount has been "covered" by giving
+
+
+Search Features:
+
+Search Input Field:
+    Located in the header bar above the table
+    Search icon on the left
+    Clear button (X) appears when typing
+    Placeholder text: "Search name, date, amount, rate, type..."
+Searchable Fields:
+    Name (person/description)
+    Date (YYYY-MM-DD format)
+    Principal amount
+    Rate percentage
+    Total value
+    Interest amount
+    Type (simple/compound)
+    Transaction type (given/taken)
+    Additional info/notes
+    Searching "1.92" will find records with 1.92 years duration
+    Searching "2" will find records with 2 years or any duration containing "2"
+    Searching "0.5" will find records with 0.5 years (6 months) duration
+Search Behavior:
+    Real-time filtering as you type
+    Case-insensitive search
+    Clears person filter when you start searching
+    Shows "No records found" with clear filter button when no matches
+UI Integration:
+    Search bar is responsive and takes available width
+    Works alongside the person filter badge
+    Panel toggle button remains accessible
+    Clear button to reset search quickly
+Now users can easily find specific interest calculations by searching for any relevant information like a person's name, specific amounts, dates, or even the type of interest calculation!
