@@ -1,14 +1,16 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Percent, Plus, Edit2, Trash2, X, Info, Zap, Calculator, TrendingUp, User, ChevronDown, PanelRightClose, PanelRightOpen, Search } from 'lucide-react';
+import { Percent, Plus, Edit2, Trash2, X, Info, Zap, Calculator, TrendingUp, User, ChevronDown, PanelRightClose, PanelRightOpen, Search, Upload, Download } from 'lucide-react';
 import { useInterest } from '../context/InterestContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import CountUpValue from '../components/ui/CountUpValue';
 import QuickAddModal from '../components/QuickAddModal';
+import CSVImportModal from '../components/CSVImportModal';
 import { formatCurrency, capFirst } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
+import { safeADToBS, getBSYearRange } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
@@ -21,6 +23,22 @@ const COMPOUND_FREQUENCIES = [
   { value: 52, label: 'Weekly' },
   { value: 365, label: 'Daily' },
 ];
+
+const IMPORT_FIELDS = [
+  { key: 'name',            label: 'Name / Description',      required: true,  type: 'text'   },
+  { key: 'date',            label: 'Date',                    required: true,  type: 'date'   },
+  { key: 'transactionType', label: 'Transaction Type',       required: false, type: 'text',  hint: 'given or taken (default: given)' },
+  { key: 'type',            label: 'Interest Type',          required: false, type: 'text',  hint: 'simple or compound (default: simple)' },
+  { key: 'principal',       label: 'Principal Amount',       required: true,  type: 'number' },
+  { key: 'rate',            label: 'Annual Rate (%)',        required: true,  type: 'number' },
+  { key: 'years',           label: 'Duration (Years)',       required: true,  type: 'number' },
+  { key: 'compoundFrequency', label: 'Compound Frequency',  required: false, type: 'number', hint: '1=Annually, 12=Monthly, etc. (for compound only)' },
+  { key: 'info',            label: 'Additional Info',        required: false, type: 'text'   },
+];
+
+function interestKey(r) {
+  return `${String(r.name || '').toLowerCase()}|${r.date}|${r.principal}|${r.rate}`;
+}
 
 const EMPTY_FORM = {
   name: '',
@@ -687,6 +705,7 @@ export default function Interest() {
   const [modalOpen, setModalOpen] = useState(false);
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState({ open: false, row: null });
+  const [importOpen, setImportOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -705,9 +724,13 @@ export default function Interest() {
     setYearFilter(isBS ? bsActiveYear : activeYear);
   }, [activeYear, bsActiveYear, calendar]);
 
+  const bsYearRange = useMemo(() => isBS ? getBSYearRange(yearFilter) : null, [isBS, yearFilter]);
+
   const filteredRecords = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const yearRecords = records.filter(r => r.date?.startsWith(String(yearFilter)));
+    const yearRecords = isBS
+      ? records.filter(r => r.date && bsYearRange && r.date >= bsYearRange.start && r.date <= bsYearRange.end)
+      : records.filter(r => r.date?.startsWith(String(yearFilter)));
     
     let data = yearRecords;
     
@@ -718,6 +741,7 @@ export default function Interest() {
         return (
           r.name.toLowerCase().includes(q) ||
           r.date.includes(q) ||
+          safeADToBS(r.date).includes(q) ||
           (r.info && r.info.toLowerCase().includes(q)) ||
           String(r.principal).includes(q) ||
           String(r.rate).includes(q) ||
@@ -736,19 +760,14 @@ export default function Interest() {
       data = data.filter(r => (r.name || '').trim().toLowerCase() === personFilter);
     }
     
-    console.log('Interest filtering:', { 
-      totalRecords: records.length, 
-      yearFilter, 
-      filteredCount: data.length,
-      sampleDates: records.slice(0, 3).map(r => r.date)
-    });
-    
     return data;
-  }, [records, yearFilter, personFilter, search]);
+  }, [records, yearFilter, personFilter, search, isBS, bsYearRange]);
 
   // Per-person summary
   const personSummary = useMemo(() => {
-    const yearRecords = records.filter(r => r.date?.startsWith(String(yearFilter)));
+    const yearRecords = isBS
+      ? records.filter(r => r.date && bsYearRange && r.date >= bsYearRange.start && r.date <= bsYearRange.end)
+      : records.filter(r => r.date?.startsWith(String(yearFilter)));
     const map = {};
     yearRecords.forEach(r => {
       const key = (r.name || '').trim().toLowerCase();
@@ -769,7 +788,7 @@ export default function Interest() {
         netAmount: (includeInterest ? p.totalGiven : p.principalGiven) - (includeInterest ? p.totalTaken : p.principalTaken)
       }))
       .sort((a, b) => Math.abs(b.netAmount) - Math.abs(a.netAmount));
-  }, [records, yearFilter, includeInterest]);
+  }, [records, yearFilter, includeInterest, isBS, bsYearRange]);
 
   const stats = useMemo(() => {
     const total = filteredRecords.reduce((s, r) => s + (r.total || 0), 0);
@@ -790,6 +809,67 @@ export default function Interest() {
       await addRecord(data);
       addToast('Calculation saved!', 'success');
     }
+  }
+
+  async function handleCSVImport(records) {
+    for (const rec of records) {
+      const P = +rec.principal;
+      const r = +rec.rate / 100;
+      const t = +rec.years;
+      const type = (rec.type || 'simple').toLowerCase();
+      const transactionType = (rec.transactionType || 'given').toLowerCase();
+      
+      let A, interest;
+      if (type === 'simple') {
+        A = P * (1 + r * t);
+        interest = A - P;
+      } else {
+        const n = rec.compoundFrequency ? +rec.compoundFrequency : 12;
+        A = P * Math.pow(1 + r / n, n * t);
+        interest = A - P;
+      }
+      
+      await addRecord({
+        name: rec.name,
+        date: rec.date,
+        transactionType: transactionType === 'taken' ? 'taken' : 'given',
+        type: type === 'compound' ? 'compound' : 'simple',
+        principal: P,
+        rate: +rec.rate,
+        years: t,
+        compoundFrequency: type === 'compound' ? (rec.compoundFrequency ? +rec.compoundFrequency : 12) : null,
+        interest: interest,
+        total: A,
+        info: rec.info || '',
+        isSettled: false,
+      });
+    }
+    addToast(`Imported ${records.length} interest record${records.length !== 1 ? 's' : ''}!`, 'success');
+  }
+
+  function handleExportCSV() {
+    if (!filteredRecords.length) { addToast('No data to export', 'info'); return; }
+    const headers = ['Name', 'Date', 'Transaction Type', 'Interest Type', 'Principal', 'Rate (%)', 'Duration (Years)', 'Compound Frequency', 'Interest', 'Total', 'Info', 'Settled'];
+    const rows = filteredRecords.map(r => [
+      r.name,
+      r.date,
+      r.transactionType || 'given',
+      r.type,
+      r.principal,
+      r.rate,
+      r.years,
+      r.compoundFrequency || '',
+      r.interest,
+      r.total,
+      r.info || '',
+      r.isSettled ? 'Yes' : 'No',
+    ]);
+    const csv = [headers, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'interest.csv'; a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function handleDelete() {
@@ -841,8 +921,20 @@ export default function Interest() {
             Calculate simple and compound interest with history tracking
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <YearSelector year={yearFilter} calendar={calendar} onChange={yr => setYearFilter(yr)} />
+          <button
+            onClick={() => setImportOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Upload className="w-4 h-4" /><span className="hidden sm:inline"> Import</span>
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Download className="w-4 h-4" /><span className="hidden sm:inline"> Export</span>
+          </button>
           <button
             onClick={() => { setEditingRecord(null); setModalOpen(true); }}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors"
@@ -1373,6 +1465,17 @@ export default function Interest() {
         onClose={() => setQuickAddOpen({ open: false, row: null })}
         sourcePage="interest"
         sourceRow={quickAddOpen.row}
+      />
+      <CSVImportModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        entityName="Interest"
+        fields={IMPORT_FIELDS}
+        existingRecords={records}
+        duplicateKeyFn={interestKey}
+        onImport={handleCSVImport}
+        accentColor="indigo"
+        calendar={calendar}
       />
     </div>
   );

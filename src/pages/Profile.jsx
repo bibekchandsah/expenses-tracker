@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Mail, Globe, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet, Camera, Pencil, X, TrendingUp, Landmark, ShoppingBag, PiggyBank, Heart, ArrowUpRight, ArrowDownLeft, DollarSign, Fingerprint } from 'lucide-react';
+import { Mail, Globe, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet, Camera, Pencil, X, TrendingUp, Landmark, ShoppingBag, PiggyBank, Heart, ArrowUpRight, ArrowDownLeft, DollarSign, Fingerprint, Percent } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useActiveYear } from '../context/ActiveYearContext';
@@ -12,6 +12,7 @@ import { useLends } from '../context/LendContext';
 import { useLoans } from '../context/LoanContext';
 import { useSavings } from '../context/SavingContext';
 import { useForMe } from '../context/ForMeContext';
+import { useInterest } from '../context/InterestContext';
 import { useBanks } from '../context/BankContext';
 import { getBankEntriesOnce, getAllBankEntriesOnce, deleteBankEntry } from '../services/bankService';
 import { useCategories } from '../context/CategoryContext';
@@ -80,6 +81,7 @@ const PAGE_DELETE_CONFIG = [
   { key: 'expenses', label: 'Expenses',      Icon: ShoppingBag,   color: 'orange'  },
   { key: 'income',   label: 'Income',         Icon: DollarSign,    color: 'green'   },
   { key: 'bank',     label: 'Bank',           Icon: Landmark,      color: 'blue'    },
+  { key: 'interest', label: 'Interest',       Icon: Percent,       color: 'indigo'  },
   { key: 'lend',     label: 'Lend',           Icon: ArrowUpRight,  color: 'violet'  },
   { key: 'loan',     label: 'Loan',           Icon: ArrowDownLeft, color: 'red'     },
   { key: 'saving',   label: 'Saving',         Icon: PiggyBank,     color: 'emerald' },
@@ -90,6 +92,7 @@ const PAGE_DELETE_COLORS = {
   orange:  { btn: 'text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/40',  conf: 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800', title: 'text-orange-700 dark:text-orange-400', body: 'text-orange-600/80 dark:text-orange-500' },
   green:   { btn: 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40',    conf: 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800',   title: 'text-green-700 dark:text-green-400',  body: 'text-green-600/80 dark:text-green-500'  },
   blue:    { btn: 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40',       conf: 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800',     title: 'text-blue-700 dark:text-blue-400',    body: 'text-blue-600/80 dark:text-blue-500'    },
+  indigo:  { btn: 'text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40', conf: 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800', title: 'text-indigo-700 dark:text-indigo-400', body: 'text-indigo-600/80 dark:text-indigo-500' },
   violet:  { btn: 'text-violet-700 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/40', conf: 'bg-violet-50 dark:bg-violet-900/10 border-violet-200 dark:border-violet-800', title: 'text-violet-700 dark:text-violet-400', body: 'text-violet-600/80 dark:text-violet-500' },
   red:     { btn: 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40',          conf: 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800',         title: 'text-red-700 dark:text-red-400',      body: 'text-red-600/80 dark:text-red-500'      },
   emerald: { btn: 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40', conf: 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800', title: 'text-emerald-700 dark:text-emerald-400', body: 'text-emerald-600/80 dark:text-emerald-500' },
@@ -107,6 +110,7 @@ export default function Profile() {
   const { loans, deleteLoan } = useLoans();
   const { savings, sources, deleteSaving, deleteSource } = useSavings();
   const { entries: forMeEntries, deleteEntry } = useForMe();
+  const { records: interestRecords, deleteRecord: deleteInterest } = useInterest();
   const { banks, selectedBankId, setSelectedBankId, selectedBank, entries: bankEntries, entriesLoading: bankEntriesLoading } = useBanks();
   const { getCategoryById } = useCategories();
   const { addToast } = useToast();
@@ -299,6 +303,7 @@ export default function Profile() {
       const yearLoans    = loans.filter(l => l.date?.startsWith(yr));
       const yearSavings  = savings.filter(s => s.date?.startsWith(yr));
       const yearSources  = sources.filter(s => s.date?.startsWith(yr));
+      const yearInterest = interestRecords.filter(r => r.date?.startsWith(yr));
       const yearForMe    = forMeEntries
         .filter(e => toDateStr(e.date).startsWith(yr))
         .map(e => ({ ...e, date: toDateStr(e.date) }));
@@ -315,6 +320,7 @@ export default function Profile() {
           loans:    yearLoans.map(l => ({ ...l, date: fmtDate(l.date) })),
           savings:  yearSavings.map(s => ({ ...s, date: fmtDate(s.date) })),
           savingSources: yearSources.map(s => ({ ...s, date: fmtDate(s.date) })),
+          interest: yearInterest.map(r => ({ ...r, date: fmtDate(r.date) })),
           forMe: yearForMe.map(e => ({ ...e, date: fmtDate(e.date) })),
           banks: bankData.map(({ bank, entries }) => ({
             bank: { id: bank.id, name: bank.name, openingBalance: bank.openingBalance },
@@ -382,6 +388,20 @@ export default function Profile() {
           'Amount':      +s.amount,
           'Description': s.description || '',
         })));
+        addSheet('Interest', yearInterest.map(r => ({
+          'Date':              fmtDate(r.date),
+          'Name':              r.name || '',
+          'Transaction Type':  r.transactionType === 'given' ? 'Given/Invested' : 'Taken/Borrowed',
+          'Interest Type':     r.type === 'simple' ? 'Simple' : 'Compound',
+          'Principal':         +r.principal,
+          'Rate (%)':          +r.rate,
+          'Duration (Years)':  +r.years,
+          'Compound Freq':     r.compoundFrequency || '',
+          'Interest':          +r.interest,
+          'Total':             +r.total,
+          'Settled':           r.isSettled ? 'Yes' : 'No',
+          'Info':              r.info || '',
+        })));
         addSheet('For Me', yearForMe.map(e => ({
           'Date':        fmtDate(e.date),
           'Name':        e.name || '',
@@ -439,6 +459,7 @@ export default function Profile() {
       loans.filter(l => matchFn(l.date)).forEach(l =>    { tasks.push(() => deleteLoan(l.id));         labels.push(`loan ${l.id}`); });
       savings.filter(s => matchFn(s.date)).forEach(s =>  { tasks.push(() => deleteSaving(s.id));       labels.push(`saving ${s.id}`); });
       sources.filter(s => matchFn(s.date)).forEach(s =>  { tasks.push(() => deleteSource(s.id));       labels.push(`source ${s.id}`); });
+      interestRecords.filter(r => matchFn(r.date)).forEach(r => { tasks.push(() => deleteInterest(r.id)); labels.push(`interest ${r.id}`); });
       forMeEntries.filter(e => matchFn(toDateStr(e.date))).forEach(e => { tasks.push(() => deleteEntry(e.id)); labels.push(`forMe ${e.id}`); });
 
       // Fetch bank entries across all banks (no ordering = no composite index required)
@@ -507,6 +528,8 @@ export default function Profile() {
       } else if (pageKey === 'saving') {
         savings.filter(s => matchFn(s.date)).forEach(s => { tasks.push(() => deleteSaving(s.id)); labels.push(`saving ${s.id}`); });
         sources.filter(s => matchFn(s.date)).forEach(s => { tasks.push(() => deleteSource(s.id)); labels.push(`source ${s.id}`); });
+      } else if (pageKey === 'interest') {
+        interestRecords.filter(r => matchFn(r.date)).forEach(r => { tasks.push(() => deleteInterest(r.id)); labels.push(`interest ${r.id}`); });
       } else if (pageKey === 'forMe') {
         forMeEntries.filter(e => matchFn(toDateStr(e.date))).forEach(e => { tasks.push(() => deleteEntry(e.id)); labels.push(`forMe ${e.id}`); });
       } else if (pageKey === 'bank') {

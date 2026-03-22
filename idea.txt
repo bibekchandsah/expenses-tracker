@@ -1119,3 +1119,138 @@ Use Cases:
     Mark borrowed amounts as paid back
     Quickly identify outstanding vs settled transactions
     Better financial tracking and reconciliation
+
+✅ Modal-based calculator with Simple and Compound interest
+✅ Transaction type selector (Given/Taken)
+✅ Settlement tracking (Received/Paid checkbox)
+✅ Table with merged Type & Date column
+✅ Interest column showing "Till Today / Total"
+✅ Info modal with start date, end date, and time remaining
+✅ Duration shown in both numeric and human-readable format
+✅ Person Summary panel with "Include Interest" checkbox
+✅ Given vs Taken chart with merged bars (taken as base, given overlays)
+✅ Search functionality including duration
+✅ Quick Add support
+
+The QuickAddModal for Interest now includes all the comprehensive fields just like the main Interest entry modal:
+Added Fields:
+    Interest Type toggle (Simple/Compound)
+    Transaction Type selector (Given/Invested vs Taken/Borrowed)
+    Name/Description field
+    Principal Amount field
+    Annual Rate (%) field
+    Duration inputs (Years, Months, Days)
+    Compound Frequency dropdown (shown only when Compound is selected)
+    Info field for additional notes
+Key Changes:
+    Removed the generic "Amount" field for Interest (replaced with "Principal Amount")
+    Date field is now standalone for Interest (not in a grid with Amount)
+    Full interest calculation based on all provided fields (not just default 1 year)
+    Proper validation for all required fields including duration
+    Form is now scrollable with max-h-[90vh] overflow-y-auto to accommodate all fields
+    Supports both Simple and Compound interest calculations with proper formulas
+Users can now enter complete interest calculations through Quick Add with the same level of detail as the main entry modal!
+
+CSV Import and Export Added to Interest Page
+I've successfully added CSV import and export functionality to the Interest page, matching the implementation in other pages like Income, Expenses, etc.
+
+Import Icons: Added Upload and Download icons to the imports
+CSVImportModal Component: Imported the reusable CSV import modal component
+Import Fields Configuration: Defined IMPORT_FIELDS constant with all required and optional fields:
+    Name / Description (required)
+    Date (required)
+    Transaction Type (optional: given/taken)
+    Interest Type (optional: simple/compound)
+    Principal Amount (required)
+    Annual Rate % (required)
+    Duration in Years (required)
+    Compound Frequency (optional, for compound interest)
+    Additional Info (optional)
+Duplicate Detection: Added interestKey() function to identify duplicate records based on name, date, principal, and rate
+Import Handler: handleCSVImport() function that:
+    Processes each CSV record
+    Calculates interest and total based on the provided data
+    Supports both simple and compound interest
+    Adds records to Firestore
+    Shows success toast
+Export Handler: handleExportCSV() function that:
+    Exports all filtered records to CSV
+    Includes all fields: Name, Date, Transaction Type, Interest Type, Principal, Rate, Duration, Compound Frequency, Interest, Total, Info, Settled status
+    Downloads as interest.csv
+UI Buttons: Added Import and Export buttons in the header next to the Year Selector and Add Entry button
+State Management: Added importOpen state to control the import modal
+Modal Integration: Added CSVImportModal component at the bottom with proper configuration (indigo accent color to match the Interest page theme)
+Users can now easily import interest calculations from CSV files and export their data for backup or analysis!
+
+Fixed Bikram Sambat Calendar Support in Interest Page
+The Interest page now properly handles the Bikram Sambat (BS) calendar system, just like other pages in the application.
+Changes Made:
+Imported Calendar Utilities: Added safeADToBS and getBSYearRange from calendarUtils
+Added BS Year Range: Created bsYearRange useMemo that calculates the AD date range for the selected BS year
+Updated Record Filtering: Modified filteredRecords to use BS year range when in BS calendar mode:
+    In BS mode: Filters records where date is between bsYearRange.start and bsYearRange.end
+    In AD mode: Filters records where date starts with the year filter
+Enhanced Search: Added BS date search support using safeADToBS() so users can search by BS dates
+Updated Person Summary: Modified personSummary to also use BS year range filtering for accurate per-person calculations
+Fixed Dependencies: Updated useMemo dependencies to include isBS and bsYearRange for proper reactivity
+
+Result:
+    When you switch to Bikram Sambat calendar, the Interest page now correctly filters and displays records for the selected BS year
+    Search works with both AD and BS dates
+    Person summary and statistics are calculated correctly for the selected BS year
+    Year selector properly switches between AD and BS years
+The Interest page now behaves consistently with other pages like Income, Expenses, Lend, Loan, etc. when switching between calendar systems!
+
+
+Added Interest Page Support to Profile Year Data Management
+I've successfully integrated the Interest page into the Profile page's Year Data Management section with full support for both AD (Gregorian) and BS (Bikram Sambat) calendar systems.
+
+Changes Made:
+1. Imports and Context
+    Added useInterest context import
+    Added Percent icon from lucide-react
+    Destructured records and deleteRecord from Interest context
+2. Export Functionality (Both JSON and XLSX)
+JSON Export:
+    Added Interest records filtering by year
+    Included all Interest fields in the JSON export with proper date formatting
+XLSX Export:
+    Created new "Interest" sheet with columns:
+        Date
+        Name
+        Transaction Type (Given/Invested or Taken/Borrowed)
+        Interest Type (Simple or Compound)
+        Principal
+        Rate (%)
+        Duration (Years)
+        Compound Frequency
+        Interest
+        Total
+        Settled (Yes/No)
+        Info
+3. Delete Functionality
+Delete Full Year:
+    Added Interest records to the year deletion logic
+    Filters Interest records by date using the same matchFn that supports both AD and BS calendars
+    Deletes all Interest records for the selected year
+Delete by Page:
+    Added 'interest' case to handleDeletePage function
+    Filters and deletes only Interest records for the selected year
+    Added Interest to PAGE_DELETE_CONFIG with:
+        Key: 'interest'
+        Label: 'Interest'
+        Icon: Percent
+        Color: 'indigo'
+4. UI Configuration
+    Added indigo color scheme to PAGE_DELETE_COLORS for the Interest delete button
+    Interest now appears in the "Delete by Page" grid with proper styling
+5. Calendar System Support
+Both export and delete functions properly handle:
+    AD Calendar: Filters records where date starts with the year (e.g., "2026")
+    BS Calendar: Filters records where date falls within the BS year range using getBSYearRange()
+    Date formatting in exports respects the selected calendar system
+Result: Users can now:
+    Export Interest data as part of full year exports (JSON and XLSX)
+    Delete all Interest records for a specific year
+    Delete only Interest records while keeping other page data intact
+    All operations work correctly with both Gregorian and Bikram Sambat calendar systems
