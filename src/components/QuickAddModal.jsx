@@ -9,6 +9,7 @@ import { useLends } from '../context/LendContext';
 import { useLoans } from '../context/LoanContext';
 import { useSavings } from '../context/SavingContext';
 import { useForMe } from '../context/ForMeContext';
+import { useInterest } from '../context/InterestContext';
 import { useCategories } from '../context/CategoryContext';
 import { useCalendar } from '../context/CalendarContext';
 import NepaliDatePickerInput from './ui/NepaliDatePickerInput';
@@ -29,6 +30,7 @@ const PAGE_OPTIONS = [
   { key: 'loan',     label: 'Loan',     icon: '💼', accent: 'purple', bankDir: 'deposit'  },
   { key: 'saving',   label: 'Saving',   icon: '🐷', accent: 'teal',   bankDir: 'deposit'  },
   { key: 'forMe',    label: 'For Me',   icon: '❤️', accent: 'pink',   bankDir: 'deposit'  },
+  { key: 'interest', label: 'Interest', icon: '📈', accent: 'indigo', bankDir: null       },
 ];
 
 const ACCENT_BTN = {
@@ -39,6 +41,7 @@ const ACCENT_BTN = {
   purple: 'bg-purple-600 hover:bg-purple-700',
   teal:   'bg-teal-600 hover:bg-teal-700',
   pink:   'bg-pink-500 hover:bg-pink-600',
+  indigo: 'bg-indigo-600 hover:bg-indigo-700',
 };
 
 const ACCENT_TEXT = {
@@ -49,6 +52,7 @@ const ACCENT_TEXT = {
   purple: 'text-purple-600 dark:text-purple-400',
   teal:   'text-teal-600 dark:text-teal-400',
   pink:   'text-pink-500 dark:text-pink-400',
+  indigo: 'text-indigo-600 dark:text-indigo-400',
 };
 
 const ACCENT_CARD = {
@@ -59,6 +63,7 @@ const ACCENT_CARD = {
   purple: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800 hover:border-purple-400 dark:hover:border-purple-500',
   teal:   'bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800 hover:border-teal-400 dark:hover:border-teal-500',
   pink:   'bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-800 hover:border-pink-400 dark:hover:border-pink-500',
+  indigo: 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-500',
 };
 
 const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent';
@@ -86,6 +91,7 @@ function prefill(targetPage, sourceRow) {
       case 'loan':     return { ...base, name: '', reason: '', description: '' };
       case 'saving':   return { ...base, expendOn: '', description: '' };
       case 'forMe':    return { ...base, name: '', person: '', description: '' };
+      case 'interest': return { date: today, name: '', principal: '', rate: '', years: '', months: '', days: '', interestType: 'simple', transactionType: 'given', compoundFrequency: 12, info: '' };
       default:         return { date: today };
     }
   }
@@ -102,6 +108,28 @@ function prefill(targetPage, sourceRow) {
     case 'loan':     return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, name: nameish, reason: sourceRow.reason || sourceRow.note || sourceRow.notes || '', description };
     case 'saving':   return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, expendOn: nameish+' '+sourceRow.reason, description };
     case 'forMe':    return { date, amount: sourceRow.withdraw || sourceRow.deposit || sourceRow.lent || sourceRow.borrowed || sourceRow.amount, name: nameish, person: sourceRow.person || '', description };
+    case 'interest': {
+      // Extract years, months, days from total years
+      const totalYears = sourceRow.years || 0;
+      const years = Math.floor(totalYears);
+      const remainingMonths = (totalYears - years) * 12;
+      const months = Math.floor(remainingMonths);
+      const days = Math.round((remainingMonths - months) * 30);
+      
+      return { 
+        date, 
+        name: nameish, 
+        principal: String(sourceRow.principal || sourceRow.amount || sourceRow.withdraw || sourceRow.deposit || ''), 
+        rate: String(sourceRow.rate || ''), 
+        years: String(years || ''), 
+        months: String(months || ''), 
+        days: String(days || ''), 
+        interestType: sourceRow.type || 'simple', 
+        transactionType: sourceRow.transactionType || 'given', 
+        compoundFrequency: sourceRow.compoundFrequency || 12, 
+        info: sourceRow.info || description 
+      };
+    }
     default:         return { date: today };
   }
 }
@@ -119,6 +147,7 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
   const { addLoan, loans }                      = useLoans();
   const { addSaving }                           = useSavings();
   const { addEntry: addForMeEntry, entries: forMeEntries } = useForMe();
+  const { addRecord: addInterestRecord }        = useInterest();
   const { categories }                          = useCategories();
 
   // ── Deduplicated name suggestions from existing records ────────
@@ -178,6 +207,7 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
       case 'loan':     return addLoan;
       case 'saving':   return addSaving;
       case 'forMe':    return addForMeEntry;
+      case 'interest': return addInterestRecord;
       default:         return null;
     }
   }
@@ -185,8 +215,32 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
   async function handleAdd(e) {
     e.preventDefault();
     if (!targetPage) return;
+    
+    // Interest validation
+    if (targetPage === 'interest') {
+      const principal = parseFloat(form.principal);
+      const rate = parseFloat(form.rate);
+      const y = parseFloat(form.years) || 0;
+      const m = parseFloat(form.months) || 0;
+      const d = parseFloat(form.days) || 0;
+      const totalYears = y + (m / 12) + (d / 365);
+      
+      if (!form.principal || isNaN(principal) || principal <= 0) {
+        addToast('Enter a valid principal amount', 'error'); return;
+      }
+      if (!form.rate || isNaN(rate) || rate <= 0) {
+        addToast('Enter a valid interest rate', 'error'); return;
+      }
+      if (totalYears <= 0) {
+        addToast('Enter a valid duration (years, months, or days)', 'error'); return;
+      }
+      if (!form.name?.trim()) {
+        addToast('Name is required', 'error'); return;
+      }
+    }
+    
     const amt = parseFloat(form.amount);
-    if (targetPage !== 'bank' && (!form.amount || isNaN(amt) || amt <= 0)) {
+    if (targetPage !== 'bank' && targetPage !== 'interest' && (!form.amount || isNaN(amt) || amt <= 0)) {
       addToast('Enter a valid amount', 'error'); return;
     }
     // Bank validation
@@ -204,25 +258,61 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
     setSaving(true);
     try {
       const data = { ...form };
-      const numAmt = parseFloat(form.amount) || 0;
-
-      if (targetPage === 'bank') {
-        data.deposit  = form.type === 'deposit'  ? numAmt : 0;
-        data.withdraw = form.type === 'withdraw' ? numAmt : 0;
-        delete data.type;
-        delete data.amount;
-        const bankId = data.bankId;
-        delete data.bankId;
-        await addBankEntrySvc(user.uid, bankId, data);
+      
+      if (targetPage === 'interest') {
+        // For interest, calculate based on all provided fields
+        const P = parseFloat(form.principal);
+        const r = parseFloat(form.rate) / 100;
+        const y = parseFloat(form.years) || 0;
+        const m = parseFloat(form.months) || 0;
+        const d = parseFloat(form.days) || 0;
+        const t = y + (m / 12) + (d / 365);
+        
+        let A, interest;
+        if ((form.interestType || 'simple') === 'simple') {
+          A = P * (1 + r * t);
+          interest = A - P;
+        } else {
+          const n = form.compoundFrequency || 12;
+          A = P * Math.pow(1 + r / n, n * t);
+          interest = A - P;
+        }
+        
+        await addInterestRecord({
+          name: form.name,
+          date: form.date,
+          transactionType: form.transactionType || 'given',
+          type: form.interestType || 'simple',
+          principal: P,
+          rate: parseFloat(form.rate),
+          years: t,
+          compoundFrequency: form.interestType === 'compound' ? (form.compoundFrequency || 12) : null,
+          interest: interest,
+          total: A,
+          info: form.info || '',
+          isSettled: false,
+        });
       } else {
-        data.amount = numAmt;
-      }
-      if (targetPage === 'lend') data.returnedAmount = 0;
-      if (targetPage === 'loan') data.paidAmount = 0;
+        const numAmt = parseFloat(form.amount) || 0;
 
-      if (targetPage !== 'bank') {
-        const addFn = getAddFn(targetPage);
-        if (addFn) await addFn(data);
+        if (targetPage === 'bank') {
+          data.deposit  = form.type === 'deposit'  ? numAmt : 0;
+          data.withdraw = form.type === 'withdraw' ? numAmt : 0;
+          delete data.type;
+          delete data.amount;
+          const bankId = data.bankId;
+          delete data.bankId;
+          await addBankEntrySvc(user.uid, bankId, data);
+        } else {
+          data.amount = numAmt;
+        }
+        if (targetPage === 'lend') data.returnedAmount = 0;
+        if (targetPage === 'loan') data.paidAmount = 0;
+
+        if (targetPage !== 'bank') {
+          const addFn = getAddFn(targetPage);
+          if (addFn) await addFn(data);
+        }
       }
 
       setCount(c => c + 1);
@@ -240,7 +330,7 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm animate-slide-in">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm animate-slide-in max-h-[90vh] overflow-y-auto">
 
         {/* ── Header ──────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-200 dark:border-gray-700">
@@ -320,8 +410,30 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
           /* ── Step 2: Form ─────────────────────────────────── */
           <form onSubmit={handleAdd} className="p-4 space-y-3">
 
-            {/* Date + Amount */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Date + Amount (not for interest) */}
+            {targetPage !== 'interest' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={LABEL_CLS}>Date</label>
+                  {calendar === 'bs' ? (
+                    <NepaliDatePickerInput
+                      value={form.date || ''}
+                      onChange={adDate => set('date', adDate)}
+                      className={INPUT_CLS}
+                    />
+                  ) : (
+                    <input type="date" value={form.date || ''} onChange={e => set('date', e.target.value)} className={INPUT_CLS} />
+                  )}
+                </div>
+                <div>
+                  <label className={LABEL_CLS}>Amount *</label>
+                  <input type="number" step="0.01" min="0" placeholder="0.00" value={form.amount || ''} onChange={e => set('amount', e.target.value)} className={INPUT_CLS} autoFocus />
+                </div>
+              </div>
+            )}
+
+            {/* Date only for interest */}
+            {targetPage === 'interest' && (
               <div>
                 <label className={LABEL_CLS}>Date</label>
                 {calendar === 'bs' ? (
@@ -334,11 +446,7 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
                   <input type="date" value={form.date || ''} onChange={e => set('date', e.target.value)} className={INPUT_CLS} />
                 )}
               </div>
-              <div>
-                <label className={LABEL_CLS}>Amount *</label>
-                <input type="number" step="0.01" min="0" placeholder="0.00" value={form.amount || ''} onChange={e => set('amount', e.target.value)} className={INPUT_CLS} autoFocus />
-              </div>
-            </div>
+            )}
 
             {/* Bank selector */}
             {targetPage === 'bank' && banks.length > 0 && (
@@ -463,6 +571,148 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
               </div>
             )}
 
+            {/* Interest-specific fields */}
+            {targetPage === 'interest' && (
+              <>
+                {/* Interest Type Toggle */}
+                <div>
+                  <label className={LABEL_CLS}>Interest Type *</label>
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-gray-700 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => set('interestType', 'simple')}
+                      className={`py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+                        (form.interestType || 'simple') === 'simple'
+                          ? 'bg-primary-600 text-white shadow-sm'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      Simple
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => set('interestType', 'compound')}
+                      className={`py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+                        form.interestType === 'compound'
+                          ? 'bg-primary-600 text-white shadow-sm'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      Compound
+                    </button>
+                  </div>
+                </div>
+
+                {/* Transaction Type */}
+                <div>
+                  <label className={LABEL_CLS}>Transaction Type *</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => set('transactionType', 'given')}
+                      className={`py-2 px-3 rounded-xl text-xs font-medium transition-all border ${
+                        (form.transactionType || 'given') === 'given'
+                          ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-400'
+                          : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      Given / Invested
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => set('transactionType', 'taken')}
+                      className={`py-2 px-3 rounded-xl text-xs font-medium transition-all border ${
+                        form.transactionType === 'taken'
+                          ? 'bg-red-50 dark:bg-red-900/20 border-red-500 text-red-700 dark:text-red-400'
+                          : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      Taken / Borrowed
+                    </button>
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div>
+                  <label className={LABEL_CLS}>Name / Description *</label>
+                  <input type="text" placeholder="e.g. Fixed Deposit, Loan..." value={form.name || ''} onChange={e => set('name', e.target.value)} className={INPUT_CLS} />
+                </div>
+
+                {/* Principal Amount */}
+                <div>
+                  <label className={LABEL_CLS}>Principal Amount *</label>
+                  <input type="number" step="0.01" min="0" placeholder="10000" value={form.principal || ''} onChange={e => set('principal', e.target.value)} className={INPUT_CLS} />
+                </div>
+
+                {/* Annual Rate */}
+                <div>
+                  <label className={LABEL_CLS}>Annual Rate (%) *</label>
+                  <input type="number" step="0.01" min="0" placeholder="5.5" value={form.rate || ''} onChange={e => set('rate', e.target.value)} className={INPUT_CLS} />
+                </div>
+
+                {/* Duration */}
+                <div>
+                  <label className={LABEL_CLS}>Duration *</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <input
+                        type="number"
+                        min="0"
+                        value={form.years || ''}
+                        onChange={e => set('years', e.target.value)}
+                        placeholder="Years"
+                        className={INPUT_CLS}
+                      />
+                      <p className="text-xs text-gray-400 mt-1 text-center">Years</p>
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        min="0"
+                        max="11"
+                        value={form.months || ''}
+                        onChange={e => set('months', e.target.value)}
+                        placeholder="Months"
+                        className={INPUT_CLS}
+                      />
+                      <p className="text-xs text-gray-400 mt-1 text-center">Months</p>
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        min="0"
+                        max="364"
+                        value={form.days || ''}
+                        onChange={e => set('days', e.target.value)}
+                        placeholder="Days"
+                        className={INPUT_CLS}
+                      />
+                      <p className="text-xs text-gray-400 mt-1 text-center">Days</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Compound Frequency */}
+                {form.interestType === 'compound' && (
+                  <div>
+                    <label className={LABEL_CLS}>Compound Frequency</label>
+                    <select
+                      value={form.compoundFrequency || 12}
+                      onChange={e => set('compoundFrequency', parseInt(e.target.value))}
+                      className={INPUT_CLS}
+                    >
+                      <option value={1}>Annually</option>
+                      <option value={2}>Semi-Annually</option>
+                      <option value={4}>Quarterly</option>
+                      <option value={12}>Monthly</option>
+                      <option value={52}>Weekly</option>
+                      <option value={365}>Daily</option>
+                    </select>
+                  </div>
+                )}
+              </>
+            )}
+
             {/* Notes (income) */}
             {targetPage === 'income' && (
               <div>
@@ -480,10 +730,20 @@ export default function QuickAddModal({ isOpen, onClose, sourcePage, sourceRow }
             )}
 
             {/* Description */}
-            <div>
-              <label className={LABEL_CLS}>Description</label>
-              <input type="text" placeholder="Description" value={form.description || ''} onChange={e => set('description', e.target.value)} className={INPUT_CLS} />
-            </div>
+            {targetPage !== 'interest' && (
+              <div>
+                <label className={LABEL_CLS}>Description</label>
+                <input type="text" placeholder="Description" value={form.description || ''} onChange={e => set('description', e.target.value)} className={INPUT_CLS} />
+              </div>
+            )}
+
+            {/* Info (interest) */}
+            {targetPage === 'interest' && (
+              <div>
+                <label className={LABEL_CLS}>Info</label>
+                <input type="text" placeholder="Additional notes..." value={form.info || ''} onChange={e => set('info', e.target.value)} className={INPUT_CLS} />
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-2 pt-1">
