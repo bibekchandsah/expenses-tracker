@@ -884,4 +884,80 @@ n = Number of times interest is compounded per year
 t = Number of years
 
 
-date | name | principle amount | rate% (in decimal) | duration | total value 
+date | name | principle amount | rate% | duration | total value | info
+
+
+firebase deploy --only firestore:rules
+Features:
+Two calculation types:
+    Simple Interest: A = P(1 + rt)
+    Compound Interest: A = P(1 + r/n)^(nt)
+Input fields:
+    Name/Description
+    Date (with Nepali calendar support)
+    Principal amount
+    Annual interest rate (%)
+    Duration (Years, Months, Days - all optional, automatically converted)
+    Compound frequency (for compound interest only)
+    Additional info/notes
+Results display:
+    Principal amount
+    Interest earned
+    Total value
+    Save to history button
+History tracking:
+    Stores all calculations with full details
+    Desktop table view and mobile card view
+    Shows type (Simple/Compound), principal, rate, duration, interest, and total
+    Delete functionality
+    Year filter support
+Stats cards with count-up animation:
+    Total calculations
+    Total principal
+    Total interest earned
+    Total value
+Navigation:
+    Added to sidebar between Bank and Lend
+    Route: /interest
+    Icon: Percent (%)
+The page is fully integrated with your existing Firebase setup, theme system, currency formatting, and calendar system!
+
+Completely restructured Interest.jsx:
+    Moved calculator into a modal (InterestModal) triggered by "Add Entry" button
+    Created table view with columns: Date | Name | Principal | Rate% | Duration | Total Value | Info | Actions
+    Added InfoModal that opens when clicking the Info icon, showing full calculation breakdown
+    Implemented Quick Add functionality (Zap icon)
+    Added Edit functionality that opens the calculator modal pre-filled
+    Added Delete functionality with confirmation dialog
+    Kept the stats cards at the top with count-up animation
+    Supports both desktop table and mobile card views
+    Year filter works correctly
+The Interest page now follows the exact same pattern as Lend, Loan, and other pages with:
+    Stats cards at the top
+    "Add Entry" button that opens a modal
+    Table with sortable columns
+    Info button that shows detailed calculation breakdown
+    Quick Add, Edit, and Delete actions
+    Mobile-responsive design
+
+
+Duration Display: Now shows both formats:
+    Numeric: "1.92 years"
+    Human-readable: "(1 year 11 months 1 day)"
+Interest Till Today Section: A new highlighted section that shows:
+    Duration elapsed from the record date to today
+    Interest earned till today (calculated in real-time)
+    Current value (principal + interest till today)
+    Uses the same calculation method (simple or compound) as the original
+Better Organization:
+    "Original Calculation" section shows the values you entered
+    "Interest Till Today" section (in blue highlight) shows current values
+    Both sections show the duration in both formats
+The "Till Today" calculation automatically:
+    Calculates days elapsed from the record date to today
+    Converts to years
+    Applies the same interest formula (simple or compound with the same frequency)
+    Shows you the current value of your investment/loan
+
+Now when you click the Info icon on any record, you'll see both the original calculation and the current value based on today's date!
+

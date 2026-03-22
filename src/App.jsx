@@ -9,6 +9,7 @@ import { ExpenseProvider } from './context/ExpenseContext';
 import { CategoryProvider } from './context/CategoryContext';
 import { BudgetProvider } from './context/BudgetContext';
 import { BankProvider } from './context/BankContext';
+import { InterestProvider } from './context/InterestContext';
 import { LendProvider } from './context/LendContext';
 import { LoanProvider } from './context/LoanContext';
 import { SavingProvider } from './context/SavingContext';
@@ -29,6 +30,7 @@ const Categories = lazy(() => import('./pages/Categories'));
 const Budget = lazy(() => import('./pages/Budget'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Bank = lazy(() => import('./pages/Bank'));
+const Interest = lazy(() => import('./pages/Interest'));
 const Lend = lazy(() => import('./pages/Lend'));
 const Loan = lazy(() => import('./pages/Loan'));
 const Saving = lazy(() => import('./pages/Saving'));
@@ -56,6 +58,7 @@ export default function App() {
               <ExpenseProvider>
                 <BudgetProvider>
                   <BankProvider>
+                  <InterestProvider>
                   <LendProvider>
                   <LoanProvider>
                   <SavingProvider>
@@ -75,6 +78,7 @@ export default function App() {
                           <Route path="/budget" element={<Budget />} />
                           <Route path="/profile" element={<Profile />} />
                           <Route path="/bank" element={<Bank />} />
+                          <Route path="/interest" element={<Interest />} />
                           <Route path="/lend" element={<Lend />} />
                           <Route path="/loan" element={<Loan />} />
                           <Route path="/saving" element={<Saving />} />
@@ -92,6 +96,7 @@ export default function App() {
                   </SavingProvider>
                   </LoanProvider>
                   </LendProvider>
+                  </InterestProvider>
                   </BankProvider>
                 </BudgetProvider>
               </ExpenseProvider>

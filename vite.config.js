@@ -45,7 +45,12 @@ export default defineConfig({
         runtimeCaching: [
           {
             // Firebase Auth / Firestore / Storage — always network-first
-            urlPattern: /^https:\/\/(firestore|identitytoolkit|securetoken)\.googleapis\.com\/.*/i,
+            // Exclude WebChannel streaming connections (channel?* URLs)
+            urlPattern: ({ url }) => {
+              const isFirebase = /^https:\/\/(firestore|identitytoolkit|securetoken)\.googleapis\.com\/.*/i.test(url.href);
+              const isWebChannel = url.pathname.includes('/channel') || url.search.includes('channel');
+              return isFirebase && !isWebChannel;
+            },
             handler: 'NetworkFirst',
             options: {
               cacheName: 'firebase-cache',
