@@ -1045,3 +1045,77 @@ UI Integration:
     Panel toggle button remains accessible
     Clear button to reset search quickly
 Now users can easily find specific interest calculations by searching for any relevant information like a person's name, specific amounts, dates, or even the type of interest calculation!
+
+
+Merged Type & Date Column:
+    Shows icon (up arrow for Given, down arrow for Taken) with color coding
+    Displays "Given" or "Taken" text
+    Shows the date below the type
+    Reduces one column, making the table more compact
+New Interest Column:
+    Shows "Till Today Interest / Total Interest"
+    Till today interest is calculated in real-time based on elapsed time
+    Displayed in blue color to distinguish from total
+    Format: "₹ X,XXX.XX / ₹ Y,YYY.YY"
+    Helps users see how much interest has accrued so far vs the final amount
+Mobile Cards Updated:
+    Also shows the same interest breakdown
+    Maintains consistent information across desktop and mobile views
+Benefits:
+    More compact table with better use of space
+    Real-time interest tracking shows current value
+    Easy to see progress of interest accumulation
+    Visual distinction between current and projected interest
+
+
+added the end date to the Info modal. Now users can see:
+Start Date: The date when the interest calculation begins (the original date field)
+End Date: The calculated date when the interest period ends (start date + duration)
+The end date is calculated by:
+    Taking the start date
+    Adding the total duration in days (years × 365)
+    Displaying it in the same format as the start date
+This helps users understand:
+    When their investment/loan matures
+    The complete time period of the calculation
+    Better planning for when to expect returns or repayments
+
+Date/Start Date Field:
+    Combined label showing "Date / Start Date" to clarify it's the same thing
+    Shows the original date when the calculation started
+End Date Field:
+    Shows the calculated end date (when the interest period completes)
+    Below it shows the time remaining in a human-readable format
+    Examples:
+        "2 years 3 months 15 days left" (in blue if still active)
+        "Completed" (in gray if the end date has passed)
+        "Less than a day left" (if very close to completion)
+Color Coding:
+    Blue text for active/remaining time
+    Gray text for completed calculations
+This makes it much clearer for users to understand:
+    When their investment/loan started
+    When it will end/mature
+    How much time is left until completion
+    Whether the calculation period has already ended
+
+
+Settlement Checkbox in Modal:
+    Located after the Info field
+    Dynamic label based on transaction type:
+        For "Given": "Mark as received (amount has been returned to me)"
+        For "Taken": "Mark as paid (I have paid back this amount)"
+    Saves the settlement status with the record
+Visual Indicators in Table:
+    Desktop: Shows a green badge "✓ Received" or "✓ Paid" next to the transaction type
+    Mobile: Shows the same badge in the card header
+    Makes it easy to see at a glance which transactions are settled
+Database Storage:
+    isSettled field saved to Firestore
+    Persists across sessions
+    Can be updated when editing records
+Use Cases:
+    Track which investments have been returned
+    Mark borrowed amounts as paid back
+    Quickly identify outstanding vs settled transactions
+    Better financial tracking and reconciliation

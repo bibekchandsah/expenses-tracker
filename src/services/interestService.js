@@ -51,6 +51,7 @@ export async function addInterestRecord(uid, record) {
     interest: +record.interest || 0,
     total: +record.total || 0,
     info: record.info || '',
+    isSettled: record.isSettled || false,
     createdAt: serverTimestamp(),
   });
 }
@@ -69,6 +70,7 @@ export async function updateInterestRecord(uid, recordId, record) {
     interest: +record.interest || 0,
     total: +record.total || 0,
     info: record.info || '',
+    isSettled: record.isSettled || false,
   });
 }
 

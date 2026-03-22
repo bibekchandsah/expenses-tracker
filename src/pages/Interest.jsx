@@ -33,6 +33,7 @@ const EMPTY_FORM = {
   days: '',
   compoundFrequency: 12,
   info: '',
+  isSettled: false, // whether paid/received
 };
 
 // ── Interest Calculator Modal ───────────────────────────────────
@@ -66,6 +67,7 @@ function InterestModal({ isOpen, record, onClose, onSave }) {
         days: String(days),
         compoundFrequency: record.compoundFrequency || 12,
         info: record.info || '',
+        isSettled: record.isSettled || false,
       });
       setCalcType(record.type);
       setResult({
@@ -139,6 +141,7 @@ function InterestModal({ isOpen, record, onClose, onSave }) {
         interest: result.interest,
         total: result.total,
         info: form.info,
+        isSettled: form.isSettled,
       });
       onClose();
     } catch {
@@ -370,6 +373,22 @@ function InterestModal({ isOpen, record, onClose, onSave }) {
             />
           </div>
 
+          {/* Settlement Status */}
+          <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+            <input
+              type="checkbox"
+              id="isSettled"
+              checked={form.isSettled}
+              onChange={e => setForm(f => ({ ...f, isSettled: e.target.checked }))}
+              className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+            />
+            <label htmlFor="isSettled" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+              {form.transactionType === 'given' 
+                ? 'Mark as received (amount has been returned to me)'
+                : 'Mark as paid (I have paid back this amount)'}
+            </label>
+          </div>
+
           {/* Calculate Button */}
           <button
             type="button"
@@ -437,6 +456,34 @@ function InfoModal({ isOpen, record, onClose }) {
   if (!isOpen || !record) return null;
 
   const freqLabel = COMPOUND_FREQUENCIES.find(f => f.value === record.compoundFrequency)?.label || 'N/A';
+
+  // Calculate end date
+  const startDate = new Date(record.date);
+  const endDate = new Date(startDate);
+  const totalDays = Math.round(record.years * 365);
+  endDate.setDate(endDate.getDate() + totalDays);
+  const endDateStr = endDate.toISOString().split('T')[0];
+
+  // Calculate time remaining till end date
+  const today = new Date();
+  const timeRemaining = endDate - today;
+  const daysRemaining = Math.ceil(timeRemaining / (1000 * 60 * 60 * 24));
+  
+  let remainingText = '';
+  if (daysRemaining < 0) {
+    remainingText = 'Completed';
+  } else {
+    const yearsLeft = Math.floor(daysRemaining / 365);
+    const monthsLeft = Math.floor((daysRemaining % 365) / 30);
+    const daysLeft = Math.floor((daysRemaining % 365) % 30);
+    
+    const parts = [];
+    if (yearsLeft > 0) parts.push(`${yearsLeft} year${yearsLeft !== 1 ? 's' : ''}`);
+    if (monthsLeft > 0) parts.push(`${monthsLeft} month${monthsLeft !== 1 ? 's' : ''}`);
+    if (daysLeft > 0) parts.push(`${daysLeft} day${daysLeft !== 1 ? 's' : ''}`);
+    
+    remainingText = parts.length > 0 ? parts.join(' ') + ' left' : 'Less than a day left';
+  }
 
   // Format duration as "X years Y months Z days"
   const formatDuration = (totalYears) => {
@@ -519,6 +566,20 @@ function InfoModal({ isOpen, record, onClose }) {
               }`}>
                 {record.type === 'simple' ? 'Simple' : 'Compound'}
               </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Date / Start Date</p>
+              <p className="text-sm text-gray-900 dark:text-white">{dateLabel(record.date)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">End Date</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">{dateLabel(endDateStr)}</p>
+              <p className={`text-xs mt-0.5 ${daysRemaining < 0 ? 'text-gray-500 dark:text-gray-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                {remainingText}
+              </p>
             </div>
           </div>
 
@@ -882,34 +943,62 @@ export default function Interest() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
                 <tr className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                  <th className="px-5 py-3 text-left">Type</th>
-                  <th className="px-5 py-3 text-left">Date</th>
+                  <th className="px-5 py-3 text-left">Type & Date</th>
                   <th className="px-5 py-3 text-left">Name</th>
                   <th className="px-5 py-3 text-right">Principal</th>
                   <th className="px-5 py-3 text-center">Rate %</th>
                   <th className="px-5 py-3 text-center">Duration</th>
+                  <th className="px-5 py-3 text-right">Interest</th>
                   <th className="px-5 py-3 text-right">Total Value</th>
                   <th className="px-5 py-3 text-center">Info</th>
                   <th className="px-5 py-3 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
-                {filteredRecords.map(record => (
+                {filteredRecords.map(record => {
+                  // Calculate till today interest
+                  const startDate = new Date(record.date);
+                  const today = new Date();
+                  const diffTime = Math.abs(today - startDate);
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  const yearsElapsed = diffDays / 365;
+                  const P = record.principal;
+                  const r = record.rate / 100;
+                  let tillTodayInterest = 0;
+                  
+                  if (record.type === 'simple') {
+                    const A = P * (1 + r * yearsElapsed);
+                    tillTodayInterest = A - P;
+                  } else {
+                    const n = record.compoundFrequency;
+                    const A = P * Math.pow(1 + r / n, n * yearsElapsed);
+                    tillTodayInterest = A - P;
+                  }
+                  
+                  return (
                   <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
                     <td className="px-5 py-3">
-                      {record.transactionType === 'given' ? (
-                        <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
-                          <TrendingUp className="w-4 h-4" />
-                          <span className="text-xs font-medium">Given</span>
+                      <div className="flex items-center gap-2">
+                        {record.transactionType === 'given' ? (
+                          <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                        ) : (
+                          <TrendingUp className="w-4 h-4 rotate-180 text-red-600 dark:text-red-400 flex-shrink-0" />
+                        )}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-medium text-gray-900 dark:text-white">
+                              {record.transactionType === 'given' ? 'Given' : 'Taken'}
+                            </p>
+                            {record.isSettled && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                ✓ {record.transactionType === 'given' ? 'Received' : 'Paid'}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{dateLabel(record.date)}</p>
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400">
-                          <TrendingUp className="w-4 h-4 rotate-180" />
-                          <span className="text-xs font-medium">Taken</span>
-                        </div>
-                      )}
+                      </div>
                     </td>
-                    <td className="px-5 py-3 text-gray-600 dark:text-gray-400">{dateLabel(record.date)}</td>
                     <td className="px-5 py-3">
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">{capFirst(record.name)}</p>
@@ -930,6 +1019,14 @@ export default function Interest() {
                     </td>
                     <td className="px-5 py-3 text-center text-gray-600 dark:text-gray-400">
                       {record.years.toFixed(2)} yrs
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <div className="text-xs">
+                        <p className="font-semibold text-blue-600 dark:text-blue-400">
+                          {formatCurrency(tillTodayInterest, currency)}
+                        </p>
+                        <p className="text-gray-400 dark:text-gray-500">/ {formatCurrency(record.interest, currency)}</p>
+                      </div>
                     </td>
                     <td className="px-5 py-3 text-right font-bold text-primary-600 dark:text-primary-400">
                       {formatCurrency(record.total, currency)}
@@ -969,18 +1066,39 @@ export default function Interest() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                );
+                })}
               </tbody>
             </table>
           </div>
 
           {/* Mobile Cards */}
           <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-700/50">
-            {filteredRecords.map(record => (
+            {filteredRecords.map(record => {
+              // Calculate till today interest for mobile
+              const startDate = new Date(record.date);
+              const today = new Date();
+              const diffTime = Math.abs(today - startDate);
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              const yearsElapsed = diffDays / 365;
+              const P = record.principal;
+              const r = record.rate / 100;
+              let tillTodayInterest = 0;
+              
+              if (record.type === 'simple') {
+                const A = P * (1 + r * yearsElapsed);
+                tillTodayInterest = A - P;
+              } else {
+                const n = record.compoundFrequency;
+                const A = P * Math.pow(1 + r / n, n * yearsElapsed);
+                tillTodayInterest = A - P;
+              }
+              
+              return (
               <div key={record.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       {record.transactionType === 'given' ? (
                         <div className="flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full">
                           <TrendingUp className="w-3 h-3" />
@@ -991,6 +1109,11 @@ export default function Interest() {
                           <TrendingUp className="w-3 h-3 rotate-180" />
                           <span className="text-xs font-medium">Taken</span>
                         </div>
+                      )}
+                      {record.isSettled && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                          ✓ {record.transactionType === 'given' ? 'Received' : 'Paid'}
+                        </span>
                       )}
                     </div>
                     <p className="font-semibold text-gray-900 dark:text-white">{capFirst(record.name)}</p>
@@ -1047,10 +1170,13 @@ export default function Interest() {
                     <span className="text-gray-600 dark:text-gray-400">{record.years.toFixed(2)} years</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">Interest:</span>
-                    <span className="font-semibold text-green-600 dark:text-green-400">
-                      {formatCurrency(record.interest, currency)}
-                    </span>
+                    <span className="text-gray-500 dark:text-gray-400">Interest (Today/Total):</span>
+                    <div className="text-right">
+                      <p className="font-semibold text-blue-600 dark:text-blue-400 text-sm">
+                        {formatCurrency(tillTodayInterest, currency)}
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">/ {formatCurrency(record.interest, currency)}</p>
+                    </div>
                   </div>
                   <div className="flex justify-between text-sm pt-1 border-t border-gray-200 dark:border-gray-700">
                     <span className="font-medium text-gray-700 dark:text-gray-300">Total:</span>
@@ -1060,7 +1186,8 @@ export default function Interest() {
                   </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
             </>
           )}
