@@ -534,10 +534,11 @@ export default function Profile() {
       // Helper function for adding sections
       const addSection = (title, head, body, themeColor) => {
         if (!body || body.length === 0) return;
-        if (yPos > 240) {
-          doc.addPage();
-          yPos = 20;
-        }
+        
+        // Start each new section on a fresh page
+        doc.addPage();
+        yPos = 20;
+
         doc.setFontSize(14);
         doc.setTextColor(40, 40, 40);
         doc.text(title, 14, yPos);
