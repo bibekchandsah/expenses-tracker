@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Mail, Globe, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet, Camera, Pencil, X, TrendingUp, Landmark, ShoppingBag, PiggyBank, Heart, ArrowUpRight, ArrowDownLeft, DollarSign, Fingerprint, Percent } from 'lucide-react';
+import { Mail, Globe, Check, CalendarRange, Download, Trash2, AlertTriangle, FileJson, FileSpreadsheet, FileText, Camera, Pencil, X, TrendingUp, Landmark, ShoppingBag, PiggyBank, Heart, ArrowUpRight, ArrowDownLeft, DollarSign, Fingerprint, Percent } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useActiveYear } from '../context/ActiveYearContext';
@@ -432,6 +434,253 @@ export default function Profile() {
     } catch (err) {
       console.error(err);
       addToast('Export failed', 'error');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleExportYearPDF() {
+    setExporting(true);
+    try {
+      const yr = String(activeYear);
+      const isBS = calendar === 'bs';
+
+      // Fetch all bank entries
+      const bankData = await Promise.all(
+        banks.map(async bank => {
+          const all = await getBankEntriesOnce(user.uid, bank.id);
+          return { bank, entries: all.filter(e => isBS ? isInBSYear(e.date, bsActiveYear) : e.date?.startsWith(yr)) };
+        })
+      );
+
+      const filterFn = e => isBS ? isInBSYear(e.date, bsActiveYear) : e.date?.startsWith(yr);
+      const limitFn = arr => arr.filter(filterFn);
+
+      const yearExpenses = limitFn(expenses);
+      const yearIncomes  = limitFn(incomes);
+      const yearLends    = limitFn(lends);
+      const yearLoans    = limitFn(loans);
+      const yearSavings  = limitFn(savings);
+      const yearSources  = limitFn(sources);
+      const yearInterest = limitFn(interestRecords);
+      const yearForMe    = forMeEntries
+        .filter(e => filterFn({ date: toDateStr(e.date) }))
+        .map(e => ({ ...e, date: toDateStr(e.date) }));
+
+      const doc = new jsPDF();
+      const fmtDate = d => formatExportDate(d, calendar);
+      const formatCurrencyPDF = (amount, curr) => {
+        const num = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+        return `${curr.toUpperCase()} ${num}`;
+      };
+      
+      const safeText = (text) => {
+        if (!text) return '';
+        // jsPDF's built-in fonts only support ISO-8859-1 (Latin-1). 
+        // Characters outside this range (like Emojis or Cyrillic/Devanagari) cause massive corruption / garbled text if no custom font is embedded.
+        return String(text).replace(/[^\x00-\xFF]/g, '').trim();
+      };
+
+      const labelYear = isBS ? String(bsActiveYear) : String(activeYear);
+      const pageTitle = `Expense Tracker - ${labelYear} Report`;
+      
+      // Document metadata
+      doc.setProperties({ title: pageTitle, creator: 'Expense Tracker' });
+      
+      let yPos = 14;
+
+      // Header
+      doc.setFontSize(18);
+      doc.setTextColor(40, 40, 40);
+      doc.text(pageTitle, 14, yPos);
+      yPos += 8;
+      
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, yPos);
+      yPos += 12;
+
+      // Summary
+      doc.setFontSize(14);
+      doc.setTextColor(40, 40, 40);
+      doc.text("Financial Summary", 14, yPos);
+      yPos += 6;
+
+      const totalInc = yearIncomes.reduce((s, i) => s + +i.amount, 0);
+      const totalExp = yearExpenses.reduce((s, e) => s + +e.amount, 0);
+      let bankBal = 0;
+      if (isBS) {
+        const bsBank = bankEntries.filter(e => isInBSYear(e.date, bsActiveYear));
+        if (bsBank.length > 0) bankBal = bsBank[bsBank.length - 1].closingBalance;
+      } else {
+        const adBank = bankEntries.filter(e => e.date?.startsWith(yr));
+        if (adBank.length > 0) bankBal = adBank[adBank.length - 1].closingBalance;
+      }
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Metric', 'Amount']],
+        body: [
+          ['Total Income', formatCurrencyPDF(totalInc, activeCurrency)],
+          ['Total Expenses', formatCurrencyPDF(totalExp, activeCurrency)],
+          ['Net Savings (Income - Expenses)', formatCurrencyPDF(totalInc - totalExp, activeCurrency)],
+          ['Bank Balance (Closing)', formatCurrencyPDF(bankBal, activeCurrency)]
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [139, 92, 246] } // Purple
+      });
+      yPos = doc.lastAutoTable.finalY + 14;
+
+      // Helper function for adding sections
+      const addSection = (title, head, body, themeColor) => {
+        if (!body || body.length === 0) return;
+        if (yPos > 240) {
+          doc.addPage();
+          yPos = 20;
+        }
+        doc.setFontSize(14);
+        doc.setTextColor(40, 40, 40);
+        doc.text(title, 14, yPos);
+        yPos += 6;
+        autoTable(doc, {
+          startY: yPos,
+          head: [head],
+          body: body,
+          theme: 'striped',
+          headStyles: { fillColor: themeColor },
+          styles: { fontSize: 9 }
+        });
+        yPos = doc.lastAutoTable.finalY + 14;
+      };
+
+      // Incomes
+      addSection(
+        'Income',
+        ['Date', 'Title', 'Amount', 'Source'],
+        yearIncomes.map(i => [
+          fmtDate(i.date),
+          safeText(i.title),
+          formatCurrencyPDF(+i.amount, activeCurrency),
+          safeText(i.source)
+        ]),
+        [34, 197, 94] // green-500
+      );
+
+      // Expenses
+      addSection(
+        'Expenses',
+        ['Date', 'Title', 'Amount', 'Category'],
+        yearExpenses.map(e => [
+          fmtDate(e.date),
+          safeText(e.title),
+          formatCurrencyPDF(+e.amount, activeCurrency),
+          safeText(getCategoryById(e.category)?.name || e.category)
+        ]),
+        [249, 115, 22] // orange-500
+      );
+
+      // Bank Data
+      bankData.forEach(({ bank, entries }) => {
+        if (!entries || entries.length === 0) return;
+        let balance = bank.openingBalance || 0;
+        const body = entries.map(e => {
+          balance += (+e.deposit || 0) - (+e.withdraw || 0);
+          return [
+            fmtDate(e.date),
+            safeText(e.description),
+            formatCurrencyPDF(+e.deposit || 0, activeCurrency),
+            formatCurrencyPDF(+e.withdraw || 0, activeCurrency),
+            formatCurrencyPDF(balance, activeCurrency)
+          ];
+        });
+        addSection(
+          safeText(`Bank Statement - ${bank.name}`),
+          ['Date', 'Description', 'Deposit', 'Withdraw', 'Closing Balance'],
+          body,
+          [59, 130, 246] // blue-500
+        );
+      });
+
+      // Lends
+      addSection(
+        'Lends (Money Given)',
+        ['Date', 'Name', 'Lent', 'Returned', 'Due'],
+        yearLends.map(l => {
+          const due = (+l.amount || 0) - (+l.returnedAmount || 0);
+          return [
+            fmtDate(l.date),
+            safeText(l.name),
+            formatCurrencyPDF(+l.amount, activeCurrency),
+            formatCurrencyPDF(+l.returnedAmount || 0, activeCurrency),
+            formatCurrencyPDF(due, activeCurrency)
+          ];
+        }),
+        [139, 92, 246] // violet-500
+      );
+
+      // Loans
+      addSection(
+        'Loans (Money Taken)',
+        ['Date', 'Name', 'Borrowed', 'Paid', 'Due'],
+        yearLoans.map(l => {
+          const due = (+l.amount || 0) - (+l.paidAmount || 0);
+          return [
+            fmtDate(l.date),
+            safeText(l.name),
+            formatCurrencyPDF(+l.amount, activeCurrency),
+            formatCurrencyPDF(+l.paidAmount || 0, activeCurrency),
+            formatCurrencyPDF(due, activeCurrency)
+          ];
+        }),
+        [239, 68, 68] // red-500
+      );
+
+      // Savings
+      addSection(
+        'Savings (Locked/Fixed)',
+        ['Date', 'Amount', 'Expend On'],
+        yearSavings.map(s => [
+          fmtDate(s.date),
+          formatCurrencyPDF(+s.amount, activeCurrency),
+          safeText(s.expendOn)
+        ]),
+        [16, 185, 129] // emerald-500
+      );
+
+      // Interest
+      addSection(
+        'Interest Records',
+        ['Date', 'Name', 'Type', 'Principal', 'Interest', 'Total', 'Settled'],
+        yearInterest.map(r => [
+          fmtDate(r.date),
+          safeText(r.name),
+          r.transactionType === 'given' ? 'Invested' : 'Borrowed',
+          formatCurrencyPDF(+r.principal, activeCurrency),
+          formatCurrencyPDF(+r.interest, activeCurrency),
+          formatCurrencyPDF(+r.total, activeCurrency),
+          r.isSettled ? 'Yes' : 'No'
+        ]),
+        [99, 102, 241] // indigo-500
+      );
+
+      // For Me
+      addSection(
+        'For Me (Personal)',
+        ['Date', 'Name', 'Amount', 'Description'],
+        yearForMe.map(e => [
+          fmtDate(e.date),
+          safeText(e.name),
+          formatCurrencyPDF(+e.amount, activeCurrency),
+          safeText(e.description)
+        ]),
+        [236, 72, 153] // pink-500
+      );
+
+      doc.save(`expense-tracker-${labelYear}.pdf`);
+      addToast('PDF exported successfully', 'success');
+    } catch (err) {
+      console.error(err);
+      addToast('PDF export failed', 'error');
     } finally {
       setExporting(false);
     }
@@ -934,6 +1183,13 @@ export default function Profile() {
 
         {/* Export buttons */}
         <div className="flex flex-col sm:flex-row gap-3 flex-wrap mb-4">
+          <button
+            onClick={handleExportYearPDF}
+            disabled={exporting}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/40 disabled:opacity-60 transition-colors shadow-sm"
+          >
+            <FileText className="w-4 h-4" /> {exporting ? 'Exporting...' : `Export ${effectiveYear} as PDF`}
+          </button>
           <button
             onClick={() => handleExportYear('xlsx')}
             disabled={exporting}

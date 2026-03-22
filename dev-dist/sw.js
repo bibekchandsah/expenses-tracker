@@ -82,14 +82,20 @@ define(['./workbox-04904475'], (function (workbox) { 'use strict';
     "revision": "3ca0b8505b4bec776b69afdba2768812"
   }, {
     "url": "/index.html",
-    "revision": "0.d4ufm4mhqi8"
+    "revision": "0.b33o7tmr30g"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("/index.html"), {
     allowlist: [/^\/$/],
     denylist: [/^\/api\//]
   }));
-  workbox.registerRoute(/^https:\/\/(firestore|identitytoolkit|securetoken)\.googleapis\.com\/.*/i, new workbox.NetworkFirst({
+  workbox.registerRoute(({
+    url
+  }) => {
+    const isFirebase = /^https:\/\/(firestore|identitytoolkit|securetoken)\.googleapis\.com\/.*/i.test(url.href);
+    const isWebChannel = url.pathname.includes("/channel") || url.search.includes("channel");
+    return isFirebase && !isWebChannel;
+  }, new workbox.NetworkFirst({
     "cacheName": "firebase-cache",
     "networkTimeoutSeconds": 10,
     plugins: [new workbox.ExpirationPlugin({
