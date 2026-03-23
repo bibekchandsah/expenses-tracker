@@ -1,23 +1,24 @@
-# ExpenseIQ – Full-Stack Expense Tracker
+# Mero Expense Tracker – Comprehensive Financial Manager
 
-A production-ready, cloud-synchronized expense tracker built with **React + Firebase**. Features Google authentication, real-time data sync, rich analytics, budget planning, and a modern responsive UI.
+A production-ready, cloud-synchronized personal finance manager built with **React + Firebase**. Features Google & Biometric authentication, real-time data sync, rich analytics, multi-currency support, calendar toggles, and a modern responsive UI.
+
+**🌐 Live Demo:** [https://meroexpensetracker.vercel.app/](https://meroexpensetracker.vercel.app/)
 
 ---
 
 ## ✨ Features
 
-- 🔐 **Google Sign-In** with Firebase Authentication
-- ☁️ **Real-time cloud sync** via Firestore `onSnapshot`
-- 💰 **Full CRUD** – add, edit, delete, view expenses
-- 📊 **Analytics Dashboard** – pie, bar, and area charts
-- 🏷️ **Categories** – default + custom with icons & colors
-- 🎯 **Budget Planner** – monthly limits per category with progress bars & alerts
-- 🔍 **Search & Filters** – by title, category, date range
-- 📤 **CSV Export** – download filtered expenses
-- 🌙 **Dark / Light mode** toggle (persisted)
-- 📱 **Responsive design** – mobile + desktop sidebar
-- ⚡ **Performance** – lazy-loaded pages, debounced search, memoized computations
-- 🛡️ **Security** – Firestore rules enforce per-user data isolation
+- 🔐 **Authentication** – Google Sign-In and secure Biometric (WebAuthn/Passkey) login
+- 🌍 **Localization** – Full Multi-Currency support and AD / BS (Bikram Sambat) Calendar toggles
+- 🏦 **Bank Management** – Track multiple bank accounts, opening balances, and transfers
+- 🤝 **Lends & Loans** – Dedicated ledgers for tracking money you owe or are owed
+- 📈 **Interest Calculator** – Track Simple and Compound interest investments/debts
+- 🎯 **Savings & "For Me"** – Track fixed lock-in savings and isolated personal expenses
+- 📊 **Analytics Dashboard** – Comprehensive pie, bar, and area charts comparing MoM and YoY trends
+- 📄 **Advanced PDF Reports** – Export beautifully crafted analytical PDFs with total summaries and breakdowns
+- ☁️ **Real-time Cloud Sync** via Firestore `onSnapshot` with strict per-user data isolation
+- 🏷️ **Categories & Budgets** – Custom categories with icons/colors and strict monthly limits
+- 🌙 **Modern Premium UI** – Responsive mobile-first design, dark/light mode, and fluid animations
 
 ---
 

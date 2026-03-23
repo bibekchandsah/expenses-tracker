@@ -17,9 +17,9 @@ export default defineConfig({
         'android-icon-192x192.png',
       ],
       manifest: {
-        name: 'ExpenseIQ – Expense Tracker',
-        short_name: 'ExpenseIQ',
-        description: 'Smart personal finance tracker with real-time sync, multi-currency, and analytics.',
+        name: 'Mero Expense Tracker – Smart Finance',
+        short_name: 'Mero Expense',
+        description: 'Multi-currency personal finance tracker with real-time sync, AD/BS calendar, and advanced analytics.',
         theme_color: '#4f46e5',
         background_color: '#111827',
         display: 'standalone',

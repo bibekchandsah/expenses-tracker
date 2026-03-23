@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://meroexpensetracker.vercel.app/sitemap.xml
