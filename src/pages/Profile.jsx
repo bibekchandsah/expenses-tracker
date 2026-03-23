@@ -467,7 +467,7 @@ export default function Profile() {
         .filter(e => filterFn({ date: toDateStr(e.date) }))
         .map(e => ({ ...e, date: toDateStr(e.date) }));
 
-      const doc = new jsPDF();
+      const doc = new jsPDF({ orientation: 'landscape' }); // landscape orientation for pdf
       const fmtDate = d => formatExportDate(d, calendar);
       const formatCurrencyPDF = (amount, curr) => {
         const num = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
@@ -571,10 +571,13 @@ export default function Profile() {
       addSection(
         'Expenses',
         ['Date', 'Title', 'Amount', 'Category'],
+        // ['Date', 'Title', 'Amount', 'Note', 'Description' ,'Category'],
         yearExpenses.map(e => [
           fmtDate(e.date),
           safeText(e.title),
           formatCurrencyPDF(+e.amount, activeCurrency),
+          // safeText(e.note),
+          // safeText(e.description),
           safeText(getCategoryById(e.category)?.name || e.category)
         ]),
         [249, 115, 22] // orange-500
@@ -601,6 +604,22 @@ export default function Profile() {
           [59, 130, 246] // blue-500
         );
       });
+
+      // Interest
+      addSection(
+        'Interest Records',
+        ['Date', 'Name', 'Type', 'Principal', 'Interest', 'Total', 'Settled'],
+        yearInterest.map(r => [
+          fmtDate(r.date),
+          safeText(r.name),
+          r.transactionType === 'given' ? 'Invested' : 'Borrowed',
+          formatCurrencyPDF(+r.principal, activeCurrency),
+          formatCurrencyPDF(+r.interest, activeCurrency),
+          formatCurrencyPDF(+r.total, activeCurrency),
+          r.isSettled ? 'Yes' : 'No'
+        ]),
+        [99, 102, 241] // indigo-500
+      );
 
       // Lends
       addSection(
@@ -648,22 +667,6 @@ export default function Profile() {
         [16, 185, 129] // emerald-500
       );
 
-      // Interest
-      addSection(
-        'Interest Records',
-        ['Date', 'Name', 'Type', 'Principal', 'Interest', 'Total', 'Settled'],
-        yearInterest.map(r => [
-          fmtDate(r.date),
-          safeText(r.name),
-          r.transactionType === 'given' ? 'Invested' : 'Borrowed',
-          formatCurrencyPDF(+r.principal, activeCurrency),
-          formatCurrencyPDF(+r.interest, activeCurrency),
-          formatCurrencyPDF(+r.total, activeCurrency),
-          r.isSettled ? 'Yes' : 'No'
-        ]),
-        [99, 102, 241] // indigo-500
-      );
-
       // For Me
       addSection(
         'For Me (Personal)',
@@ -675,6 +678,40 @@ export default function Profile() {
           safeText(e.description)
         ]),
         [236, 72, 153] // pink-500
+      );
+
+      // Net Summary (per person)
+      const netMap = {};
+      yearLends.forEach(l => {
+        const k = (l.name || '').trim().toLowerCase();
+        if (!netMap[k]) netMap[k] = { name: l.name, lent: 0, returned: 0, borrowed: 0, paid: 0 };
+        netMap[k].lent     += +l.amount         || 0;
+        netMap[k].returned += +l.returnedAmount || 0;
+      });
+      yearLoans.forEach(l => {
+        const k = (l.name || '').trim().toLowerCase();
+        if (!netMap[k]) netMap[k] = { name: l.name, lent: 0, returned: 0, borrowed: 0, paid: 0 };
+        netMap[k].borrowed += +l.amount     || 0;
+        netMap[k].paid     += +l.paidAmount || 0;
+      });
+      const netSummaryRows = Object.values(netMap).map(p => {
+        const toReceive = p.lent - p.returned;
+        const toGive = p.borrowed - p.paid;
+        const net = toReceive - toGive;
+        return [
+          safeText(p.name),
+          formatCurrencyPDF(p.borrowed, activeCurrency),
+          formatCurrencyPDF(toGive, activeCurrency),
+          formatCurrencyPDF(p.lent, activeCurrency),
+          formatCurrencyPDF(toReceive, activeCurrency),
+          formatCurrencyPDF(net, activeCurrency)
+        ];
+      });
+      addSection(
+        'Net Summary (per person)',
+        ['Name', 'Borrowed', 'To Give', 'Lent', 'To Receive', 'Net'],
+        netSummaryRows,
+        [79, 70, 229] // indigo-600
       );
 
       doc.save(`expense-tracker-${labelYear}.pdf`);
