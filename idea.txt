@@ -1254,3 +1254,52 @@ Result: Users can now:
     Delete all Interest records for a specific year
     Delete only Interest records while keeping other page data intact
     All operations work correctly with both Gregorian and Bikram Sambat calendar systems
+
+
+
+
+
+
+This Month
+₹ 1,219
+March 2026 ↓ 79.9% vs last month
+
+This Year
+₹ 10,322.85
+2026 ↓ 74.7% vs last year
+
+Monthly Average
+₹ 3,440.95
+This year ↓ 15.8% vs last year
+
+
+Monthly Expenses 2026
+in table format
+jan amount
+feb amount
+mar amount
+apr amount
+may amount
+jun amount
+jul amount
+aug amount
+sep amount
+oct amount
+nov amount
+dec amount
+
+categories breakdown 2026
+in table format
+category name amount
+category name amount
+category name amount
+category name amount
+category name amount
+category name Amount
+
+Total income 2026
+Total expenses 2026
+Bank Balance Closing (Bank_1) 2026
+Bank Balance Closing (Bank_2) 2026
+Bank Balance Closing (Bank_3) 2026
+

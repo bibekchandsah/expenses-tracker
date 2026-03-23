@@ -19,8 +19,8 @@ import { useBanks } from '../context/BankContext';
 import { getBankEntriesOnce, getAllBankEntriesOnce, deleteBankEntry } from '../services/bankService';
 import { useCategories } from '../context/CategoryContext';
 import { INCOME_SOURCES } from '../components/IncomeModal';
-import { formatCurrency } from '../utils/formatters';
-import { isInBSYear, getCurrentBSYear, safeADToBS, getBSYearRange } from '../utils/calendarUtils';
+import { formatCurrency, groupByCategory, monthsOfYear } from '../utils/formatters';
+import { isInBSYear, getCurrentBSYear, safeADToBS, getBSYearRange, adDateToBSMonthKey, getBSMonthLabel, bsMonthsOfYear } from '../utils/calendarUtils';
 
 function toDateStr(d) {
   if (!d) return '';
@@ -105,7 +105,7 @@ export default function Profile() {
   const { user, updateUserInfo, setProfilePhoto, avatarURL, biometricEnabled, registerBiometric, disableBiometric } = useAuth();
   const { currency: activeCurrency, updateCurrency } = useCurrency();
   const { activeYear, updateActiveYear, bsActiveYear, updateBSActiveYear } = useActiveYear();
-  const { calendar, updateCalendar, yearLabel } = useCalendar();
+  const { calendar, updateCalendar, yearLabel, monthLabel } = useCalendar();
   const { expenses, deleteExpense } = useExpenses();
   const { incomes, deleteIncome } = useIncomes();
   const { lends, deleteLend } = useLends();
@@ -449,7 +449,8 @@ export default function Profile() {
       const bankData = await Promise.all(
         banks.map(async bank => {
           const all = await getBankEntriesOnce(user.uid, bank.id);
-          return { bank, entries: all.filter(e => isBS ? isInBSYear(e.date, bsActiveYear) : e.date?.startsWith(yr)) };
+          const currentBalance = all.reduce((sum, e) => sum + (+e.deposit || 0) - (+e.withdraw || 0), +bank.openingBalance || 0);
+          return { bank, currentBalance, entries: all.filter(e => isBS ? isInBSYear(e.date, bsActiveYear) : e.date?.startsWith(yr)) };
         })
       );
 
@@ -467,7 +468,7 @@ export default function Profile() {
         .filter(e => filterFn({ date: toDateStr(e.date) }))
         .map(e => ({ ...e, date: toDateStr(e.date) }));
 
-      const doc = new jsPDF({ orientation: 'landscape' }); // landscape orientation for pdf
+      const doc = new jsPDF({ orientation: 'portrait' }); // landscape or portrait orientation for pdf
       const fmtDate = d => formatExportDate(d, calendar);
       const formatCurrencyPDF = (amount, curr) => {
         const num = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
@@ -500,44 +501,130 @@ export default function Profile() {
       doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, yPos);
       yPos += 12;
 
-      // Summary
-      doc.setFontSize(14);
-      doc.setTextColor(40, 40, 40);
-      doc.text("Financial Summary", 14, yPos);
-      yPos += 6;
+      // ----------------------------------------------------
+      // FRONT PAGE OVERVIEW DATA CALCULATION
+      // ----------------------------------------------------
+      const now = new Date();
+      const displayMonth = isBS
+        ? adDateToBSMonthKey(now.toISOString().slice(0, 10))
+        : `${activeYear}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      
+      const monthExpenses = isBS
+        ? expenses.filter(e => adDateToBSMonthKey(e.date) === displayMonth)
+        : expenses.filter(e => e.date?.startsWith(displayMonth));
+      
+      const prevM = isBS
+        ? (() => {
+            const [byStr, bmStr] = displayMonth.split('-');
+            const bm = parseInt(bmStr, 10);
+            const by = parseInt(byStr, 10);
+            return bm === 1 ? `${by - 1}-12` : `${by}-${String(bm - 1).padStart(2, '0')}`;
+          })()
+        : new Date(activeYear, now.getMonth() - 1, 1).toISOString().slice(0, 7);
+      
+      const lastMonthExpenses = isBS
+        ? expenses.filter(e => adDateToBSMonthKey(e.date) === prevM)
+        : expenses.filter(e => e.date?.startsWith(prevM));
 
-      const totalInc = yearIncomes.reduce((s, i) => s + +i.amount, 0);
-      const totalExp = yearExpenses.reduce((s, e) => s + +e.amount, 0);
-      let bankBal = 0;
+      const monthTotal     = monthExpenses.reduce((s, e) => s + +e.amount, 0);
+      const lastMonthTotal = lastMonthExpenses.reduce((s, e) => s + +e.amount, 0);
+      const totalExp       = yearExpenses.reduce((s, e) => s + +e.amount, 0);
+      const totalInc       = yearIncomes.reduce((s, i) => s + +i.amount, 0);
+      
+      const monthTrend = lastMonthTotal ? ((monthTotal - lastMonthTotal) / lastMonthTotal) * 100 : 0;
+      
+      const prevYearExpenses = isBS
+        ? (() => {
+            const prevRange = getBSYearRange(bsActiveYear - 1);
+            return expenses.filter(e => e.date >= prevRange.start && e.date <= prevRange.end);
+          })()
+        : expenses.filter(e => e.date?.startsWith(String(activeYear - 1)));
+      
+      const prevYearTotal = prevYearExpenses.reduce((s, e) => s + +e.amount, 0);
+      const yearTrend = prevYearTotal ? ((totalExp - prevYearTotal) / prevYearTotal) * 100 : 0;
+
+      const avgMonthly = isBS
+        ? totalExp / Math.max(1, new Set(yearExpenses.map(e => adDateToBSMonthKey(e.date))).size)
+        : totalExp / Math.max(1, new Set(yearExpenses.map(e => e.date?.slice(0, 7))).size);
+      
+      const prevYearAvg = isBS
+        ? prevYearTotal / Math.max(1, new Set(prevYearExpenses.map(e => adDateToBSMonthKey(e.date))).size)
+        : prevYearTotal / Math.max(1, new Set(prevYearExpenses.map(e => e.date?.slice(0, 7))).size);
+      
+      const avgTrend = prevYearAvg ? ((avgMonthly - prevYearAvg) / prevYearAvg) * 100 : 0;
+
+      const fmtTrend = (val) => {
+        if (!val) return '0.0%';
+        const dir = val > 0 ? '(+)' : '(-)';
+        return `${dir} ${Math.abs(val).toFixed(1)}%`;
+      };
+      
+      let monthlyTableData = [];
       if (isBS) {
-        const bsBank = bankEntries.filter(e => isInBSYear(e.date, bsActiveYear));
-        if (bsBank.length > 0) bankBal = bsBank[bsBank.length - 1].closingBalance;
+        const months = bsMonthsOfYear(bsActiveYear);
+        const map = {};
+        yearExpenses.forEach(e => {
+          const m = adDateToBSMonthKey(e.date);
+          map[m] = (map[m] || 0) + (+e.amount || 0);
+        });
+        monthlyTableData = months.map(m => [getBSMonthLabel(m, 'short'), formatCurrencyPDF(map[m] || 0, activeCurrency)]);
       } else {
-        const adBank = bankEntries.filter(e => e.date?.startsWith(yr));
-        if (adBank.length > 0) bankBal = adBank[adBank.length - 1].closingBalance;
+        const months = monthsOfYear(activeYear);
+        const map = {};
+        yearExpenses.forEach(e => {
+          const m = e.date?.slice(0, 7);
+          map[m] = (map[m] || 0) + (+e.amount || 0);
+        });
+        monthlyTableData = months.map(m => [monthLabel(m, 'short'), formatCurrencyPDF(map[m] || 0, activeCurrency)]);
       }
 
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Metric', 'Amount']],
-        body: [
-          ['Total Income', formatCurrencyPDF(totalInc, activeCurrency)],
-          ['Total Expenses', formatCurrencyPDF(totalExp, activeCurrency)],
-          ['Net Savings (Income - Expenses)', formatCurrencyPDF(totalInc - totalExp, activeCurrency)],
-          ['Bank Balance (Closing)', formatCurrencyPDF(bankBal, activeCurrency)]
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: [139, 92, 246] } // Purple
-      });
-      yPos = doc.lastAutoTable.finalY + 14;
+      const catGroups = groupByCategory(yearExpenses).map(g => {
+        const cat = getCategoryById(g.category);
+        return { name: cat?.name || g.category, total: g.total };
+      }).sort((a, b) => b.total - a.total);
+      
+      const catTableData = catGroups.map(c => [safeText(c.name), formatCurrencyPDF(c.total, activeCurrency)]);
+
+      // ----------------------------------------------------
+      // DRAW OVERVIEW
+      // ----------------------------------------------------
+      doc.setFontSize(16);
+      doc.setTextColor(40, 40, 40);
+      doc.text("Financial Overview", 14, yPos);
+      yPos += 8;
+
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("This Month", 14, yPos);
+      doc.text("This Year", 80, yPos);
+      doc.text("Monthly Average", 146, yPos);
+      
+      yPos += 6;
+      doc.setFontSize(14);
+      doc.setTextColor(59, 130, 246);
+      doc.text(formatCurrencyPDF(monthTotal, activeCurrency), 14, yPos);
+      doc.text(formatCurrencyPDF(totalExp, activeCurrency), 80, yPos);
+      doc.text(formatCurrencyPDF(avgMonthly, activeCurrency), 146, yPos);
+
+      yPos += 5;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 100, 100);
+      const strMonth = isBS ? getBSMonthLabel(displayMonth, 'short') + ` ${bsActiveYear}` : monthLabel(displayMonth, 'short') + ` ${activeYear}`;
+      doc.text(`${strMonth} ${fmtTrend(monthTrend)} vs last month`, 14, yPos);
+      doc.text(`${labelYear} ${fmtTrend(yearTrend)} vs last year`, 80, yPos);
+      doc.text(`This year ${fmtTrend(avgTrend)} vs last year`, 146, yPos);
+
+      yPos += 12;
 
       // Helper function for adding sections
-      const addSection = (title, head, body, themeColor) => {
+      const addSection = (title, head, body, themeColor, foot = null, newPage = true) => {
         if (!body || body.length === 0) return;
         
-        // Start each new section on a fresh page
-        doc.addPage();
-        yPos = 20;
+        if (newPage) {
+          doc.addPage();
+          yPos = 20;
+        }
 
         doc.setFontSize(14);
         doc.setTextColor(40, 40, 40);
@@ -547,12 +634,29 @@ export default function Profile() {
           startY: yPos,
           head: [head],
           body: body,
+          foot: foot ? [foot] : undefined,
+          showFoot: 'lastPage', // show foot i.e. total only on last page
           theme: 'striped',
           headStyles: { fillColor: themeColor },
+          footStyles: { fillColor: [240, 240, 240], textColor: [40, 40, 40], fontStyle: 'bold' },
           styles: { fontSize: 9 }
         });
         yPos = doc.lastAutoTable.finalY + 14;
       };
+
+      // Draw Front Page Tables
+      addSection(`Monthly Expenses ${labelYear}`, ['Month', 'Amount'], monthlyTableData, [59, 130, 246], ['Total', formatCurrencyPDF(totalExp, activeCurrency)], false);
+      addSection(`Categories Breakdown ${labelYear}`, ['Category', 'Amount'], catTableData, [249, 115, 22], ['Total', formatCurrencyPDF(totalExp, activeCurrency)], false);
+
+      const balancesBody = [
+        ['Total Income', formatCurrencyPDF(totalInc, activeCurrency)],
+        ['Total Expenses', formatCurrencyPDF(totalExp, activeCurrency)]
+      ];
+      bankData.filter(b => b.entries.length > 0 || b.currentBalance > 0).forEach(b => {
+        balancesBody.push([`Bank Balance Closing (${b.bank.name})`, formatCurrencyPDF(b.currentBalance, activeCurrency)]);
+      });
+
+      addSection(`Aggregated Balances ${labelYear}`, ['Metric', 'Amount'], balancesBody, [16, 185, 129], null, false);
 
       // Incomes
       addSection(
@@ -564,7 +668,8 @@ export default function Profile() {
           formatCurrencyPDF(+i.amount, activeCurrency),
           safeText(i.source)
         ]),
-        [34, 197, 94] // green-500
+        [34, 197, 94], // green-500
+        ['Total', '', formatCurrencyPDF(totalInc, activeCurrency), '']
       );
 
       // Expenses
@@ -580,15 +685,19 @@ export default function Profile() {
           // safeText(e.description),
           safeText(getCategoryById(e.category)?.name || e.category)
         ]),
-        [249, 115, 22] // orange-500
+        [249, 115, 22], // orange-500
+        ['Total', '', formatCurrencyPDF(totalExp, activeCurrency), '']
       );
 
       // Bank Data
       bankData.forEach(({ bank, entries }) => {
         if (!entries || entries.length === 0) return;
         let balance = bank.openingBalance || 0;
+        let totDep = 0, totWd = 0;
         const body = entries.map(e => {
           balance += (+e.deposit || 0) - (+e.withdraw || 0);
+          totDep += (+e.deposit || 0);
+          totWd += (+e.withdraw || 0);
           return [
             fmtDate(e.date),
             safeText(e.description),
@@ -601,11 +710,15 @@ export default function Profile() {
           safeText(`Bank Statement - ${bank.name}`),
           ['Date', 'Description', 'Deposit', 'Withdraw', 'Closing Balance'],
           body,
-          [59, 130, 246] // blue-500
+          [59, 130, 246], // blue-500
+          ['Total', '', formatCurrencyPDF(totDep, activeCurrency), formatCurrencyPDF(totWd, activeCurrency), '']
         );
       });
 
       // Interest
+      const intP = yearInterest.reduce((s, r) => s + +r.principal, 0);
+      const intI = yearInterest.reduce((s, r) => s + +r.interest, 0);
+      const intT = yearInterest.reduce((s, r) => s + +r.total, 0);
       addSection(
         'Interest Records',
         ['Date', 'Name', 'Type', 'Principal', 'Interest', 'Total', 'Settled'],
@@ -618,10 +731,13 @@ export default function Profile() {
           formatCurrencyPDF(+r.total, activeCurrency),
           r.isSettled ? 'Yes' : 'No'
         ]),
-        [99, 102, 241] // indigo-500
+        [99, 102, 241], // indigo-500
+        ['Total', '', '', formatCurrencyPDF(intP, activeCurrency), formatCurrencyPDF(intI, activeCurrency), formatCurrencyPDF(intT, activeCurrency), '']
       );
 
       // Lends
+      const tLent = yearLends.reduce((s, l) => s + (+l.amount || 0), 0);
+      const tRet = yearLends.reduce((s, l) => s + (+l.returnedAmount || 0), 0);
       addSection(
         'Lends (Money Given)',
         ['Date', 'Name', 'Lent', 'Returned', 'Due'],
@@ -635,10 +751,13 @@ export default function Profile() {
             formatCurrencyPDF(due, activeCurrency)
           ];
         }),
-        [139, 92, 246] // violet-500
+        [139, 92, 246], // violet-500
+        ['Total', '', formatCurrencyPDF(tLent, activeCurrency), formatCurrencyPDF(tRet, activeCurrency), formatCurrencyPDF(tLent - tRet, activeCurrency)]
       );
 
       // Loans
+      const tBor = yearLoans.reduce((s, l) => s + (+l.amount || 0), 0);
+      const tPai = yearLoans.reduce((s, l) => s + (+l.paidAmount || 0), 0);
       addSection(
         'Loans (Money Taken)',
         ['Date', 'Name', 'Borrowed', 'Paid', 'Due'],
@@ -652,10 +771,12 @@ export default function Profile() {
             formatCurrencyPDF(due, activeCurrency)
           ];
         }),
-        [239, 68, 68] // red-500
+        [239, 68, 68], // red-500
+        ['Total', '', formatCurrencyPDF(tBor, activeCurrency), formatCurrencyPDF(tPai, activeCurrency), formatCurrencyPDF(tBor - tPai, activeCurrency)]
       );
 
       // Savings
+      const tSav = yearSavings.reduce((s, v) => s + (+v.amount || 0), 0);
       addSection(
         'Savings (Locked/Fixed)',
         ['Date', 'Amount', 'Expend On'],
@@ -664,10 +785,12 @@ export default function Profile() {
           formatCurrencyPDF(+s.amount, activeCurrency),
           safeText(s.expendOn)
         ]),
-        [16, 185, 129] // emerald-500
+        [16, 185, 129], // emerald-500
+        ['Total', formatCurrencyPDF(tSav, activeCurrency), '']
       );
 
       // For Me
+      const tFor = yearForMe.reduce((s, e) => s + (+e.amount || 0), 0);
       addSection(
         'For Me (Personal)',
         ['Date', 'Name', 'Amount', 'Description'],
@@ -677,7 +800,8 @@ export default function Profile() {
           formatCurrencyPDF(+e.amount, activeCurrency),
           safeText(e.description)
         ]),
-        [236, 72, 153] // pink-500
+        [236, 72, 153], // pink-500
+        ['Total', '', formatCurrencyPDF(tFor, activeCurrency), '']
       );
 
       // Net Summary (per person)
@@ -694,10 +818,12 @@ export default function Profile() {
         netMap[k].borrowed += +l.amount     || 0;
         netMap[k].paid     += +l.paidAmount || 0;
       });
+      let nTBo = 0, nTGb = 0, nTLen = 0, nTRec = 0, nTNet = 0;
       const netSummaryRows = Object.values(netMap).map(p => {
         const toReceive = p.lent - p.returned;
         const toGive = p.borrowed - p.paid;
         const net = toReceive - toGive;
+        nTBo += p.borrowed; nTGb += toGive; nTLen += p.lent; nTRec += toReceive; nTNet += net;
         return [
           safeText(p.name),
           formatCurrencyPDF(p.borrowed, activeCurrency),
@@ -711,7 +837,8 @@ export default function Profile() {
         'Net Summary (per person)',
         ['Name', 'Borrowed', 'To Give', 'Lent', 'To Receive', 'Net'],
         netSummaryRows,
-        [79, 70, 229] // indigo-600
+        [79, 70, 229], // indigo-600
+        ['Total', formatCurrencyPDF(nTBo, activeCurrency), formatCurrencyPDF(nTGb, activeCurrency), formatCurrencyPDF(nTLen, activeCurrency), formatCurrencyPDF(nTRec, activeCurrency), formatCurrencyPDF(nTNet, activeCurrency)]
       );
 
       doc.save(`expense-tracker-${labelYear}.pdf`);
