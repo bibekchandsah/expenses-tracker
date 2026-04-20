@@ -61,6 +61,7 @@ export default function Income() {
   const isBS = calendar === 'bs';
 
   const [modalOpen, setModalOpen]       = useState(false);
+  const [modalPinned, setModalPinned]   = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState({ open: false, row: null });
   const [importOpen, setImportOpen]      = useState(false);
   const [editingIncome, setEditingIncome] = useState(null);
@@ -548,6 +549,8 @@ export default function Income() {
         income={editingIncome}
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
+        pinned={modalPinned}
+        onPinnedChange={setModalPinned}
       />
       <ConfirmDialog
         isOpen={!!deleteTarget}

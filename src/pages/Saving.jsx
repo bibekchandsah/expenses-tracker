@@ -3,7 +3,7 @@ import CountUpValue from '../components/ui/CountUpValue';
 import {
   PiggyBank, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown,
-  PanelRightClose, PanelRightOpen, Upload, Download, Zap,
+  PanelRightClose, PanelRightOpen, Upload, Download, Zap, Pin,
 } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
@@ -29,7 +29,7 @@ function SortIcon({ col, sortCol, sortDir }) {
     : <ArrowDown className="w-3 h-3 text-primary-500" />;
 }
 
-function SavingModal({ isOpen, entry, onClose, onSave }) {
+function SavingModal({ isOpen, entry, onClose, onSave, pinned = false, onPinnedChange }) {
   const { calendar } = useCalendar();
   const [form, setForm] = useState({ date: todayStr(), amount: '', expendOn: '', description: '' });
   const [errors, setErrors] = useState({});
@@ -58,7 +58,15 @@ function SavingModal({ isOpen, entry, onClose, onSave }) {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true);
-    try { await onSave(form); onClose(); }
+    try {
+      await onSave(form);
+      if (pinned && !entry) {
+        setForm({ date: form.date, amount: '', expendOn: '', description: '' });
+        setErrors({});
+      } else {
+        onClose();
+      }
+    }
     catch { setErrors({ global: 'Failed to save. Please try again.' }); }
     finally { setSaving(false); }
   }
@@ -71,9 +79,21 @@ function SavingModal({ isOpen, entry, onClose, onSave }) {
             <PiggyBank className="w-5 h-5 text-primary-600" />
             {entry ? 'Edit Saving' : 'New Saving'}
           </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {!entry && onPinnedChange && (
+              <button
+                type="button"
+                onClick={() => onPinnedChange(p => !p)}
+                title={pinned ? 'Unpin: close after adding' : 'Pin: keep open to add multiple'}
+                className={`p-1.5 rounded-lg transition-colors ${pinned ? 'text-primary-600 bg-primary-50 dark:bg-primary-900/30' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              >
+                <Pin className={`w-4 h-4 ${pinned ? 'fill-primary-600 dark:fill-primary-400' : ''}`} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {errors.global && <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-xl">{errors.global}</p>}
@@ -233,6 +253,7 @@ export default function Saving() {
   const isBS = calendar === 'bs';
 
   const [showSidePanel, setShowSidePanel] = useState(true);
+  const [savingModalPinned, setSavingModalPinned] = useState(false);
   const [importOpen, setImportOpen]        = useState(false);
   const [quickAddOpen, setQuickAddOpen]   = useState({ open: false, row: null });
   const [savingModal, setSavingModal]     = useState({ open: false, item: null });
@@ -656,6 +677,8 @@ export default function Saving() {
         entry={savingModal.item}
         onClose={() => setSavingModal({ open: false, item: null })}
         onSave={handleSave}
+        pinned={savingModalPinned}
+        onPinnedChange={setSavingModalPinned}
       />
       <SourceModal
         isOpen={sourceModal.open}

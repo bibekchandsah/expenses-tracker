@@ -1256,6 +1256,11 @@ Result: Users can now:
     All operations work correctly with both Gregorian and Bikram Sambat calendar systems
 
 
+pin icon appears inside the modal header (only when adding, not editing) so users can toggle it from there too.
+When pinned, submitting an expense resets the form (keeping the same date) instead of closing the modal, so you can keep adding back-to-back.
+The pin state lives in Expenses.jsx so it persists across modal opens.
+The pin feature is now live across all 7 pages — Income, Bank, Interest, Lend, Loan, Saving, and ForMe. Each modal shows a pin icon in the header (only when adding, not editing). When pinned, submitting resets the form and keeps the modal open so you can add multiple entries back-to-back.
+Both the "Add Bank" and "Add Category" modals now have the pin icon in their headers — same behavior as the rest of the app.
 
 
 

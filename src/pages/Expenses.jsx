@@ -44,6 +44,7 @@ export default function Expenses() {
   const isBS = calendar === 'bs';
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalPinned, setModalPinned] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -493,6 +494,8 @@ export default function Expenses() {
         expense={editingExpense}
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
+        pinned={modalPinned}
+        onPinnedChange={setModalPinned}
       />
       <ConfirmDialog
         isOpen={!!deleteTarget}

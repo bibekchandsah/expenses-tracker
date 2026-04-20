@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, DollarSign, Calendar, Briefcase, FileText, AlignLeft } from 'lucide-react';
+import { X, DollarSign, Calendar, Briefcase, FileText, AlignLeft, Pin } from 'lucide-react';
 import { useCalendar } from '../context/CalendarContext';
 import NepaliDatePickerInput from './ui/NepaliDatePickerInput';
 
@@ -15,7 +15,7 @@ export const INCOME_SOURCES = [
 
 const EMPTY = { title: '', amount: '', source: '', date: '', description: '', notes: '' };
 
-export default function IncomeModal({ isOpen, income, onClose, onSave }) {
+export default function IncomeModal({ isOpen, income, onClose, onSave, pinned = false, onPinnedChange }) {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -51,7 +51,12 @@ export default function IncomeModal({ isOpen, income, onClose, onSave }) {
     setSaving(true);
     try {
       await onSave({ ...form, amount: +form.amount });
-      onClose();
+      if (pinned && !income) {
+        setForm({ ...EMPTY, date: form.date });
+        setErrors({});
+      } else {
+        onClose();
+      }
     } catch {
       // error handled in context
     } finally {
@@ -74,12 +79,24 @@ export default function IncomeModal({ isOpen, income, onClose, onSave }) {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             {income ? 'Edit Income' : 'Add Income'}
           </h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {!income && onPinnedChange && (
+              <button
+                type="button"
+                onClick={() => onPinnedChange(p => !p)}
+                title={pinned ? 'Unpin: close after adding' : 'Pin: keep open to add multiple'}
+                className={`p-1.5 rounded-lg transition-colors ${pinned ? 'text-green-600 bg-green-50 dark:bg-green-900/30' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              >
+                <Pin className={`w-4 h-4 ${pinned ? 'fill-green-600 dark:fill-green-400' : ''}`} />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Form */}

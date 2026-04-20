@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Edit2, Trash2, Lock, X, Check, Smile } from 'lucide-react';
+import { Plus, Edit2, Trash2, Lock, X, Check, Smile, Pin } from 'lucide-react';
 import { useCategories } from '../context/CategoryContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -25,7 +25,7 @@ const EMOJI_GROUPS = [
 
 const EMPTY_FORM = { name: '', icon: '📦', color: '#3b82f6' };
 
-function CategoryModal({ isOpen, category, onClose, onSave }) {
+function CategoryModal({ isOpen, category, onClose, onSave, pinned = false, onPinnedChange }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -47,7 +47,17 @@ function CategoryModal({ isOpen, category, onClose, onSave }) {
     e.preventDefault();
     if (!form.name.trim()) { setError('Name is required'); return; }
     setSaving(true);
-    try { await onSave(form); onClose(); }
+    try {
+      await onSave(form);
+      if (pinned && !category) {
+        setForm(EMPTY_FORM);
+        setCustomEmoji('');
+        setActiveGroup(0);
+        setError('');
+      } else {
+        onClose();
+      }
+    }
     catch { setError('Failed to save category'); }
     finally { setSaving(false); }
   }
@@ -67,7 +77,19 @@ function CategoryModal({ isOpen, category, onClose, onSave }) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{category ? 'Edit' : 'Add'} Category</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:bg-gray-700 transition-colors"><X className="w-5 h-5" /></button>
+          <div className="flex items-center gap-1">
+            {!category && onPinnedChange && (
+              <button
+                type="button"
+                onClick={() => onPinnedChange(p => !p)}
+                title={pinned ? 'Unpin: close after adding' : 'Pin: keep open to add multiple'}
+                className={`p-1.5 rounded-lg transition-colors ${pinned ? 'text-primary-600 bg-primary-50 dark:bg-primary-900/30' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              >
+                <Pin className={`w-4 h-4 ${pinned ? 'fill-primary-600 dark:fill-primary-400' : ''}`} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:bg-gray-700 transition-colors"><X className="w-5 h-5" /></button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden">
@@ -226,6 +248,7 @@ export default function Categories() {
   const { categories, loading, addCategory, updateCategory, deleteCategory } = useCategories();
   const { addToast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalPinned, setModalPinned] = useState(false);
   const [editing, setEditing] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
@@ -314,6 +337,8 @@ export default function Categories() {
         category={editing}
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
+        pinned={modalPinned}
+        onPinnedChange={setModalPinned}
       />
       <ConfirmDialog
         isOpen={!!deleteTarget}

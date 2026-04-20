@@ -3,7 +3,7 @@ import CountUpValue from '../components/ui/CountUpValue';
 import {
   Building2, Plus, Edit2, Trash2, X, ChevronDown,
   ArrowDownCircle, ArrowUpCircle, Wallet, Download, Upload,
-  ChevronsUpDown, Check, Settings, Search, ArrowUp, ArrowDown, Zap,
+  ChevronsUpDown, Check, Settings, Search, ArrowUp, ArrowDown, Zap, Pin,
 } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
@@ -20,7 +20,7 @@ import YearSelector from '../components/ui/YearSelector';
 import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
 
 // ── Add/Edit Bank Modal ─────────────────────────────────────────
-function BankModal({ isOpen, bank, onClose, onSave }) {
+function BankModal({ isOpen, bank, onClose, onSave, pinned = false, onPinnedChange }) {
   const [form, setForm] = useState({ 
     name: '', 
     openingBalance: '', 
@@ -59,7 +59,15 @@ function BankModal({ isOpen, bank, onClose, onSave }) {
     e.preventDefault();
     if (!form.name.trim()) { setError('Bank name is required'); return; }
     setSaving(true);
-    try { await onSave(form); onClose(); }
+    try {
+      await onSave(form);
+      if (pinned && !bank) {
+        setForm({ name: '', openingBalance: '', accountHolder: '', accountNumber: '', branch: '', ifscCode: '' });
+        setError('');
+      } else {
+        onClose();
+      }
+    }
     catch { setError('Failed to save. Please try again.'); }
     finally { setSaving(false); }
   }
@@ -72,9 +80,21 @@ function BankModal({ isOpen, bank, onClose, onSave }) {
             <Building2 className="w-5 h-5 text-primary-600" />
             {bank ? 'Edit Bank' : 'Add New Bank'}
           </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {!bank && onPinnedChange && (
+              <button
+                type="button"
+                onClick={() => onPinnedChange(p => !p)}
+                title={pinned ? 'Unpin: close after adding' : 'Pin: keep open to add multiple'}
+                className={`p-1.5 rounded-lg transition-colors ${pinned ? 'text-primary-600 bg-primary-50 dark:bg-primary-900/30' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              >
+                <Pin className={`w-4 h-4 ${pinned ? 'fill-primary-600 dark:fill-primary-400' : ''}`} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
@@ -171,7 +191,7 @@ function BankModal({ isOpen, bank, onClose, onSave }) {
 }
 
 // ── Add/Edit Entry Modal ────────────────────────────────────────
-function EntryModal({ isOpen, entry, bankName, onClose, onSave }) {
+function EntryModal({ isOpen, entry, bankName, onClose, onSave, pinned = false, onPinnedChange }) {
   const EMPTY = { date: new Date().toISOString().split('T')[0], description: '', deposit: '', withdraw: '' };
   const { calendar } = useCalendar();
   const [form, setForm] = useState(EMPTY);
@@ -215,7 +235,13 @@ function EntryModal({ isOpen, entry, bankName, onClose, onSave }) {
         deposit: type === 'deposit' ? +form.deposit : 0,
         withdraw: type === 'withdraw' ? +form.withdraw : 0,
       });
-      onClose();
+      if (pinned && !entry) {
+        setType('deposit');
+        setForm({ ...EMPTY, date: form.date });
+        setErrors({});
+      } else {
+        onClose();
+      }
     } catch {
       setErrors({ global: 'Failed to save entry. Please try again.' });
     } finally {
@@ -231,9 +257,21 @@ function EntryModal({ isOpen, entry, bankName, onClose, onSave }) {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{entry ? 'Edit Entry' : 'New Entry'}</h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{bankName}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {!entry && onPinnedChange && (
+              <button
+                type="button"
+                onClick={() => onPinnedChange(p => !p)}
+                title={pinned ? 'Unpin: close after adding' : 'Pin: keep open to add multiple'}
+                className={`p-1.5 rounded-lg transition-colors ${pinned ? 'text-primary-600 bg-primary-50 dark:bg-primary-900/30' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              >
+                <Pin className={`w-4 h-4 ${pinned ? 'fill-primary-600 dark:fill-primary-400' : ''}`} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Deposit / Withdraw toggle */}
@@ -368,10 +406,12 @@ export default function Bank() {
   const isBS = calendar === 'bs';
 
   const [bankModalOpen, setBankModalOpen] = useState(false);
+  const [bankModalPinned, setBankModalPinned] = useState(false);
   const [editingBank, setEditingBank] = useState(null);
   const [deleteBankTarget, setDeleteBankTarget] = useState(null);
 
   const [entryModalOpen, setEntryModalOpen] = useState(false);
+  const [entryModalPinned, setEntryModalPinned] = useState(false);
   const [quickAddOpen, setQuickAddOpen]       = useState({ open: false, row: null });
   const [importOpen, setImportOpen]          = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
@@ -900,6 +940,8 @@ export default function Bank() {
         bank={editingBank}
         onClose={() => setBankModalOpen(false)}
         onSave={handleSaveBank}
+        pinned={bankModalPinned}
+        onPinnedChange={setBankModalPinned}
       />
       <EntryModal
         isOpen={entryModalOpen}
@@ -907,6 +949,8 @@ export default function Bank() {
         bankName={selectedBank?.name}
         onClose={() => setEntryModalOpen(false)}
         onSave={handleSaveEntry}
+        pinned={entryModalPinned}
+        onPinnedChange={setEntryModalPinned}
       />
       <ConfirmDialog
         isOpen={!!deleteBankTarget}

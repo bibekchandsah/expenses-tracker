@@ -3,7 +3,7 @@ import CountUpValue from '../components/ui/CountUpValue';
 import {
   HandCoins, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, CheckCircle2, AlertCircle, ChevronDown,
-  PanelRightClose, PanelRightOpen, Upload, Download, Zap,
+  PanelRightClose, PanelRightOpen, Upload, Download, Zap, Pin,
 } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
@@ -31,7 +31,7 @@ const EMPTY_FORM = {
   description: '',
 };
 
-function LendModal({ isOpen, lend, onClose, onSave, existingNames }) {
+function LendModal({ isOpen, lend, onClose, onSave, existingNames, pinned = false, onPinnedChange }) {
   const { calendar } = useCalendar();
   const [form, setForm]     = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
@@ -68,7 +68,15 @@ function LendModal({ isOpen, lend, onClose, onSave, existingNames }) {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true);
-    try { await onSave(form); onClose(); }
+    try {
+      await onSave(form);
+      if (pinned && !lend) {
+        setForm(EMPTY_FORM);
+        setErrors({});
+      } else {
+        onClose();
+      }
+    }
     catch { setErrors({ global: 'Failed to save. Please try again.' }); }
     finally { setSaving(false); }
   }
@@ -104,9 +112,21 @@ function LendModal({ isOpen, lend, onClose, onSave, existingNames }) {
             <HandCoins className="w-5 h-5 text-primary-600" />
             {lend ? 'Edit Lend Record' : 'New Lend Record'}
           </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {!lend && onPinnedChange && (
+              <button
+                type="button"
+                onClick={() => onPinnedChange(p => !p)}
+                title={pinned ? 'Unpin: close after adding' : 'Pin: keep open to add multiple'}
+                className={`p-1.5 rounded-lg transition-colors ${pinned ? 'text-primary-600 bg-primary-50 dark:bg-primary-900/30' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              >
+                <Pin className={`w-4 h-4 ${pinned ? 'fill-primary-600 dark:fill-primary-400' : ''}`} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Date + Amount row */}
@@ -225,6 +245,7 @@ export default function Lend() {
   const { banks, selectedBankId } = useBanks();
 
   const [modalOpen, setModalOpen]         = useState(false);
+  const [modalPinned, setModalPinned]     = useState(false);
   const [importOpen, setImportOpen]        = useState(false);
   const [quickAddOpen, setQuickAddOpen]   = useState({ open: false, row: null });
   const [editingLend, setEditingLend]     = useState(null);
@@ -823,6 +844,8 @@ export default function Lend() {
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
         existingNames={existingNames}
+        pinned={modalPinned}
+        onPinnedChange={setModalPinned}
       />
       <ConfirmDialog
         isOpen={!!deleteTarget}

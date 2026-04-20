@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Percent, Plus, Edit2, Trash2, X, Info, Zap, Calculator, TrendingUp, User, ChevronDown, PanelRightClose, PanelRightOpen, Search, Upload, Download } from 'lucide-react';
+import { Percent, Plus, Edit2, Trash2, X, Info, Zap, Calculator, TrendingUp, User, ChevronDown, PanelRightClose, PanelRightOpen, Search, Upload, Download, Pin } from 'lucide-react';
 import { useInterest } from '../context/InterestContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -55,7 +55,7 @@ const EMPTY_FORM = {
 };
 
 // ── Interest Calculator Modal ───────────────────────────────────
-function InterestModal({ isOpen, record, onClose, onSave }) {
+function InterestModal({ isOpen, record, onClose, onSave, pinned = false, onPinnedChange }) {
   const { calendar } = useCalendar();
   const { currency } = useCurrency();
   const [calcType, setCalcType] = useState('simple');
@@ -161,7 +161,14 @@ function InterestModal({ isOpen, record, onClose, onSave }) {
         info: form.info,
         isSettled: form.isSettled,
       });
-      onClose();
+      if (pinned && !record) {
+        setForm(EMPTY_FORM);
+        setCalcType('simple');
+        setResult(null);
+        setErrors({});
+      } else {
+        onClose();
+      }
     } catch {
       setErrors({ global: 'Failed to save. Please try again.' });
     } finally {
@@ -177,9 +184,21 @@ function InterestModal({ isOpen, record, onClose, onSave }) {
             <Calculator className="w-5 h-5 text-primary-600" />
             {record ? 'Edit Interest Calculation' : 'New Interest Calculation'}
           </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {!record && onPinnedChange && (
+              <button
+                type="button"
+                onClick={() => onPinnedChange(p => !p)}
+                title={pinned ? 'Unpin: close after adding' : 'Pin: keep open to add multiple'}
+                className={`p-1.5 rounded-lg transition-colors ${pinned ? 'text-primary-600 bg-primary-50 dark:bg-primary-900/30' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              >
+                <Pin className={`w-4 h-4 ${pinned ? 'fill-primary-600 dark:fill-primary-400' : ''}`} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -703,6 +722,7 @@ export default function Interest() {
 
   const [yearFilter, setYearFilter] = useState(() => isBS ? bsActiveYear : activeYear);
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalPinned, setModalPinned] = useState(false);
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState({ open: false, row: null });
   const [importOpen, setImportOpen] = useState(false);
@@ -1447,6 +1467,8 @@ export default function Interest() {
         record={editingRecord}
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
+        pinned={modalPinned}
+        onPinnedChange={setModalPinned}
       />
       <InfoModal
         isOpen={infoModalOpen}

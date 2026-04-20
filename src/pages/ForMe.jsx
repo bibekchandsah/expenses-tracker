@@ -3,7 +3,7 @@ import CountUpValue from '../components/ui/CountUpValue';
 import {
   Heart, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, ChevronDown,
-  PanelRightClose, PanelRightOpen, Upload, Download, Zap,
+  PanelRightClose, PanelRightOpen, Upload, Download, Zap, Pin,
 } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
@@ -46,7 +46,7 @@ function SortIcon({ col, sortCol, sortDir }) {
 }
 
 // ── Modal ─────────────────────────────────────────────────────────
-function ForMeModal({ isOpen, entry, onClose, onSave, existingNames }) {
+function ForMeModal({ isOpen, entry, onClose, onSave, existingNames, pinned = false, onPinnedChange }) {
   const { calendar } = useCalendar();
   const [form,        setForm]        = useState(EMPTY_FORM);
   const [errors,      setErrors]      = useState({});
@@ -81,7 +81,12 @@ function ForMeModal({ isOpen, entry, onClose, onSave, existingNames }) {
     setSaving(true);
     try {
       await onSave({ ...form, amount: Number(form.amount), date: toTimestamp(form.date) });
-      onClose();
+      if (pinned && !entry) {
+        setForm({ ...EMPTY_FORM, date: new Date().toISOString().split('T')[0] });
+        setErrors({});
+      } else {
+        onClose();
+      }
     } catch { setErrors({ global: 'Failed to save. Please try again.' }); }
     finally { setSaving(false); }
   }
@@ -115,9 +120,21 @@ function ForMeModal({ isOpen, entry, onClose, onSave, existingNames }) {
           <h2 className="text-base font-semibold text-gray-900 dark:text-white">
             {entry ? 'Edit Entry' : 'Add Entry'}
           </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            {!entry && onPinnedChange && (
+              <button
+                type="button"
+                onClick={() => onPinnedChange(p => !p)}
+                title={pinned ? 'Unpin: close after adding' : 'Pin: keep open to add multiple'}
+                className={`p-1.5 rounded-lg transition-colors ${pinned ? 'text-primary-600 bg-primary-50 dark:bg-primary-900/30' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              >
+                <Pin className={`w-4 h-4 ${pinned ? 'fill-primary-600 dark:fill-primary-400' : ''}`} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
@@ -207,6 +224,7 @@ export default function ForMe() {
   const { banks, selectedBankId } = useBanks();
 
   const [modalOpen,     setModalOpen]     = useState(false);
+  const [modalPinned,   setModalPinned]   = useState(false);
   const [importOpen,    setImportOpen]    = useState(false);
   const [quickAddOpen,  setQuickAddOpen]  = useState({ open: false, row: null });
   const [editingEntry,  setEditingEntry]  = useState(null);
@@ -728,6 +746,8 @@ export default function ForMe() {
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
         existingNames={existingNames}
+        pinned={modalPinned}
+        onPinnedChange={setModalPinned}
       />
       <ConfirmDialog
         isOpen={!!deleteTarget}

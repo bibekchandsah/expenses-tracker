@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { X, DollarSign, Calendar, Tag, FileText, AlignLeft } from 'lucide-react';
+import { X, DollarSign, Calendar, Tag, FileText, AlignLeft, Pin } from 'lucide-react';
 import { useCategories } from '../context/CategoryContext';
 import { useCalendar } from '../context/CalendarContext';
 import NepaliDatePickerInput from './ui/NepaliDatePickerInput';
 
 const EMPTY = { title: '', amount: '', category: '', date: '', description: '', notes: '' };
 
-export default function ExpenseModal({ isOpen, expense, onClose, onSave }) {
+export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned = false, onPinnedChange }) {
   const { categories } = useCategories();
   const { calendar } = useCalendar();
   const [form, setForm] = useState(EMPTY);
@@ -43,7 +43,13 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave }) {
     setSaving(true);
     try {
       await onSave({ ...form, amount: +form.amount });
-      onClose();
+      if (pinned && !expense) {
+        // keep modal open, reset form for next entry
+        setForm({ ...EMPTY, date: form.date });
+        setErrors({});
+      } else {
+        onClose();
+      }
     } catch {
       // error handled in context
     } finally {
@@ -66,9 +72,21 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave }) {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             {expense ? 'Edit Expense' : 'Add Expense'}
           </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {!expense && onPinnedChange && (
+              <button
+                type="button"
+                onClick={() => onPinnedChange(p => !p)}
+                title={pinned ? 'Unpin: close after adding' : 'Pin: keep open to add multiple'}
+                className={`p-1.5 rounded-lg transition-colors ${pinned ? 'text-primary-600 bg-primary-50 dark:bg-primary-900/30' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              >
+                <Pin className={`w-4 h-4 ${pinned ? 'fill-primary-600 dark:fill-primary-400' : ''}`} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Form */}
