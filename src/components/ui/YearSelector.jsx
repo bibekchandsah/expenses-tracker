@@ -2,10 +2,10 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { getCurrentBSYear } from '../../utils/calendarUtils';
 
 const AD_MIN = 2020;
-const AD_MAX = new Date().getFullYear() + 1;
+const AD_MAX = new Date().getFullYear() + 3;
 
 const BS_MIN = 2074;
-const BS_MAX = getCurrentBSYear() + 1;
+const BS_MAX = getCurrentBSYear() + 3;
 
 /**
  * A compact year nav with ‹ YYYY › arrows.

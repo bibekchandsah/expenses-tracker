@@ -1262,7 +1262,8 @@ The pin state lives in Expenses.jsx so it persists across modal opens.
 The pin feature is now live across all 7 pages — Income, Bank, Interest, Lend, Loan, Saving, and ForMe. Each modal shows a pin icon in the header (only when adding, not editing). When pinned, submitting resets the form and keeps the modal open so you can add multiple entries back-to-back.
 Both the "Add Bank" and "Add Category" modals now have the pin icon in their headers — same behavior as the rest of the app.
 
-
+The year list is dynamically generated — endY = currentYear + 1, so it always includes the current year plus one ahead. When 2028 arrives, it'll automatically appear. No manual action needed.
+The range is 2020 → currentYear + 1 (AD) or 2074 → currentBSYear + 1 (BS), computed at runtime. So future years show up on their own as time passes.
 
 
 This Month

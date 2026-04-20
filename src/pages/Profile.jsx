@@ -1473,7 +1473,7 @@ export default function Profile() {
         const currentAD = new Date().getFullYear();
         const currentBS = getCurrentBSYear();
         const startY  = isBS ? 2074 : 2020;
-        const endY    = isBS ? currentBS + 1 : currentAD + 1;
+        const endY    = isBS ? currentBS + 3 : currentAD + 3;
         const nowY    = isBS ? currentBS : currentAD;
         const yearRange = [];
         for (let y = startY; y <= endY; y++) yearRange.push(y);
