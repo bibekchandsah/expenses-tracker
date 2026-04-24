@@ -124,7 +124,7 @@ export default function PWAInstallPrompt() {
 
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
-                    Install ExpenseIQ
+                    Install Mero Expense Tracker
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">
                     Add to your home screen for quick access, offline support, and a native app experience.
@@ -177,7 +177,7 @@ export default function PWAInstallPrompt() {
                   <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-sm font-black">E</span>
                   </div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">Add ExpenseIQ to Home Screen</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">Add Mero Expenses to Home Screen</p>
                 </div>
                 <button
                   onClick={dismiss}

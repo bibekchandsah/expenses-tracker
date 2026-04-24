@@ -195,7 +195,7 @@ export default function Login() {
             <div className="p-3 bg-white/20 rounded-2xl">
               <TrendingUp className="w-8 h-8 text-white" />
             </div>
-            <span className="text-3xl font-bold">ExpenseIQ</span>
+            <span className="text-3xl font-bold">Mero Expense Tracker</span>
           </div>
           <h1 className="text-4xl font-bold mb-4 leading-tight">
             Smart Expense Tracking for Modern Life
@@ -223,7 +223,7 @@ export default function Login() {
             <div className="p-2 bg-primary-600 rounded-xl">
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-gray-900 dark:text-white">ExpenseIQ</span>
+            <span className="text-2xl font-bold text-gray-900 dark:text-white">Mero Expense Tracker</span>
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-8">

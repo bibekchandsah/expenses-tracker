@@ -201,7 +201,7 @@ export function AuthProvider({ children }) {
       const publicKeyOptions = {
         challenge,
         rp: {
-          name: 'ExpenseIQ',
+          name: 'MeroExpenseTracker',
           id: window.location.hostname,
         },
         user: {

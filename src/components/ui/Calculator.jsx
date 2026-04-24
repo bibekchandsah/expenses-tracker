@@ -636,6 +636,7 @@ export default function Calculator({ onClose }) {
 
     function onMove(ev) {
       if (!dragInfo.current) return;
+      ev.preventDefault();
       const moveX = ev.type === 'touchmove' ? ev.touches[0].clientX : ev.clientX;
       const moveY = ev.type === 'touchmove' ? ev.touches[0].clientY : ev.clientY;
       const newX = Math.min(Math.max(0, moveX - dragInfo.current.offsetX), window.innerWidth  - (calcRef.current?.offsetWidth  ?? 320));
@@ -668,6 +669,7 @@ export default function Calculator({ onClose }) {
 
     function onMove(ev) {
       if (!resizeInfo.current) return;
+      ev.preventDefault();
       const moveX = ev.type === 'touchmove' ? ev.touches[0].clientX : ev.clientX;
       const moveY = ev.type === 'touchmove' ? ev.touches[0].clientY : ev.clientY;
       const dx = moveX - resizeInfo.current.startX;
@@ -719,6 +721,7 @@ export default function Calculator({ onClose }) {
         {/* ── drag handle ───────────────────────────────────────────── */}
         <div
           className="flex items-center justify-between px-4 pt-3 pb-1 cursor-grab active:cursor-grabbing"
+          style={{ touchAction: 'none' }}
           onMouseDown={onDragStart}
           onTouchStart={onDragStart}
         >
@@ -773,7 +776,7 @@ export default function Calculator({ onClose }) {
               className="flex-1 flex flex-col justify-end items-end px-6 pb-2 gap-1"
               onMouseDown={onDragStart}
               onTouchStart={onDragStart}
-              style={{ cursor: 'grab' }}
+              style={{ cursor: 'grab', touchAction: 'none' }}
             >
               <div className="text-gray-500 text-sm h-5 truncate w-full text-right">
                 {justCalculated
