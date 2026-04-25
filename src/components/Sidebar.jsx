@@ -28,6 +28,8 @@ import {
   Star,
   ArrowUp,
   ArrowDown,
+  Download,
+  CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -98,6 +100,36 @@ export default function Sidebar({ open, onClose }) {
   const [toolsOpen,   setToolsOpen]   = useState(false);
   const [showCalc,    setShowCalc]    = useState(false);
   const profileRef = useRef(null);
+
+  // ── PWA install ──────────────────────────────────────────────────
+  const [deferredPrompt,  setDeferredPrompt]  = useState(null);
+  const [pwaInstalled,    setPwaInstalled]    = useState(
+    () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
+  );
+  const [pwaInstalling,   setPwaInstalling]   = useState(false);
+
+  useEffect(() => {
+    if (pwaInstalled) return;
+    const onPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); };
+    const onInstalled = () => { setDeferredPrompt(null); setPwaInstalled(true); };
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, [pwaInstalled]);
+
+  async function handlePwaInstall() {
+    if (!deferredPrompt) return;
+    setPwaInstalling(true);
+    try {
+      await deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') { setDeferredPrompt(null); setPwaInstalled(true); }
+    } catch { /* ignore */ }
+    finally { setPwaInstalling(false); setToolsOpen(false); }
+  }
   const toolsRef   = useRef(null);
 
   function toggleCollapsed() {
@@ -268,6 +300,24 @@ export default function Sidebar({ open, onClose }) {
                   <CalculatorIcon className="w-4 h-4 text-gray-400" />
                   Calculator
                 </button>
+
+                {/* Install App */}
+                {pwaInstalled ? (
+                  <div className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-green-600 dark:text-green-400 cursor-default select-none">
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                    App Installed
+                  </div>
+                ) : deferredPrompt ? (
+                  <button
+                    onClick={handlePwaInstall}
+                    disabled={pwaInstalling}
+                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-indigo-600 dark:text-indigo-400
+                               hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors disabled:opacity-60"
+                  >
+                    <Download className="w-4 h-4 flex-shrink-0" />
+                    {pwaInstalling ? 'Installing…' : 'Install App'}
+                  </button>
+                ) : null}
                 
                 {/* Scroll buttons */}
                 <div className="flex items-center border-t border-b border-gray-200 dark:border-gray-700">
