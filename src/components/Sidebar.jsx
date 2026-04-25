@@ -102,7 +102,9 @@ export default function Sidebar({ open, onClose }) {
   const profileRef = useRef(null);
 
   // ── PWA install ──────────────────────────────────────────────────
-  const [deferredPrompt,  setDeferredPrompt]  = useState(null);
+  const [deferredPrompt,  setDeferredPrompt]  = useState(
+    () => window.__pwaPrompt ?? null
+  );
   const [pwaInstalled,    setPwaInstalled]    = useState(
     () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
   );
@@ -110,8 +112,9 @@ export default function Sidebar({ open, onClose }) {
 
   useEffect(() => {
     if (pwaInstalled) return;
-    const onPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); };
-    const onInstalled = () => { setDeferredPrompt(null); setPwaInstalled(true); };
+    // Pick up the prompt if it fires after mount (rare but possible)
+    const onPrompt = (e) => { e.preventDefault(); window.__pwaPrompt = e; setDeferredPrompt(e); };
+    const onInstalled = () => { window.__pwaPrompt = null; setDeferredPrompt(null); setPwaInstalled(true); };
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
     return () => {
@@ -126,7 +129,7 @@ export default function Sidebar({ open, onClose }) {
     try {
       await deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') { setDeferredPrompt(null); setPwaInstalled(true); }
+      if (outcome === 'accepted') { window.__pwaPrompt = null; setDeferredPrompt(null); setPwaInstalled(true); }
     } catch { /* ignore */ }
     finally { setPwaInstalling(false); setToolsOpen(false); }
   }
