@@ -56,7 +56,7 @@ export default function Income() {
   const { currency } = useCurrency();
   const { monthLabel, dateLabel, calendar } = useCalendar();
   const { addToast } = useToast();
-  const { banks, selectedBankId } = useBanks();
+  const { banks, selectedBankId, addEntryToBank, updateEntryInBank, deleteEntryInBank } = useBanks();
   const { activeYear, bsActiveYear } = useActiveYear();
   const isBS = calendar === 'bs';
   const { sources: incomeSources } = useIncomeSources();
@@ -157,15 +157,62 @@ export default function Income() {
 
   async function handleSave(data) {
     if (editingIncome) {
+      // ── Edit path ──────────────────────────────────────────────
+      const prevBankId  = editingIncome.bankId     || null;
+      const prevEntryId = editingIncome.bankEntryId || null;
+      const newBankId   = data.bankId || null;
+      const entryPayload = { date: data.date, description: data.title, deposit: data.amount, withdraw: 0 };
+
+      if (prevBankId && prevEntryId) {
+        if (newBankId && newBankId === prevBankId) {
+          try { await updateEntryInBank(prevBankId, prevEntryId, entryPayload); } catch {}
+        } else {
+          try { await deleteEntryInBank(prevBankId, prevEntryId); } catch {}
+          if (newBankId) {
+            try {
+              const ref = await addEntryToBank(newBankId, entryPayload);
+              data = { ...data, bankEntryId: ref.id };
+            } catch {}
+          } else {
+            data = { ...data, bankEntryId: '' };
+          }
+        }
+      } else if (newBankId) {
+        try {
+          const ref = await addEntryToBank(newBankId, entryPayload);
+          data = { ...data, bankEntryId: ref.id };
+        } catch {}
+      }
+
       await updateIncome(editingIncome.id, data);
       addToast('Income updated!', 'success');
     } else {
-      await addIncome(data);
-      addToast('Income added!', 'success');
+      // ── Add path ───────────────────────────────────────────────
+      const ref = await addIncome(data);
+      if (data.bankId) {
+        try {
+          const entryRef = await addEntryToBank(data.bankId, {
+            date: data.date,
+            description: data.title,
+            deposit: data.amount,
+            withdraw: 0,
+          });
+          await updateIncome(ref.id, { ...data, bankEntryId: entryRef.id });
+          const bankName = banks.find(b => b.id === data.bankId)?.name;
+          addToast(`Income added & deposit recorded in ${bankName || 'bank'}`, 'success');
+        } catch {
+          addToast('Income added! (Bank entry failed — please add manually)', 'error');
+        }
+      } else {
+        addToast('Income added!', 'success');
+      }
     }
   }
 
   async function handleDelete() {
+    if (deleteTarget.bankId && deleteTarget.bankEntryId) {
+      try { await deleteEntryInBank(deleteTarget.bankId, deleteTarget.bankEntryId); } catch {}
+    }
     await deleteIncome(deleteTarget.id);
     setDeleteTarget(null);
     addToast('Income deleted', 'success');

@@ -89,7 +89,7 @@ export function IncomeProvider({ children }) {
 
   const addIncome = useCallback(async (data) => {
     try {
-      await addIncomeSvc(user.uid, data);
+      return await addIncomeSvc(user.uid, data);
     } catch (e) {
       dispatch({ type: 'SET_ERROR', payload: e.message });
       throw e;
