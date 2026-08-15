@@ -236,7 +236,9 @@ export default function ForMe() {
   const [sortDir,       setSortDir]       = useState('desc');
   const [panelOpen,     setPanelOpen]     = useState(true);
   const [chartOpen,     setChartOpen]     = useState(true);
-  const [showSidePanel, setShowSidePanel] = useState(true);
+  const [showSidePanel, setShowSidePanel] = useState(() => {
+    try { return localStorage.getItem('forMeSidePanelVisible') !== 'false'; } catch { return true; }
+  });
   const [sidePanelWidth, setSidePanelWidth] = useState(() => {
     try { return parseInt(localStorage.getItem('forMeSidePanelWidth')) || 288; } catch { return 288; }
   });
@@ -513,7 +515,7 @@ export default function ForMe() {
                 </div>
               )}
               <button
-                onClick={() => setShowSidePanel(o => !o)}
+                onClick={() => setShowSidePanel(o => { const n = !o; try { localStorage.setItem('forMeSidePanelVisible', String(n)); } catch {} return n; })}
                 title={showSidePanel ? 'Hide panel' : 'Show panel'}
                 className="flex-shrink-0 p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >

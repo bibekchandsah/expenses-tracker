@@ -252,7 +252,9 @@ export default function Saving() {
   const { activeYear, bsActiveYear } = useActiveYear();
   const isBS = calendar === 'bs';
 
-  const [showSidePanel, setShowSidePanel] = useState(true);
+  const [showSidePanel, setShowSidePanel] = useState(() => {
+    try { return localStorage.getItem('savingSidePanelVisible') !== 'false'; } catch { return true; }
+  });
   const [savingModalPinned, setSavingModalPinned] = useState(false);
   const [importOpen, setImportOpen]        = useState(false);
   const [quickAddOpen, setQuickAddOpen]   = useState({ open: false, row: null });
@@ -507,7 +509,7 @@ export default function Saving() {
                 <Plus className="w-4 h-4" /> Add
               </button>
               <button
-                onClick={() => setShowSidePanel(o => !o)}
+                onClick={() => setShowSidePanel(o => { const n = !o; try { localStorage.setItem('savingSidePanelVisible', String(n)); } catch {} return n; })}
                 title={showSidePanel ? 'Hide sources panel' : 'Show sources panel'}
                 className="flex-shrink-0 p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >

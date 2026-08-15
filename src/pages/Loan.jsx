@@ -345,7 +345,9 @@ export default function Loan() {
   const [personFilter, setPersonFilter]   = useState(null);
   const [panelOpen, setPanelOpen]         = useState(true);
   const [chartOpen, setChartOpen]         = useState(true);
-  const [showSidePanel, setShowSidePanel] = useState(true);
+  const [showSidePanel, setShowSidePanel] = useState(() => {
+    try { return localStorage.getItem('loanSidePanelVisible') !== 'false'; } catch { return true; }
+  });
   const [sidePanelWidth, setSidePanelWidth] = useState(() => {
     try { return parseInt(localStorage.getItem('loanSidePanelWidth')) || 288; } catch { return 288; }
   });
@@ -721,7 +723,7 @@ export default function Loan() {
                 </div>
               )}
               <button
-                onClick={() => setShowSidePanel(o => !o)}
+                onClick={() => setShowSidePanel(o => { const n = !o; try { localStorage.setItem('loanSidePanelVisible', String(n)); } catch {} return n; })}
                 title={showSidePanel ? 'Hide panel' : 'Show panel'}
                 className="flex-shrink-0 p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
