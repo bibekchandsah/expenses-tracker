@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, DollarSign, Calendar, Tag, FileText, AlignLeft, Pin, Building2 } from 'lucide-react';
 import { useCategories } from '../context/CategoryContext';
 import { useCalendar } from '../context/CalendarContext';
 import { useBanks } from '../context/BankContext';
 import NepaliDatePickerInput from './ui/NepaliDatePickerInput';
+import CategoryModal from './CategoryModal';
 
 const EMPTY = { title: '', amount: '', category: '', date: '', description: '', notes: '', bankId: '' };
 
@@ -17,12 +18,26 @@ function saveLastBankId(id) {
 }
 
 export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned = false, onPinnedChange }) {
-  const { categories } = useCategories();
+  const { categories, addCategory } = useCategories();
   const { calendar } = useCalendar();
   const { banks } = useBanks();
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const pendingCategoryName = useRef(null);
+
+  // Auto-select newly added category once Firestore updates `categories`
+  useEffect(() => {
+    if (!pendingCategoryName.current) return;
+    const match = categories.find(
+      c => c.name.trim().toLowerCase() === pendingCategoryName.current.trim().toLowerCase()
+    );
+    if (match) {
+      change('category', match.id);
+      pendingCategoryName.current = null;
+    }
+  }, [categories]); // eslint-disable-line
 
   useEffect(() => {
     if (isOpen) {
@@ -157,16 +172,23 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned 
                 Category *
               </label>
               <div className="relative">
-                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
                 <select
                   value={form.category}
-                  onChange={e => change('category', e.target.value)}
+                  onChange={e => {
+                    if (e.target.value === '__add_new__') {
+                      setCategoryModalOpen(true);
+                    } else {
+                      change('category', e.target.value);
+                    }
+                  }}
                   className={`w-full pl-9 pr-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.category ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
                 >
                   <option value="">Select...</option>
                   {categories.map(c => (
                     <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
                   ))}
+                  <option value="__add_new__">＋ Add new category</option>
                 </select>
               </div>
               {errors.category && <p className="text-xs text-red-500 mt-1">{errors.category}</p>}
@@ -278,6 +300,18 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned 
           </div>
         </form>
       </div>
+
+      {/* Add Category — stacked on top (z-[60]) */}
+      <CategoryModal
+        isOpen={categoryModalOpen}
+        category={null}
+        onClose={() => setCategoryModalOpen(false)}
+        onSave={async (data) => {
+          pendingCategoryName.current = data.name;
+          await addCategory(data);
+          setCategoryModalOpen(false);
+        }}
+      />
     </div>
   );
 }
