@@ -3,7 +3,7 @@ import CountUpValue from '../components/ui/CountUpValue';
 import {
   Wallet, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, CheckCircle2, AlertCircle, ChevronDown,
-  PanelRightClose, PanelRightOpen, Upload, Download, Zap, Pin,
+  PanelRightClose, PanelRightOpen, Upload, Download, Zap, Pin, Building2,
 } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
@@ -28,11 +28,15 @@ const EMPTY_FORM = {
   name: '',
   reason: '',
   paidAmount: '',
+  paidDate: new Date().toISOString().split('T')[0],
+  paidBankId: '',
   description: '',
+  bankId: '',
 };
 
 function LoanModal({ isOpen, loan, onClose, onSave, existingNames, pinned = false, onPinnedChange }) {
   const { calendar } = useCalendar();
+  const { banks } = useBanks();
   const [form, setForm]     = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -40,16 +44,25 @@ function LoanModal({ isOpen, loan, onClose, onSave, existingNames, pinned = fals
 
   useEffect(() => {
     if (!isOpen) return;
-    setForm(loan ? {
-      date: loan.date,
-      amount: String(loan.amount),
-      name: loan.name,
-      reason: loan.reason || '',
-      paidAmount: loan.paidAmount ? String(loan.paidAmount) : '',
-      description: loan.description || '',
-    } : EMPTY_FORM);
+    if (loan) {
+      setForm({
+        date: loan.date,
+        amount: String(loan.amount),
+        name: loan.name,
+        reason: loan.reason || '',
+        paidAmount: loan.paidAmount ? String(loan.paidAmount) : '',
+        paidDate: loan.paidDate || new Date().toISOString().split('T')[0],
+        paidBankId: loan.paidBankId || '',
+        description: loan.description || '',
+        bankId: loan.bankId || '',
+      });
+    } else {
+      const lastBankId = (() => { try { return localStorage.getItem('loanLastBankId') || ''; } catch { return ''; } })();
+      const validId = banks.find(b => b.id === lastBankId) ? lastBankId : '';
+      setForm({ ...EMPTY_FORM, bankId: validId });
+    }
     setErrors({});
-  }, [isOpen, loan]);
+  }, [isOpen, loan, banks]);
 
   if (!isOpen) return null;
 
@@ -69,9 +82,10 @@ function LoanModal({ isOpen, loan, onClose, onSave, existingNames, pinned = fals
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true);
     try {
+      if (form.bankId) { try { localStorage.setItem('loanLastBankId', form.bankId); } catch {} }
       await onSave(form);
       if (pinned && !loan) {
-        setForm(EMPTY_FORM);
+        setForm(prev => ({ ...EMPTY_FORM, bankId: prev.bankId }));
         setErrors({});
       } else {
         onClose();
@@ -192,6 +206,81 @@ function LoanModal({ isOpen, loan, onClose, onSave, existingNames, pinned = fals
             {errors.paidAmount && <p className="text-xs text-red-500 mt-1">{errors.paidAmount}</p>}
           </div>
 
+          {/* Paid date + bank — shown when paid amount is entered */}
+          {!!form.paidAmount && +form.paidAmount > 0 && (
+            <div className="rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/10 p-3 space-y-3">
+              <p className="text-xs font-medium text-orange-700 dark:text-orange-400">
+                Payment details — the amount will be withdrawn from the selected bank
+              </p>
+
+              {/* Payment Date */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Payment Date</label>
+                {calendar === 'bs' ? (
+                  <NepaliDatePickerInput
+                    value={form.paidDate}
+                    onChange={adDate => setForm(f => ({ ...f, paidDate: adDate }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                ) : (
+                  <input
+                    type="date"
+                    value={form.paidDate}
+                    onChange={e => setForm(f => ({ ...f, paidDate: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                )}
+              </div>
+
+              {/* Payment Bank */}
+              {banks.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                    Withdraw from Bank <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <select
+                      value={form.paidBankId}
+                      onChange={e => setForm(f => ({ ...f, paidBankId: e.target.value }))}
+                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="">None</option>
+                      {banks.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Loan bank (deposit when money is received) */}
+          {banks.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Deposit to Bank <span className="text-gray-400 font-normal">(optional — records a deposit)</span>
+              </label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <select
+                  value={form.bankId}
+                  onChange={e => {
+                    setForm(f => ({ ...f, bankId: e.target.value }));
+                    if (e.target.value) { try { localStorage.setItem('loanLastBankId', e.target.value); } catch {} }
+                  }}
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                >
+                  <option value="">None</option>
+                  {banks.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
@@ -242,7 +331,7 @@ export default function Loan() {
   const { dateLabel, calendar } = useCalendar();
   const { lends } = useLends();
   const { addToast } = useToast();
-  const { banks, selectedBankId } = useBanks();
+  const { banks, addEntryToBank, updateEntryInBank, deleteEntryInBank } = useBanks();
 
   const [modalOpen, setModalOpen]         = useState(false);
   const [modalPinned, setModalPinned]     = useState(false);
@@ -356,11 +445,104 @@ export default function Loan() {
   }, [loans, yearFilter, isBS, bsYearRange]);
 
   async function handleSave(data) {
-    if (editingLoan) { await updateLoan(editingLoan.id, data); addToast('Record updated!'); }
-    else             { await addLoan(data);                    addToast('Record added!');   }
+    const loanAmount = +data.amount || 0;
+    const paidAmt    = +data.paidAmount || 0;
+    const loanDesc   = `Loan from ${data.name}${data.reason ? ` for ${data.reason}` : ''}`;
+    const paidDesc   = `Loan repaid to ${data.name}${data.reason ? ` for ${data.reason}` : ''}`;
+
+    if (editingLoan) {
+      // ── Loan bank entry (deposit) ───────────────────────────────
+      const prevBankId  = editingLoan.bankId     || null;
+      const prevEntryId = editingLoan.bankEntryId || null;
+      const newBankId   = data.bankId || null;
+      const loanPayload = { date: data.date, description: loanDesc, deposit: loanAmount, withdraw: 0 };
+
+      if (prevBankId && prevEntryId) {
+        if (newBankId && newBankId === prevBankId) {
+          try { await updateEntryInBank(prevBankId, prevEntryId, loanPayload); } catch {}
+        } else {
+          try { await deleteEntryInBank(prevBankId, prevEntryId); } catch {}
+          if (newBankId) {
+            try { const ref = await addEntryToBank(newBankId, loanPayload); data = { ...data, bankEntryId: ref.id }; } catch {}
+          } else {
+            data = { ...data, bankEntryId: '' };
+          }
+        }
+      } else if (newBankId) {
+        try { const ref = await addEntryToBank(newBankId, loanPayload); data = { ...data, bankEntryId: ref.id }; } catch {}
+      }
+
+      // ── Paid-back bank entry (withdraw) ─────────────────────────
+      const prevPaidBankId  = editingLoan.paidBankId     || null;
+      const prevPaidEntryId = editingLoan.paidBankEntryId || null;
+      const newPaidBankId   = paidAmt > 0 ? (data.paidBankId || null) : null;
+      const paidPayload     = { date: data.paidDate || data.date, description: paidDesc, deposit: 0, withdraw: paidAmt };
+
+      if (prevPaidBankId && prevPaidEntryId) {
+        if (newPaidBankId && newPaidBankId === prevPaidBankId) {
+          try { await updateEntryInBank(prevPaidBankId, prevPaidEntryId, paidPayload); } catch {}
+        } else {
+          try { await deleteEntryInBank(prevPaidBankId, prevPaidEntryId); } catch {}
+          if (newPaidBankId) {
+            try { const ref = await addEntryToBank(newPaidBankId, paidPayload); data = { ...data, paidBankEntryId: ref.id }; } catch {}
+          } else {
+            data = { ...data, paidBankEntryId: '' };
+          }
+        }
+      } else if (newPaidBankId) {
+        try { const ref = await addEntryToBank(newPaidBankId, paidPayload); data = { ...data, paidBankEntryId: ref.id }; } catch {}
+      }
+
+      await updateLoan(editingLoan.id, data);
+      addToast('Record updated!');
+    } else {
+      const ref = await addLoan(data);
+
+      // ── Loan bank entry (deposit) ───────────────────────────────
+      if (data.bankId) {
+        try {
+          const entryRef = await addEntryToBank(data.bankId, {
+            date: data.date,
+            description: loanDesc,
+            deposit: loanAmount,
+            withdraw: 0,
+          });
+          data = { ...data, bankEntryId: entryRef.id };
+          const bankName = banks.find(b => b.id === data.bankId)?.name;
+          addToast(`Record added & deposit recorded in ${bankName || 'bank'}`, 'success');
+        } catch {
+          addToast('Record added! (Bank entry failed — please add manually)', 'error');
+        }
+      } else {
+        addToast('Record added!');
+      }
+
+      // ── Paid-back bank entry (withdraw) ─────────────────────────
+      if (paidAmt > 0 && data.paidBankId) {
+        try {
+          const paidRef = await addEntryToBank(data.paidBankId, {
+            date: data.paidDate || data.date,
+            description: paidDesc,
+            deposit: 0,
+            withdraw: paidAmt,
+          });
+          data = { ...data, paidBankEntryId: paidRef.id };
+          const bankName = banks.find(b => b.id === data.paidBankId)?.name;
+          addToast(`Payment withdrawal recorded in ${bankName || 'bank'}`, 'success');
+        } catch {}
+      }
+
+      await updateLoan(ref.id, data);
+    }
   }
 
   async function handleDelete() {
+    if (deleteTarget.bankId && deleteTarget.bankEntryId) {
+      try { await deleteEntryInBank(deleteTarget.bankId, deleteTarget.bankEntryId); } catch {}
+    }
+    if (deleteTarget.paidBankId && deleteTarget.paidBankEntryId) {
+      try { await deleteEntryInBank(deleteTarget.paidBankId, deleteTarget.paidBankEntryId); } catch {}
+    }
     await deleteLoan(deleteTarget.id);
     setDeleteTarget(null);
     addToast('Record deleted');

@@ -41,7 +41,12 @@ export async function addLoan(uid, loan) {
     name: loan.name.trim(),
     reason: loan.reason?.trim() || '',
     paidAmount: +loan.paidAmount || 0,
+    paidDate: loan.paidDate || '',
+    paidBankId: loan.paidBankId || '',
+    paidBankEntryId: loan.paidBankEntryId || '',
     description: loan.description?.trim() || '',
+    bankId: loan.bankId || '',
+    bankEntryId: loan.bankEntryId || '',
     createdAt: serverTimestamp(),
   });
 }
@@ -53,7 +58,12 @@ export async function updateLoan(uid, loanId, loan) {
     name: loan.name.trim(),
     reason: loan.reason?.trim() || '',
     paidAmount: +loan.paidAmount || 0,
+    paidDate: loan.paidDate || '',
+    paidBankId: loan.paidBankId || '',
+    paidBankEntryId: loan.paidBankEntryId || '',
     description: loan.description?.trim() || '',
+    bankId: loan.bankId || '',
+    bankEntryId: loan.bankEntryId || '',
   });
 }
 
