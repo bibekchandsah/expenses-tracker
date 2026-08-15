@@ -41,7 +41,12 @@ export async function addLend(uid, lend) {
     name: lend.name.trim(),
     reason: lend.reason?.trim() || '',
     returnedAmount: +lend.returnedAmount || 0,
+    returnedDate: lend.returnedDate || '',
+    returnedBankId: lend.returnedBankId || '',
+    returnedBankEntryId: lend.returnedBankEntryId || '',
     description: lend.description?.trim() || '',
+    bankId: lend.bankId || '',
+    bankEntryId: lend.bankEntryId || '',
     createdAt: serverTimestamp(),
   });
 }
@@ -53,7 +58,12 @@ export async function updateLend(uid, lendId, lend) {
     name: lend.name.trim(),
     reason: lend.reason?.trim() || '',
     returnedAmount: +lend.returnedAmount || 0,
+    returnedDate: lend.returnedDate || '',
+    returnedBankId: lend.returnedBankId || '',
+    returnedBankEntryId: lend.returnedBankEntryId || '',
     description: lend.description?.trim() || '',
+    bankId: lend.bankId || '',
+    bankEntryId: lend.bankEntryId || '',
   });
 }
 

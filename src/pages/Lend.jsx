@@ -3,7 +3,7 @@ import CountUpValue from '../components/ui/CountUpValue';
 import {
   HandCoins, Plus, Edit2, Trash2, X, Search,
   ArrowUp, ArrowDown, ChevronsUpDown, User, CheckCircle2, AlertCircle, ChevronDown,
-  PanelRightClose, PanelRightOpen, Upload, Download, Zap, Pin,
+  PanelRightClose, PanelRightOpen, Upload, Download, Zap, Pin, Building2,
 } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
@@ -28,11 +28,15 @@ const EMPTY_FORM = {
   name: '',
   reason: '',
   returnedAmount: '',
+  returnedDate: new Date().toISOString().split('T')[0],
+  returnedBankId: '',
   description: '',
+  bankId: '',
 };
 
 function LendModal({ isOpen, lend, onClose, onSave, existingNames, pinned = false, onPinnedChange }) {
   const { calendar } = useCalendar();
+  const { banks } = useBanks();
   const [form, setForm]     = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -40,16 +44,26 @@ function LendModal({ isOpen, lend, onClose, onSave, existingNames, pinned = fals
 
   useEffect(() => {
     if (!isOpen) return;
-    setForm(lend ? {
-      date: lend.date,
-      amount: String(lend.amount),
-      name: lend.name,
-      reason: lend.reason || '',
-      returnedAmount: lend.returnedAmount ? String(lend.returnedAmount) : '',
-      description: lend.description || '',
-    } : EMPTY_FORM);
+    if (lend) {
+      const lastBankId = (() => { try { return localStorage.getItem('lendLastBankId') || ''; } catch { return ''; } })();
+      setForm({
+        date: lend.date,
+        amount: String(lend.amount),
+        name: lend.name,
+        reason: lend.reason || '',
+        returnedAmount: lend.returnedAmount ? String(lend.returnedAmount) : '',
+        returnedDate: lend.returnedDate || new Date().toISOString().split('T')[0],
+        returnedBankId: lend.returnedBankId || '',
+        description: lend.description || '',
+        bankId: lend.bankId || '',
+      });
+    } else {
+      const lastBankId = (() => { try { return localStorage.getItem('lendLastBankId') || ''; } catch { return ''; } })();
+      const validId = banks.find(b => b.id === lastBankId) ? lastBankId : '';
+      setForm({ ...EMPTY_FORM, bankId: validId });
+    }
     setErrors({});
-  }, [isOpen, lend]);
+  }, [isOpen, lend, banks]);
 
   if (!isOpen) return null;
 
@@ -69,9 +83,10 @@ function LendModal({ isOpen, lend, onClose, onSave, existingNames, pinned = fals
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true);
     try {
+      if (form.bankId) { try { localStorage.setItem('lendLastBankId', form.bankId); } catch {} }
       await onSave(form);
       if (pinned && !lend) {
-        setForm(EMPTY_FORM);
+        setForm(prev => ({ ...EMPTY_FORM, bankId: prev.bankId }));
         setErrors({});
       } else {
         onClose();
@@ -193,6 +208,81 @@ function LendModal({ isOpen, lend, onClose, onSave, existingNames, pinned = fals
             {errors.returnedAmount && <p className="text-xs text-red-500 mt-1">{errors.returnedAmount}</p>}
           </div>
 
+          {/* Return date + bank — shown when returned amount is entered */}
+          {!!form.returnedAmount && +form.returnedAmount > 0 && (
+            <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10 p-3 space-y-3">
+              <p className="text-xs font-medium text-green-700 dark:text-green-400">
+                Return details — the amount will be deposited in the selected bank
+              </p>
+
+              {/* Return Date */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Return Date</label>
+                {calendar === 'bs' ? (
+                  <NepaliDatePickerInput
+                    value={form.returnedDate}
+                    onChange={adDate => setForm(f => ({ ...f, returnedDate: adDate }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                ) : (
+                  <input
+                    type="date"
+                    value={form.returnedDate}
+                    onChange={e => setForm(f => ({ ...f, returnedDate: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                )}
+              </div>
+
+              {/* Return Bank */}
+              {banks.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                    Deposit to Bank <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <select
+                      value={form.returnedBankId}
+                      onChange={e => setForm(f => ({ ...f, returnedBankId: e.target.value }))}
+                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="">None</option>
+                      {banks.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Lend bank (withdraw when money is given out) */}
+          {banks.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Lend from Bank <span className="text-gray-400 font-normal">(optional — records a withdrawal)</span>
+              </label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <select
+                  value={form.bankId}
+                  onChange={e => {
+                    setForm(f => ({ ...f, bankId: e.target.value }));
+                    if (e.target.value) { try { localStorage.setItem('lendLastBankId', e.target.value); } catch {} }
+                  }}
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                >
+                  <option value="">None</option>
+                  {banks.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
@@ -243,7 +333,7 @@ export default function Lend() {
   const { dateLabel, calendar } = useCalendar();
   const { loans } = useLoans();
   const { addToast } = useToast();
-  const { banks, selectedBankId } = useBanks();
+  const { banks, addEntryToBank, updateEntryInBank, deleteEntryInBank } = useBanks();
 
   const [modalOpen, setModalOpen]         = useState(false);
   const [modalPinned, setModalPinned]     = useState(false);
@@ -359,11 +449,104 @@ export default function Lend() {
   }, [lends, yearFilter, isBS, bsYearRange]);
 
   async function handleSave(data) {
-    if (editingLend) { await updateLend(editingLend.id, data); addToast('Record updated!'); }
-    else             { await addLend(data);                    addToast('Record added!');   }
+    const lendAmount   = +data.amount || 0;
+    const returnedAmt  = +data.returnedAmount || 0;
+    const lendDesc     = `Lend to ${data.name}${data.reason ? ` for ${data.reason}` : ''}`;
+    const returnDesc   = `Returned by ${data.name}${data.reason ? ` of ${data.reason}` : ''}`;
+
+    if (editingLend) {
+      // ── Lend bank entry (withdraw) ──────────────────────────────
+      const prevBankId  = editingLend.bankId     || null;
+      const prevEntryId = editingLend.bankEntryId || null;
+      const newBankId   = data.bankId || null;
+      const lendPayload = { date: data.date, description: lendDesc, deposit: 0, withdraw: lendAmount };
+
+      if (prevBankId && prevEntryId) {
+        if (newBankId && newBankId === prevBankId) {
+          try { await updateEntryInBank(prevBankId, prevEntryId, lendPayload); } catch {}
+        } else {
+          try { await deleteEntryInBank(prevBankId, prevEntryId); } catch {}
+          if (newBankId) {
+            try { const ref = await addEntryToBank(newBankId, lendPayload); data = { ...data, bankEntryId: ref.id }; } catch {}
+          } else {
+            data = { ...data, bankEntryId: '' };
+          }
+        }
+      } else if (newBankId) {
+        try { const ref = await addEntryToBank(newBankId, lendPayload); data = { ...data, bankEntryId: ref.id }; } catch {}
+      }
+
+      // ── Returned bank entry (deposit) ───────────────────────────
+      const prevReturnBankId  = editingLend.returnedBankId     || null;
+      const prevReturnEntryId = editingLend.returnedBankEntryId || null;
+      const newReturnBankId   = returnedAmt > 0 ? (data.returnedBankId || null) : null;
+      const returnPayload     = { date: data.returnedDate || data.date, description: returnDesc, deposit: returnedAmt, withdraw: 0 };
+
+      if (prevReturnBankId && prevReturnEntryId) {
+        if (newReturnBankId && newReturnBankId === prevReturnBankId) {
+          try { await updateEntryInBank(prevReturnBankId, prevReturnEntryId, returnPayload); } catch {}
+        } else {
+          try { await deleteEntryInBank(prevReturnBankId, prevReturnEntryId); } catch {}
+          if (newReturnBankId) {
+            try { const ref = await addEntryToBank(newReturnBankId, returnPayload); data = { ...data, returnedBankEntryId: ref.id }; } catch {}
+          } else {
+            data = { ...data, returnedBankEntryId: '' };
+          }
+        }
+      } else if (newReturnBankId) {
+        try { const ref = await addEntryToBank(newReturnBankId, returnPayload); data = { ...data, returnedBankEntryId: ref.id }; } catch {}
+      }
+
+      await updateLend(editingLend.id, data);
+      addToast('Record updated!');
+    } else {
+      const ref = await addLend(data);
+
+      // ── Lend bank entry (withdraw) ──────────────────────────────
+      if (data.bankId) {
+        try {
+          const entryRef = await addEntryToBank(data.bankId, {
+            date: data.date,
+            description: lendDesc,
+            deposit: 0,
+            withdraw: lendAmount,
+          });
+          data = { ...data, bankEntryId: entryRef.id };
+          const bankName = banks.find(b => b.id === data.bankId)?.name;
+          addToast(`Record added & withdrawal recorded in ${bankName || 'bank'}`, 'success');
+        } catch {
+          addToast('Record added! (Bank entry failed — please add manually)', 'error');
+        }
+      } else {
+        addToast('Record added!');
+      }
+
+      // ── Returned bank entry (deposit) ───────────────────────────
+      if (returnedAmt > 0 && data.returnedBankId) {
+        try {
+          const retRef = await addEntryToBank(data.returnedBankId, {
+            date: data.returnedDate || data.date,
+            description: returnDesc,
+            deposit: returnedAmt,
+            withdraw: 0,
+          });
+          data = { ...data, returnedBankEntryId: retRef.id };
+          const bankName = banks.find(b => b.id === data.returnedBankId)?.name;
+          addToast(`Return deposit recorded in ${bankName || 'bank'}`, 'success');
+        } catch {}
+      }
+
+      await updateLend(ref.id, data);
+    }
   }
 
   async function handleDelete() {
+    if (deleteTarget.bankId && deleteTarget.bankEntryId) {
+      try { await deleteEntryInBank(deleteTarget.bankId, deleteTarget.bankEntryId); } catch {}
+    }
+    if (deleteTarget.returnedBankId && deleteTarget.returnedBankEntryId) {
+      try { await deleteEntryInBank(deleteTarget.returnedBankId, deleteTarget.returnedBankEntryId); } catch {}
+    }
     await deleteLend(deleteTarget.id);
     setDeleteTarget(null);
     addToast('Record deleted');
