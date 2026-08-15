@@ -59,7 +59,7 @@ export function ExpenseProvider({ children }) {
 
   const addExpense = useCallback(async (data) => {
     try {
-      await addExpenseSvc(user.uid, data);
+      return await addExpenseSvc(user.uid, data);
     } catch (e) {
       dispatch({ type: 'SET_ERROR', payload: e.message });
       throw e;

@@ -317,6 +317,7 @@ function EntryModal({ isOpen, entry, bankName, onClose, onSave, pinned = false, 
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description *</label>
             <input
               type="text"
+              autoFocus
               value={form.description}
               onChange={e => { setForm(f => ({ ...f, description: e.target.value })); setErrors(err => ({ ...err, description: '' })); }}
               placeholder={type === 'deposit' ? 'e.g. Salary, Transfer received...' : 'e.g. Bill payment, ATM withdrawal...'}
@@ -958,6 +959,7 @@ export default function Bank() {
         message={`Delete "${deleteBankTarget?.name}" and ALL its transactions? This action cannot be undone.`}
         onConfirm={handleDeleteBank}
         onCancel={() => setDeleteBankTarget(null)}
+        autoFocus
       />
       <QuickAddModal
         isOpen={quickAddOpen.open}

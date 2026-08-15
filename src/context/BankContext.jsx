@@ -72,6 +72,10 @@ export function BankProvider({ children }) {
   const addEntry   = useCallback((data) => addEntrySvc(user.uid, selectedBankId, data), [user, selectedBankId]);
   const updateEntry = useCallback((entryId, data) => updateEntrySvc(user.uid, selectedBankId, entryId, data), [user, selectedBankId]);
   const deleteEntry = useCallback((entryId) => deleteEntrySvc(user.uid, selectedBankId, entryId), [user, selectedBankId]);
+  // Add/update/delete an entry in a specific bank (not necessarily the selected one)
+  const addEntryToBank    = useCallback((bankId, data)           => addEntrySvc(user.uid, bankId, data), [user]);
+  const updateEntryInBank = useCallback((bankId, entryId, data)  => updateEntrySvc(user.uid, bankId, entryId, data), [user]);
+  const deleteEntryInBank = useCallback((bankId, entryId)        => deleteEntrySvc(user.uid, bankId, entryId), [user]);
 
   // Compute running closing balance
   const selectedBank = banks.find(b => b.id === selectedBankId) || null;
@@ -90,6 +94,7 @@ export function BankProvider({ children }) {
       entriesLoading,
       addBank, updateBank, deleteBank,
       addEntry, updateEntry, deleteEntry,
+      addEntryToBank, updateEntryInBank, deleteEntryInBank,
     }}>
       {children}
     </BankContext.Provider>

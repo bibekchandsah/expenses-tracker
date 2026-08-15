@@ -38,7 +38,7 @@ export default function Expenses() {
   const { currency } = useCurrency();
   const { monthLabel, dateLabel, calendar } = useCalendar();
   const { categories, getCategoryById } = useCategories();
-  const { banks, selectedBankId } = useBanks();
+  const { banks, selectedBankId, addEntryToBank, updateEntryInBank, deleteEntryInBank } = useBanks();
   const { addToast } = useToast();
   const { activeYear, bsActiveYear } = useActiveYear();
   const isBS = calendar === 'bs';
@@ -119,15 +119,68 @@ export default function Expenses() {
 
   async function handleSave(data) {
     if (editingExpense) {
+      // ── Edit path ──────────────────────────────────────────────
+      const prevBankId    = editingExpense.bankId    || null;
+      const prevEntryId   = editingExpense.bankEntryId || null;
+      const newBankId     = data.bankId || null;
+      const entryPayload  = { date: data.date, description: data.title, deposit: 0, withdraw: data.amount };
+
+      if (prevBankId && prevEntryId) {
+        if (newBankId && newBankId === prevBankId) {
+          // Same bank — just update the existing entry
+          try { await updateEntryInBank(prevBankId, prevEntryId, entryPayload); } catch {}
+        } else {
+          // Bank changed or removed — delete the old entry
+          try { await deleteEntryInBank(prevBankId, prevEntryId); } catch {}
+          if (newBankId) {
+            // Create entry in new bank and save its id back to the expense
+            try {
+              const ref = await addEntryToBank(newBankId, entryPayload);
+              data = { ...data, bankEntryId: ref.id };
+            } catch {}
+          } else {
+            data = { ...data, bankEntryId: '' };
+          }
+        }
+      } else if (newBankId) {
+        // No previous bank entry — create one now
+        try {
+          const ref = await addEntryToBank(newBankId, entryPayload);
+          data = { ...data, bankEntryId: ref.id };
+        } catch {}
+      }
+
       await updateExpense(editingExpense.id, data);
       addToast('Expense updated!', 'success');
     } else {
-      await addExpense(data);
-      addToast('Expense added!', 'success');
+      // ── Add path ───────────────────────────────────────────────
+      const ref = await addExpense(data);
+      if (data.bankId) {
+        try {
+          const entryRef = await addEntryToBank(data.bankId, {
+            date: data.date,
+            description: data.title,
+            deposit: 0,
+            withdraw: data.amount,
+          });
+          // Store the bank entry id back on the expense so edits/deletes stay in sync
+          await updateExpense(ref.id, { ...data, bankEntryId: entryRef.id });
+          const bankName = banks.find(b => b.id === data.bankId)?.name;
+          addToast(`Expense added & withdrawal recorded in ${bankName || 'bank'}`, 'success');
+        } catch {
+          addToast('Expense added! (Bank entry failed — please add manually)', 'error');
+        }
+      } else {
+        addToast('Expense added!', 'success');
+      }
     }
   }
 
   async function handleDelete() {
+    // If this expense has a linked bank entry, delete it too
+    if (deleteTarget.bankId && deleteTarget.bankEntryId) {
+      try { await deleteEntryInBank(deleteTarget.bankId, deleteTarget.bankEntryId); } catch {}
+    }
     await deleteExpense(deleteTarget.id);
     setDeleteTarget(null);
     addToast('Expense deleted', 'success');

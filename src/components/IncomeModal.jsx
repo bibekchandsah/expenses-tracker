@@ -110,6 +110,7 @@ export default function IncomeModal({ isOpen, income, onClose, onSave, pinned = 
               <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
+                autoFocus
                 value={form.title}
                 onChange={e => change('title', e.target.value)}
                 placeholder="e.g. Monthly salary"

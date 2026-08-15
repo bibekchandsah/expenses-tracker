@@ -1,31 +1,50 @@
 import { useState, useEffect } from 'react';
-import { X, DollarSign, Calendar, Tag, FileText, AlignLeft, Pin } from 'lucide-react';
+import { X, DollarSign, Calendar, Tag, FileText, AlignLeft, Pin, Building2 } from 'lucide-react';
 import { useCategories } from '../context/CategoryContext';
 import { useCalendar } from '../context/CalendarContext';
+import { useBanks } from '../context/BankContext';
 import NepaliDatePickerInput from './ui/NepaliDatePickerInput';
 
-const EMPTY = { title: '', amount: '', category: '', date: '', description: '', notes: '' };
+const EMPTY = { title: '', amount: '', category: '', date: '', description: '', notes: '', bankId: '' };
+
+const LS_KEY = 'expenseLastBankId';
+
+function getLastBankId() {
+  try { return localStorage.getItem(LS_KEY) || ''; } catch { return ''; }
+}
+function saveLastBankId(id) {
+  try { localStorage.setItem(LS_KEY, id); } catch {}
+}
 
 export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned = false, onPinnedChange }) {
   const { categories } = useCategories();
   const { calendar } = useCalendar();
+  const { banks } = useBanks();
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setForm(expense ? {
-        title: expense.title,
-        amount: String(expense.amount),
-        category: expense.category,
-        date: expense.date,
-        description: expense.description || '',
-        notes: expense.notes || '',
-      } : { ...EMPTY, date: new Date().toISOString().split('T')[0] });
+      if (expense) {
+        setForm({
+          title: expense.title,
+          amount: String(expense.amount),
+          category: expense.category,
+          date: expense.date,
+          description: expense.description || '',
+          notes: expense.notes || '',
+          bankId: expense.bankId || '',
+        });
+      } else {
+        // For new expenses, restore last-used bank from localStorage
+        const lastBankId = getLastBankId();
+        const validId = banks.find(b => b.id === lastBankId) ? lastBankId : (banks[0]?.id || '');
+        setForm({ ...EMPTY, date: new Date().toISOString().split('T')[0], bankId: validId });
+      }
       setErrors({});
     }
-  }, [isOpen, expense]);
+  }, [isOpen, expense, banks]);
 
   function validate() {
     const e = {};
@@ -42,10 +61,12 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned 
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true);
     try {
+      // Persist selected bank for next time
+      if (form.bankId) saveLastBankId(form.bankId);
       await onSave({ ...form, amount: +form.amount });
       if (pinned && !expense) {
         // keep modal open, reset form for next entry
-        setForm({ ...EMPTY, date: form.date });
+        setForm(prev => ({ ...EMPTY, date: prev.date, bankId: prev.bankId }));
         setErrors({});
       } else {
         onClose();
@@ -100,6 +121,7 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned 
               <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
+                autoFocus
                 value={form.title}
                 onChange={e => change('title', e.target.value)}
                 placeholder="e.g. Lunch at restaurant"
@@ -210,6 +232,32 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned 
               </div>
             </div>
           </div>
+
+          {/* Bank (optional) */}
+          {banks.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Bank <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <select
+                  value={form.bankId}
+                  onChange={e => {
+                    change('bankId', e.target.value);
+                    if (e.target.value) saveLastBankId(e.target.value);
+                  }}
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                >
+                  <option value="">None</option>
+                  {banks.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Selecting a bank will create a matching withdrawal entry</p>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">
