@@ -18,29 +18,38 @@ export function BankProvider({ children }) {
   const [banks, setBanks] = useState([]);
   const [banksLoading, setBanksLoading] = useState(true);
 
-  const [selectedBankId, setSelectedBankId] = useState(null);
+  const [selectedBankId, setSelectedBankId] = useState(() => {
+    try { return localStorage.getItem('bankLastSelectedId') || null; } catch { return null; }
+  });
   const [entries, setEntries] = useState([]);
   const [entriesLoading, setEntriesLoading] = useState(false);
 
   // Unsubscribe ref for entries listener
   const entryUnsub = useRef(null);
 
-  // Subscribe to banks list
+  // Persist selected bank to localStorage whenever it changes
+  const setSelectedBankIdPersisted = useCallback((idOrUpdater) => {
+    setSelectedBankId(prev => {
+      const next = typeof idOrUpdater === 'function' ? idOrUpdater(prev) : idOrUpdater;
+      try { if (next) localStorage.setItem('bankLastSelectedId', next); } catch {}
+      return next;
+    });
+  }, []);
   useEffect(() => {
     if (!user) { setBanks([]); setBanksLoading(false); return; }
     setBanksLoading(true);
     const unsub = subscribeToBanks(user.uid, (data) => {
       setBanks(data);
       setBanksLoading(false);
-      // Auto-select first bank if none selected
-      setSelectedBankId(prev => {
+      // Restore persisted bank if valid, otherwise fall back to first bank
+      setSelectedBankIdPersisted(prev => {
         if (!prev && data.length > 0) return data[0].id;
         if (prev && !data.find(b => b.id === prev)) return data[0]?.id || null;
         return prev;
       });
     });
     return unsub;
-  }, [user]);
+  }, [user, setSelectedBankIdPersisted]);
 
   // Subscribe to entries whenever selectedBankId changes
   useEffect(() => {
@@ -57,16 +66,16 @@ export function BankProvider({ children }) {
   // Bank CRUD
   const addBank = useCallback(async (data) => {
     const ref = await addBankSvc(user.uid, data);
-    setSelectedBankId(ref.id);
+    setSelectedBankIdPersisted(ref.id);
     return ref;
-  }, [user]);
+  }, [user, setSelectedBankIdPersisted]);
 
   const updateBank = useCallback((bankId, data) => updateBankSvc(user.uid, bankId, data), [user]);
 
   const deleteBank = useCallback(async (bankId) => {
     await deleteBankSvc(user.uid, bankId);
-    setSelectedBankId(prev => (prev === bankId ? null : prev));
-  }, [user]);
+    setSelectedBankIdPersisted(prev => (prev === bankId ? null : prev));
+  }, [user, setSelectedBankIdPersisted]);
 
   // Entry CRUD
   const addEntry   = useCallback((data) => addEntrySvc(user.uid, selectedBankId, data), [user, selectedBankId]);
@@ -88,7 +97,7 @@ export function BankProvider({ children }) {
   return (
     <BankContext.Provider value={{
       banks, banksLoading,
-      selectedBankId, setSelectedBankId,
+      selectedBankId, setSelectedBankId: setSelectedBankIdPersisted,
       selectedBank,
       entries: entriesWithBalance,
       entriesLoading,

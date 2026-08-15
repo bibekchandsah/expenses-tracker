@@ -3,7 +3,7 @@ import CountUpValue from '../components/ui/CountUpValue';
 import {
   Building2, Plus, Edit2, Trash2, X, ChevronDown,
   ArrowDownCircle, ArrowUpCircle, Wallet, Download, Upload,
-  ChevronsUpDown, Check, Settings, Search, ArrowUp, ArrowDown, Zap, Pin,
+  ChevronsUpDown, Check, Pen, Search, ArrowUp, ArrowDown, Zap, Pin,
 } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
@@ -197,7 +197,9 @@ function EntryModal({ isOpen, entry, bankName, onClose, onSave, pinned = false, 
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const [type, setType] = useState('deposit'); // 'deposit' | 'withdraw'
+  const [type, setType] = useState(() => {
+    try { return localStorage.getItem('bankLastEntryType') || 'deposit'; } catch { return 'deposit'; }
+  });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -206,7 +208,9 @@ function EntryModal({ isOpen, entry, bankName, onClose, onSave, pinned = false, 
       setType(t);
       setForm({ date: entry.date, description: entry.description, deposit: entry.deposit ? String(entry.deposit) : '', withdraw: entry.withdraw ? String(entry.withdraw) : '' });
     } else {
-      setType('deposit');
+      // For new entries restore last-used type; only reset form fields
+      const lastType = (() => { try { return localStorage.getItem('bankLastEntryType') || 'deposit'; } catch { return 'deposit'; } })();
+      setType(lastType);
       setForm(EMPTY);
     }
     setErrors({});
@@ -235,9 +239,11 @@ function EntryModal({ isOpen, entry, bankName, onClose, onSave, pinned = false, 
         deposit: type === 'deposit' ? +form.deposit : 0,
         withdraw: type === 'withdraw' ? +form.withdraw : 0,
       });
+      // Persist entry type for next time (only for new entries, not edits)
+      if (!entry) { try { localStorage.setItem('bankLastEntryType', type); } catch {} }
       if (pinned && !entry) {
-        setType('deposit');
         setForm({ ...EMPTY, date: form.date });
+        // type is already preserved (not reset), so next entry starts with same type
         setErrors({});
       } else {
         onClose();
@@ -278,14 +284,14 @@ function EntryModal({ isOpen, entry, bankName, onClose, onSave, pinned = false, 
           <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-gray-700 rounded-xl">
             <button
               type="button"
-              onClick={() => { setType('deposit'); setErrors({}); }}
+              onClick={() => { setType('deposit'); setErrors({}); try { localStorage.setItem('bankLastEntryType', 'deposit'); } catch {} }}
               className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all ${type === 'deposit' ? 'bg-green-500 text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
             >
               <ArrowDownCircle className="w-4 h-4" /> Deposit
             </button>
             <button
               type="button"
-              onClick={() => { setType('withdraw'); setErrors({}); }}
+              onClick={() => { setType('withdraw'); setErrors({}); try { localStorage.setItem('bankLastEntryType', 'withdraw'); } catch {} }}
               className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all ${type === 'withdraw' ? 'bg-red-500 text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
             >
               <ArrowUpCircle className="w-4 h-4" /> Withdraw
@@ -645,7 +651,7 @@ export default function Bank() {
                     className="p-2 rounded-xl text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 border border-gray-200 dark:border-gray-700 transition-colors"
                     title="Edit bank"
                   >
-                    <Settings className="w-4 h-4" />
+                    <Pen className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setDeleteBankTarget(selectedBank)}
