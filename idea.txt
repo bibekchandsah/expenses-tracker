@@ -1310,3 +1310,18 @@ Bank Balance Closing (Bank_1) 2026
 Bank Balance Closing (Bank_2) 2026
 Bank Balance Closing (Bank_3) 2026
 
+
+
+expense and bank mapping logic
+--------------------------------------------
+Expenses.jsx — the core logic:
+
+Add: Creates the expense, then creates the bank withdrawal entry, then writes bankEntryId back onto the expense document. This creates a permanent link between the two.
+
+Edit: Reads prevBankId / prevEntryId from the existing expense and handles three cases:
+    Same bank → updateEntryInBank with the new title/amount/date
+    Bank changed → deletes the old entry, creates a new one in the new bank, saves the new bankEntryId back
+    Bank removed → deletes the old entry, clears bankEntryId
+    No previous bank + bank now selected → creates a new entry and saves bankEntryId
+Delete: Before deleting the expense, if it has bankId + bankEntryId, the linked bank entry is deleted first.
+

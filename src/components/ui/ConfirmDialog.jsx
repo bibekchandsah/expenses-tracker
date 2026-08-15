@@ -1,6 +1,13 @@
-import { X, AlertTriangle } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 export default function ConfirmDialog({ isOpen, title, message, onConfirm, onCancel, confirmLabel = 'Delete', danger = true }) {
+  const confirmRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) confirmRef.current?.focus();
+  }, [isOpen]);
+
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
@@ -21,9 +28,12 @@ export default function ConfirmDialog({ isOpen, title, message, onConfirm, onCan
               Cancel
             </button>
             <button
+              ref={confirmRef}
               onClick={onConfirm}
-              className={`px-4 py-2 text-sm font-medium text-white rounded-xl transition-colors ${
-                danger ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-500 hover:bg-yellow-600'
+              className={`px-4 py-2 text-sm font-medium text-white rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                danger
+                  ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                  : 'bg-yellow-500 hover:bg-yellow-600 focus:ring-yellow-500'
               }`}
             >
               {confirmLabel}
