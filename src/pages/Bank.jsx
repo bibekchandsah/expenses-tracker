@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect, useRef } from 'react';
 import CountUpValue from '../components/ui/CountUpValue';
 import {
   Building2, Plus, Edit2, Trash2, X, ChevronDown,
@@ -200,6 +200,9 @@ function EntryModal({ isOpen, entry, bankName, onClose, onSave, pinned = false, 
   const [type, setType] = useState(() => {
     try { return localStorage.getItem('bankLastEntryType') || 'deposit'; } catch { return 'deposit'; }
   });
+  const descriptionRef = useRef(null);
+  // Track whether we just saved in pinned mode — used to auto-focus description
+  const justSavedPinned = useRef(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -208,13 +211,22 @@ function EntryModal({ isOpen, entry, bankName, onClose, onSave, pinned = false, 
       setType(t);
       setForm({ date: entry.date, description: entry.description, deposit: entry.deposit ? String(entry.deposit) : '', withdraw: entry.withdraw ? String(entry.withdraw) : '' });
     } else {
-      // For new entries restore last-used type; only reset form fields
       const lastType = (() => { try { return localStorage.getItem('bankLastEntryType') || 'deposit'; } catch { return 'deposit'; } })();
       setType(lastType);
       setForm(EMPTY);
     }
     setErrors({});
-  }, [isOpen, entry]);
+    // Focus description on open (handles initial open; pinned re-opens handled below)
+    setTimeout(() => descriptionRef.current?.focus(), 50);
+  }, [isOpen, entry]); // eslint-disable-line
+
+  // After a pinned save resets the form, focus the description field
+  useEffect(() => {
+    if (justSavedPinned.current && !saving) {
+      justSavedPinned.current = false;
+      setTimeout(() => descriptionRef.current?.focus(), 50);
+    }
+  }, [form, saving]);
 
   if (!isOpen) return null;
 
@@ -242,8 +254,8 @@ function EntryModal({ isOpen, entry, bankName, onClose, onSave, pinned = false, 
       // Persist entry type for next time (only for new entries, not edits)
       if (!entry) { try { localStorage.setItem('bankLastEntryType', type); } catch {} }
       if (pinned && !entry) {
+        justSavedPinned.current = true;
         setForm({ ...EMPTY, date: form.date });
-        // type is already preserved (not reset), so next entry starts with same type
         setErrors({});
       } else {
         onClose();
@@ -323,7 +335,7 @@ function EntryModal({ isOpen, entry, bankName, onClose, onSave, pinned = false, 
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description *</label>
             <input
               type="text"
-              autoFocus
+              ref={descriptionRef}
               value={form.description}
               onChange={e => { setForm(f => ({ ...f, description: e.target.value })); setErrors(err => ({ ...err, description: '' })); }}
               placeholder={type === 'deposit' ? 'e.g. Salary, Transfer received...' : 'e.g. Bill payment, ATM withdrawal...'}
