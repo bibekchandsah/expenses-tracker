@@ -159,6 +159,7 @@ function ForMeModal({ isOpen, entry, onClose, onSave, existingNames, pinned = fa
             </label>
             <input
               type="text"
+              autoFocus
               value={form.name}
               onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setErrors(er => ({ ...er, name: '' })); setNameSuggest(true); }}
               onBlur={() => setTimeout(() => setNameSuggest(false), 150)}

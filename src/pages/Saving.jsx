@@ -114,7 +114,7 @@ function SavingModal({ isOpen, entry, onClose, onSave, pinned = false, onPinnedC
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount <span className="text-red-400">*</span></label>
-              <input type="number" min="0.01" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="0.00"
+              <input autoFocus type="number" min="0.01" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="0.00"
                 className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.amount ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`} />
               {errors.amount && <p className="text-xs text-red-500 mt-1">{errors.amount}</p>}
             </div>
@@ -209,7 +209,7 @@ function SourceModal({ isOpen, source, onClose, onSave }) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount <span className="text-red-400">*</span></label>
-              <input type="number" min="0.01" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="0.00"
+              <input autoFocus type="number" min="0.01" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="0.00"
                 className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.amount ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`} />
               {errors.amount && <p className="text-xs text-red-500 mt-1">{errors.amount}</p>}
             </div>

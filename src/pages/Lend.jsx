@@ -157,7 +157,7 @@ function LendModal({ isOpen, lend, onClose, onSave, existingNames, pinned = fals
                 {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
               </div>
             ) : field('date', 'Date', 'date', '', true)}
-            {field('amount', 'Amount Lent', 'number', '0.00', true, { min: '0.01', step: '0.01' })}
+            {field('amount', 'Amount Lent', 'number', '0.00', true, { min: '0.01', step: '0.01', autoFocus: true })}
           </div>
 
           {/* Name with autocomplete */}
@@ -167,7 +167,6 @@ function LendModal({ isOpen, lend, onClose, onSave, existingNames, pinned = fals
             </label>
             <input
               type="text"
-              autoFocus
               value={form.name}
               onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setErrors(er => ({ ...er, name: '' })); setNameSuggest(true); }}
               onBlur={() => setTimeout(() => setNameSuggest(false), 150)}
