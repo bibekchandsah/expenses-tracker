@@ -6,7 +6,7 @@ import QuickAddModal from '../components/QuickAddModal';
 import { useIncomes } from '../context/IncomeContext';
 import { useBanks } from '../context/BankContext';
 import { useToast } from '../components/ui/Toast';
-import IncomeModal, { INCOME_SOURCES } from '../components/IncomeModal';
+import IncomeModal, { useIncomeSources } from '../components/IncomeModal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate, capFirst } from '../utils/formatters';
@@ -47,8 +47,8 @@ function SortIcon({ field, sortBy, sortDir }) {
   return <span className="text-green-600 dark:text-green-400 ml-1 text-xs">{sortDir === 'desc' ? '↓' : '↑'}</span>;
 }
 
-function sourceLabel(val) {
-  return INCOME_SOURCES.find(s => s.value === val)?.label ?? val ?? '—';
+function sourceLabel(val, sources) {
+  return sources.find(s => s.value === val)?.label ?? val ?? '—';
 }
 
 export default function Income() {
@@ -59,6 +59,7 @@ export default function Income() {
   const { banks, selectedBankId } = useBanks();
   const { activeYear, bsActiveYear } = useActiveYear();
   const isBS = calendar === 'bs';
+  const { sources: incomeSources } = useIncomeSources();
 
   const [modalOpen, setModalOpen]       = useState(false);
   const [modalPinned, setModalPinned]   = useState(false);
@@ -236,7 +237,7 @@ export default function Income() {
             <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(inc.amount, currency)}</span>
             {inc.source && (
               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SOURCE_COLORS[inc.source] ?? SOURCE_COLORS.Other}`}>
-                {sourceLabel(inc.source)}
+                {sourceLabel(inc.source, incomeSources)}
               </span>
             )}
           </div>
@@ -278,7 +279,7 @@ export default function Income() {
         <div className="col-span-2">
           {inc.source ? (
             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SOURCE_COLORS[inc.source] ?? SOURCE_COLORS.Other}`}>
-              {sourceLabel(inc.source)}
+              {sourceLabel(inc.source, incomeSources)}
             </span>
           ) : (
             <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
@@ -386,7 +387,7 @@ export default function Income() {
                 className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
               >
                 <option value="">All Sources</option>
-                {INCOME_SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                {incomeSources.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
             </div>
             {/* Month */}

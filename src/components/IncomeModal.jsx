@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { X, DollarSign, Calendar, Briefcase, FileText, AlignLeft, Pin } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, DollarSign, Calendar, Briefcase, FileText, AlignLeft, Pin, Plus } from 'lucide-react';
 import { useCalendar } from '../context/CalendarContext';
 import NepaliDatePickerInput from './ui/NepaliDatePickerInput';
 
-export const INCOME_SOURCES = [
+export const DEFAULT_INCOME_SOURCES = [
   { value: 'Salary',     label: '💼 Salary' },
   { value: 'Freelance',  label: '💻 Freelance' },
   { value: 'Business',   label: '🏢 Business' },
@@ -13,13 +13,62 @@ export const INCOME_SOURCES = [
   { value: 'Other',      label: '📦 Other' },
 ];
 
+// Keep backward-compat export used in Income.jsx
+export const INCOME_SOURCES = DEFAULT_INCOME_SOURCES;
+
+const LS_KEY = 'incomeSources';
+
+function loadCustomSources() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveCustomSources(sources) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(sources)); } catch {}
+}
+
+// Hook — merges default + custom, usable anywhere
+export function useIncomeSources() {
+  const [custom, setCustom] = useState(loadCustomSources);
+
+  const add = (name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const already = DEFAULT_INCOME_SOURCES.some(s => s.value.toLowerCase() === trimmed.toLowerCase())
+      || custom.some(s => s.value.toLowerCase() === trimmed.toLowerCase());
+    if (already) return;
+    const next = [...custom, { value: trimmed, label: trimmed }];
+    setCustom(next);
+    saveCustomSources(next);
+  };
+
+  const remove = (value) => {
+    const next = custom.filter(s => s.value !== value);
+    setCustom(next);
+    saveCustomSources(next);
+  };
+
+  const all = [
+    ...DEFAULT_INCOME_SOURCES,
+    ...custom.filter(c => !DEFAULT_INCOME_SOURCES.some(d => d.value === c.value)),
+  ];
+
+  return { sources: all, customSources: custom, addSource: add, removeSource: remove };
+}
+
 const EMPTY = { title: '', amount: '', source: '', date: '', description: '', notes: '' };
 
 export default function IncomeModal({ isOpen, income, onClose, onSave, pinned = false, onPinnedChange }) {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [addingSource, setAddingSource] = useState(false);
+  const [newSourceName, setNewSourceName] = useState('');
+  const newSourceRef = useRef(null);
   const { calendar } = useCalendar();
+  const { sources, addSource } = useIncomeSources();
 
   useEffect(() => {
     if (isOpen) {
@@ -32,8 +81,24 @@ export default function IncomeModal({ isOpen, income, onClose, onSave, pinned = 
         notes:       income.notes || '',
       } : { ...EMPTY, date: new Date().toISOString().split('T')[0] });
       setErrors({});
+      setAddingSource(false);
+      setNewSourceName('');
     }
   }, [isOpen, income]);
+
+  // Focus the new-source input when it appears
+  useEffect(() => {
+    if (addingSource) newSourceRef.current?.focus();
+  }, [addingSource]);
+
+  function confirmNewSource() {
+    const trimmed = newSourceName.trim();
+    if (!trimmed) { setAddingSource(false); return; }
+    addSource(trimmed);
+    change('source', trimmed);
+    setAddingSource(false);
+    setNewSourceName('');
+  }
 
   function validate() {
     const e = {};
@@ -145,19 +210,60 @@ export default function IncomeModal({ isOpen, income, onClose, onSave, pinned = 
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Source *
               </label>
-              <div className="relative">
-                <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <select
-                  value={form.source}
-                  onChange={e => change('source', e.target.value)}
-                  className={`w-full pl-9 pr-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors ${errors.source ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
-                >
-                  <option value="">Select...</option>
-                  {INCOME_SOURCES.map(s => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
-              </div>
+              {addingSource ? (
+                <div className="flex gap-1.5">
+                  <div className="relative flex-1">
+                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      ref={newSourceRef}
+                      type="text"
+                      value={newSourceName}
+                      onChange={e => setNewSourceName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') { e.preventDefault(); confirmNewSource(); }
+                        if (e.key === 'Escape') { setAddingSource(false); setNewSourceName(''); }
+                      }}
+                      placeholder="Source name..."
+                      className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={confirmNewSource}
+                    className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-colors"
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setAddingSource(false); setNewSourceName(''); }}
+                    className="px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm rounded-xl transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
+                  <select
+                    value={form.source}
+                    onChange={e => {
+                      if (e.target.value === '__add_new__') {
+                        setAddingSource(true);
+                      } else {
+                        change('source', e.target.value);
+                      }
+                    }}
+                    className={`w-full pl-9 pr-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors ${errors.source ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
+                  >
+                    <option value="">Select...</option>
+                    {sources.map(s => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                    <option value="__add_new__">＋ Add new source</option>
+                  </select>
+                </div>
+              )}
               {errors.source && <p className="text-xs text-red-500 mt-1">{errors.source}</p>}
             </div>
           </div>

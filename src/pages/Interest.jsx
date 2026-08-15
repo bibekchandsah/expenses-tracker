@@ -235,6 +235,7 @@ function InterestModal({ isOpen, record, onClose, onSave, pinned = false, onPinn
             </label>
             <input
               type="text"
+              autoFocus
               value={form.name}
               onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setErrors(er => ({ ...er, name: '' })); }}
               placeholder="e.g. Fixed Deposit, Loan Interest..."
