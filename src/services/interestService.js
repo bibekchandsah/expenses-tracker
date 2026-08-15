@@ -52,6 +52,13 @@ export async function addInterestRecord(uid, record) {
     total: +record.total || 0,
     info: record.info || '',
     isSettled: record.isSettled || false,
+    bankId: record.bankId || '',
+    bankEntryId: record.bankEntryId || '',
+    bankEntryType: record.bankEntryType || 'auto',
+    settlementDate: record.settlementDate || '',
+    settlementAmount: record.settlementAmount ?? null,
+    settlementBankId: record.settlementBankId || '',
+    settlementBankEntryId: record.settlementBankEntryId || '',
     createdAt: serverTimestamp(),
   });
 }
@@ -71,6 +78,13 @@ export async function updateInterestRecord(uid, recordId, record) {
     total: +record.total || 0,
     info: record.info || '',
     isSettled: record.isSettled || false,
+    bankId: record.bankId || '',
+    bankEntryId: record.bankEntryId || '',
+    bankEntryType: record.bankEntryType || 'auto',
+    settlementDate: record.settlementDate || '',
+    settlementAmount: record.settlementAmount ?? null,
+    settlementBankId: record.settlementBankId || '',
+    settlementBankEntryId: record.settlementBankEntryId || '',
   });
 }
 

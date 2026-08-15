@@ -152,6 +152,7 @@ function LendModal({ isOpen, lend, onClose, onSave, existingNames, pinned = fals
             </label>
             <input
               type="text"
+              autoFocus
               value={form.name}
               onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setErrors(er => ({ ...er, name: '' })); setNameSuggest(true); }}
               onBlur={() => setTimeout(() => setNameSuggest(false), 150)}

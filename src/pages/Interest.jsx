@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Percent, Plus, Edit2, Trash2, X, Info, Zap, Calculator, TrendingUp, User, ChevronDown, PanelRightClose, PanelRightOpen, Search, Upload, Download, Pin } from 'lucide-react';
+import { Percent, Plus, Edit2, Trash2, X, Info, Zap, Calculator, TrendingUp, User, ChevronDown, PanelRightClose, PanelRightOpen, Search, Upload, Download, Pin, Building2, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { useInterest } from '../context/InterestContext';
+import { useBanks } from '../context/BankContext';
 import { useToast } from '../components/ui/Toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -51,13 +52,19 @@ const EMPTY_FORM = {
   days: '',
   compoundFrequency: 12,
   info: '',
-  isSettled: false, // whether paid/received
+  isSettled: false,
+  settlementDate: new Date().toISOString().split('T')[0],
+  settlementAmount: '',
+  settlementBankId: '',
+  bankId: '',
+  bankEntryType: 'auto', // 'auto' | 'deposit' | 'withdraw'
 };
 
 // ── Interest Calculator Modal ───────────────────────────────────
 function InterestModal({ isOpen, record, onClose, onSave, pinned = false, onPinnedChange }) {
   const { calendar } = useCalendar();
   const { currency } = useCurrency();
+  const { banks } = useBanks();
   const [calcType, setCalcType] = useState('simple');
   const [form, setForm] = useState(EMPTY_FORM);
   const [result, setResult] = useState(null);
@@ -86,6 +93,11 @@ function InterestModal({ isOpen, record, onClose, onSave, pinned = false, onPinn
         compoundFrequency: record.compoundFrequency || 12,
         info: record.info || '',
         isSettled: record.isSettled || false,
+        settlementDate: record.settlementDate || new Date().toISOString().split('T')[0],
+        settlementAmount: record.settlementAmount != null ? String(record.settlementAmount) : String(record.total || ''),
+        settlementBankId: record.settlementBankId || '',
+        bankId: record.bankId || '',
+        bankEntryType: record.bankEntryType || 'auto',
       });
       setCalcType(record.type);
       setResult({
@@ -94,12 +106,14 @@ function InterestModal({ isOpen, record, onClose, onSave, pinned = false, onPinn
         total: record.total,
       });
     } else {
-      setForm(EMPTY_FORM);
+      const lastBankId = (() => { try { return localStorage.getItem('interestLastBankId') || ''; } catch { return ''; } })();
+      const validId = banks.find(b => b.id === lastBankId) ? lastBankId : '';
+      setForm({ ...EMPTY_FORM, bankId: validId });
       setCalcType('simple');
       setResult(null);
     }
     setErrors({});
-  }, [isOpen, record]);
+  }, [isOpen, record, banks]);
 
   if (!isOpen) return null;
 
@@ -147,6 +161,9 @@ function InterestModal({ isOpen, record, onClose, onSave, pinned = false, onPinn
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true);
     try {
+      if (form.bankId) {
+        try { localStorage.setItem('interestLastBankId', form.bankId); } catch {}
+      }
       await onSave({
         name: form.name,
         date: form.date,
@@ -160,9 +177,14 @@ function InterestModal({ isOpen, record, onClose, onSave, pinned = false, onPinn
         total: result.total,
         info: form.info,
         isSettled: form.isSettled,
+        settlementDate: form.isSettled ? form.settlementDate : '',
+        settlementAmount: form.isSettled && form.settlementAmount ? +form.settlementAmount : null,
+        settlementBankId: form.isSettled ? form.settlementBankId : '',
+        bankId: form.bankId || '',
+        bankEntryType: form.bankEntryType || 'auto',
       });
       if (pinned && !record) {
-        setForm(EMPTY_FORM);
+        setForm(prev => ({ ...EMPTY_FORM, bankId: prev.bankId, bankEntryType: prev.bankEntryType }));
         setCalcType('simple');
         setResult(null);
         setErrors({});
@@ -411,20 +433,169 @@ function InterestModal({ isOpen, record, onClose, onSave, pinned = false, onPinn
             />
           </div>
 
+          {/* Bank (optional) */}
+          {banks.length > 0 && (
+            <div className="space-y-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Bank <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <select
+                    value={form.bankId}
+                    onChange={e => setForm(f => ({ ...f, bankId: e.target.value }))}
+                    className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                  >
+                    <option value="">None</option>
+                    {banks.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Bank entry type — only show when a bank is selected */}
+              {form.bankId && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                    Bank entry type
+                    <span className="ml-1 text-gray-400 font-normal">
+                      (auto: given→withdraw, taken→deposit)
+                    </span>
+                  </label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: 'auto',     label: 'Auto',     icon: null },
+                      { value: 'withdraw', label: 'Withdraw', icon: ArrowUpCircle,   cls: 'text-red-500' },
+                      { value: 'deposit',  label: 'Deposit',  icon: ArrowDownCircle, cls: 'text-green-500' },
+                    ].map(opt => {
+                      const Icon = opt.icon;
+                      const active = form.bankEntryType === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, bankEntryType: opt.value }))}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-medium border-2 transition-all ${
+                            active
+                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                              : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500'
+                          }`}
+                        >
+                          {Icon && <Icon className={`w-3.5 h-3.5 ${active ? '' : opt.cls}`} />}
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Settlement Status */}
-          <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-            <input
-              type="checkbox"
-              id="isSettled"
-              checked={form.isSettled}
-              onChange={e => setForm(f => ({ ...f, isSettled: e.target.checked }))}
-              className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
-            />
-            <label htmlFor="isSettled" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-              {form.transactionType === 'given' 
-                ? 'Mark as received (amount has been returned to me)'
-                : 'Mark as paid (I have paid back this amount)'}
-            </label>
+          <div className="rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden">
+            <div
+              className={`flex items-center gap-2 p-3 cursor-pointer transition-colors ${
+                form.isSettled
+                  ? 'bg-green-50 dark:bg-green-900/20'
+                  : 'bg-gray-50 dark:bg-gray-700/50'
+              }`}
+              onClick={() => setForm(f => ({
+                ...f,
+                isSettled: !f.isSettled,
+                // Pre-fill settlement amount from result when checking
+                settlementAmount: !f.isSettled && result ? String(result.total) : f.settlementAmount,
+                settlementDate: !f.isSettled ? new Date().toISOString().split('T')[0] : f.settlementDate,
+              }))}
+            >
+              <input
+                type="checkbox"
+                id="isSettled"
+                checked={form.isSettled}
+                onChange={() => {}} // handled by div onClick
+                className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+              />
+              <label htmlFor="isSettled" className={`text-sm font-medium cursor-pointer ${form.isSettled ? 'text-green-700 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                {form.transactionType === 'given'
+                  ? 'Mark as received (amount has been returned to me)'
+                  : 'Mark as paid (I have paid back this amount)'}
+              </label>
+            </div>
+
+            {/* Settlement details — shown when checked */}
+            {form.isSettled && (
+              <div className="p-3 border-t border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 space-y-3">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {form.transactionType === 'given'
+                    ? 'When was the money returned? The amount will be deposited in the selected bank.'
+                    : 'When did you pay back? The amount will be recorded as a withdrawal in the selected bank.'}
+                </p>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Settlement Date */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Settlement Date</label>
+                    {calendar === 'bs' ? (
+                      <NepaliDatePickerInput
+                        value={form.settlementDate}
+                        onChange={adDate => setForm(f => ({ ...f, settlementDate: adDate }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    ) : (
+                      <input
+                        type="date"
+                        value={form.settlementDate}
+                        onChange={e => setForm(f => ({ ...f, settlementDate: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    )}
+                  </div>
+
+                  {/* Settlement Amount */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Amount</label>
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={form.settlementAmount}
+                      onChange={e => setForm(f => ({ ...f, settlementAmount: e.target.value }))}
+                      placeholder={result ? String(result.total.toFixed(2)) : '0.00'}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    {result && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Total: {formatCurrency(result.total, currency)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Settlement Bank */}
+                {banks.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Bank <span className="text-gray-400 font-normal">(optional — records a bank entry on settlement)</span>
+                    </label>
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <select
+                        value={form.settlementBankId}
+                        onChange={e => setForm(f => ({ ...f, settlementBankId: e.target.value }))}
+                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      >
+                        <option value="">None</option>
+                        {banks.map(b => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Calculate Button */}
@@ -715,6 +886,7 @@ function InfoModal({ isOpen, record, onClose }) {
 // ── Main Interest Page ──────────────────────────────────────────
 export default function Interest() {
   const { records, loading, addRecord, updateRecord, deleteRecord } = useInterest();
+  const { banks, addEntryToBank, updateEntryInBank, deleteEntryInBank } = useBanks();
   const { currency } = useCurrency();
   const { dateLabel, calendar } = useCalendar();
   const { addToast } = useToast();
@@ -822,14 +994,145 @@ export default function Interest() {
     return { total, totalInterest, totalPrincipal, totalGiven, totalTaken, principalGiven, principalTaken, count: filteredRecords.length };
   }, [filteredRecords, includeInterest]);
 
+  // Resolve which bank entry type to use for a given interest record
+  function resolveBankEntryType(data) {
+    if (data.bankEntryType === 'deposit') return 'deposit';
+    if (data.bankEntryType === 'withdraw') return 'withdraw';
+    // auto: given/invested → withdraw (money going out), taken/borrowed → deposit (money coming in)
+    return data.transactionType === 'given' ? 'withdraw' : 'deposit';
+  }
+
+  function buildBankDescription(data) {
+    const entryType = resolveBankEntryType(data);
+    return entryType === 'withdraw'
+      ? `Interest invested on ${data.name}`
+      : `Interest borrowed from ${data.name}`;
+  }
+
+  function buildEntryPayload(data) {
+    const entryType = resolveBankEntryType(data);
+    return {
+      date: data.date,
+      description: buildBankDescription(data),
+      deposit:  entryType === 'deposit'  ? data.principal : 0,
+      withdraw: entryType === 'withdraw' ? data.principal : 0,
+    };
+  }
+
+  // Build the settlement bank entry (deposit for given/received, withdraw for taken/paid)
+  function buildSettlementPayload(data) {
+    const isDeposit = data.transactionType === 'given'; // money coming back to me
+    return {
+      date: data.settlementDate,
+      description: isDeposit
+        ? `Interest received from ${data.name}`
+        : `Interest repaid to ${data.name}`,
+      deposit:  isDeposit ? (+data.settlementAmount || 0) : 0,
+      withdraw: isDeposit ? 0 : (+data.settlementAmount || 0),
+    };
+  }
+
   async function handleSave(data) {
     if (editingRecord) {
+      const prevBankId  = editingRecord.bankId     || null;
+      const prevEntryId = editingRecord.bankEntryId || null;
+      const newBankId   = data.bankId || null;
+      const payload     = buildEntryPayload(data);
+
+      // ── Principal bank entry sync ──────────────────────────────
+      if (prevBankId && prevEntryId) {
+        if (newBankId && newBankId === prevBankId) {
+          try { await updateEntryInBank(prevBankId, prevEntryId, payload); } catch {}
+        } else {
+          try { await deleteEntryInBank(prevBankId, prevEntryId); } catch {}
+          if (newBankId) {
+            try {
+              const ref = await addEntryToBank(newBankId, payload);
+              data = { ...data, bankEntryId: ref.id };
+            } catch {}
+          } else {
+            data = { ...data, bankEntryId: '' };
+          }
+        }
+      } else if (newBankId) {
+        try {
+          const ref = await addEntryToBank(newBankId, payload);
+          data = { ...data, bankEntryId: ref.id };
+        } catch {}
+      }
+
+      // ── Settlement bank entry sync ─────────────────────────────
+      const prevSettleBankId  = editingRecord.settlementBankId     || null;
+      const prevSettleEntryId = editingRecord.settlementBankEntryId || null;
+      const newSettleBankId   = data.isSettled ? (data.settlementBankId || null) : null;
+
+      if (prevSettleBankId && prevSettleEntryId) {
+        if (newSettleBankId && newSettleBankId === prevSettleBankId) {
+          try { await updateEntryInBank(prevSettleBankId, prevSettleEntryId, buildSettlementPayload(data)); } catch {}
+        } else {
+          try { await deleteEntryInBank(prevSettleBankId, prevSettleEntryId); } catch {}
+          if (newSettleBankId) {
+            try {
+              const ref = await addEntryToBank(newSettleBankId, buildSettlementPayload(data));
+              data = { ...data, settlementBankEntryId: ref.id };
+            } catch {}
+          } else {
+            data = { ...data, settlementBankEntryId: '' };
+          }
+        }
+      } else if (newSettleBankId) {
+        try {
+          const ref = await addEntryToBank(newSettleBankId, buildSettlementPayload(data));
+          data = { ...data, settlementBankEntryId: ref.id };
+        } catch {}
+      }
+
       await updateRecord(editingRecord.id, data);
       addToast('Calculation updated!', 'success');
     } else {
-      await addRecord(data);
-      addToast('Calculation saved!', 'success');
+      const ref = await addRecord(data);
+
+      // ── Principal bank entry ───────────────────────────────────
+      if (data.bankId) {
+        try {
+          const entryRef = await addEntryToBank(data.bankId, buildEntryPayload(data));
+          data = { ...data, bankEntryId: entryRef.id };
+          const bankName = banks.find(b => b.id === data.bankId)?.name;
+          const entryType = resolveBankEntryType(data);
+          addToast(`Saved & ${entryType} recorded in ${bankName || 'bank'}`, 'success');
+        } catch {
+          addToast('Saved! (Bank entry failed — please add manually)', 'error');
+        }
+      } else {
+        addToast('Calculation saved!', 'success');
+      }
+
+      // ── Settlement bank entry ──────────────────────────────────
+      if (data.isSettled && data.settlementBankId) {
+        try {
+          const settleRef = await addEntryToBank(data.settlementBankId, buildSettlementPayload(data));
+          data = { ...data, settlementBankEntryId: settleRef.id };
+          const bankName = banks.find(b => b.id === data.settlementBankId)?.name;
+          addToast(`Settlement entry recorded in ${bankName || 'bank'}`, 'success');
+        } catch {}
+      }
+
+      await updateRecord(ref.id, data);
     }
+  }
+
+  async function handleDelete() {
+    // Remove principal bank entry
+    if (deleteTarget.bankId && deleteTarget.bankEntryId) {
+      try { await deleteEntryInBank(deleteTarget.bankId, deleteTarget.bankEntryId); } catch {}
+    }
+    // Remove settlement bank entry
+    if (deleteTarget.settlementBankId && deleteTarget.settlementBankEntryId) {
+      try { await deleteEntryInBank(deleteTarget.settlementBankId, deleteTarget.settlementBankEntryId); } catch {}
+    }
+    await deleteRecord(deleteTarget.id);
+    setDeleteTarget(null);
+    addToast('Record deleted', 'success');
   }
 
   async function handleCSVImport(records) {
@@ -891,12 +1194,6 @@ export default function Interest() {
     const a    = document.createElement('a');
     a.href = url; a.download = 'interest.csv'; a.click();
     URL.revokeObjectURL(url);
-  }
-
-  async function handleDelete() {
-    await deleteRecord(deleteTarget.id);
-    setDeleteTarget(null);
-    addToast('Record deleted', 'success');
   }
 
   // Resize handler
