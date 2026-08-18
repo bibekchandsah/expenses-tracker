@@ -240,7 +240,7 @@ export default function Expenses() {
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{capFirst(expense.title)}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={expense.title}>{capFirst(expense.title)}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{dateLabel(expense.date)}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -272,7 +272,7 @@ export default function Expenses() {
               {cat?.icon || '📦'}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{capFirst(expense.title)}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={expense.title}>{capFirst(expense.title)}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">{dateLabel(expense.date)}</p>
             </div>
           </div>

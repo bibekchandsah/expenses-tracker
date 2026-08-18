@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, DollarSign, Calendar, Tag, FileText, AlignLeft, Pin, Building2 } from 'lucide-react';
+import { X, DollarSign, Calendar, Tag, FileText, AlignLeft, Pin, Building2, ChevronDown, Search } from 'lucide-react';
 import { useCategories } from '../context/CategoryContext';
 import { useCalendar } from '../context/CalendarContext';
 import { useBanks } from '../context/BankContext';
@@ -15,6 +15,141 @@ function getLastBankId() {
 }
 function saveLastBankId(id) {
   try { localStorage.setItem(LS_KEY, id); } catch {}
+}
+
+function CategoryDropdown({ categories, value, onChange, error }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const containerRef = useRef(null);
+  const searchRef = useRef(null);
+  const listRef = useRef(null);
+  const [highlighted, setHighlighted] = useState(0);
+
+  const selected = categories.find(c => c.id === value);
+
+  const filtered = categories.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // All options including "Add new"
+  const options = [...filtered, { id: '__add_new__', name: '+ Add new category', icon: '' }];
+
+  // When search changes, highlight the selected item if it's in the filtered list, else first item
+  useEffect(() => {
+    const idx = filtered.findIndex(c => c.id === value);
+    setHighlighted(idx >= 0 ? idx : 0);
+  }, [search]); // eslint-disable-line
+
+  // Focus search input when dropdown opens and scroll selected item into view
+  useEffect(() => {
+    if (open) {
+      const idx = options.findIndex(o => o.id === value);
+      setHighlighted(idx >= 0 ? idx : 0);
+      setTimeout(() => {
+        searchRef.current?.focus();
+        if (listRef.current) {
+          const item = listRef.current.children[idx >= 0 ? idx : 0];
+          item?.scrollIntoView({ block: 'nearest' });
+        }
+      }, 50);
+    } else {
+      setSearch('');
+    }
+  }, [open]); // eslint-disable-line
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClick(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (!listRef.current) return;
+    const item = listRef.current.children[highlighted];
+    item?.scrollIntoView({ block: 'nearest' });
+  }, [highlighted]);
+
+  function handleKeyDown(e) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlighted(h => Math.min(h + 1, options.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlighted(h => Math.max(h - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (options[highlighted]) {
+        onChange(options[highlighted].id);
+        setOpen(false);
+      }
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Trigger button */}
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`w-full flex items-center gap-2 pl-9 pr-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors text-left ${error ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
+      >
+        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <span className={`flex-1 truncate ${!selected ? 'text-gray-400' : ''}`}>
+          {selected ? `${selected.icon} ${selected.name}` : 'Select...'}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg overflow-hidden">
+          {/* Search input */}
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+            <Search className="w-4 h-4 text-gray-400 shrink-0" />
+            <input
+              ref={searchRef}
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Search category..."
+              className="flex-1 text-sm bg-transparent text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none"
+            />
+          </div>
+
+          {/* Options list */}
+          <ul ref={listRef} className="max-h-44 overflow-y-auto py-1">
+            {options.length === 1 && options[0].id === '__add_new__' && search && (
+              <li className="px-3 py-1.5 text-xs text-gray-400 italic">No categories match "{search}"</li>
+            )}
+            {options.map((opt, idx) => (
+              <li
+                key={opt.id}
+                onMouseEnter={() => setHighlighted(idx)}
+                onClick={() => { onChange(opt.id); setOpen(false); }}
+                className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer transition-colors
+                  ${idx === highlighted ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'}
+                  ${opt.id === '__add_new__' ? 'border-t border-gray-100 dark:border-gray-700 text-primary-600 dark:text-primary-400 font-medium' : ''}
+                  ${opt.id === value ? 'font-semibold' : ''}
+                `}
+              >
+                {opt.icon && <span>{opt.icon}</span>}
+                <span>{opt.id === '__add_new__' ? opt.name : opt.name}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned = false, onPinnedChange }) {
@@ -171,26 +306,18 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned 
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Category *
               </label>
-              <div className="relative">
-                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
-                <select
-                  value={form.category}
-                  onChange={e => {
-                    if (e.target.value === '__add_new__') {
-                      setCategoryModalOpen(true);
-                    } else {
-                      change('category', e.target.value);
-                    }
-                  }}
-                  className={`w-full pl-9 pr-3 py-2.5 text-sm border rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.category ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
-                >
-                  <option value="">Select...</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-                  ))}
-                  <option value="__add_new__">＋ Add new category</option>
-                </select>
-              </div>
+              <CategoryDropdown
+                categories={categories}
+                value={form.category}
+                onChange={id => {
+                  if (id === '__add_new__') {
+                    setCategoryModalOpen(true);
+                  } else {
+                    change('category', id);
+                  }
+                }}
+                error={errors.category}
+              />
               {errors.category && <p className="text-xs text-red-500 mt-1">{errors.category}</p>}
             </div>
           </div>
