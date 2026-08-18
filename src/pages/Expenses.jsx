@@ -2,6 +2,7 @@
 import { Plus, Search, Filter, Download, Edit2, Trash2, ChevronUp, ChevronDown, SlidersHorizontal, X, BarChart2, Upload, Zap } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
+import ExpenseDetailModal from '../components/ExpenseDetailModal';
 import { useExpenses } from '../context/ExpenseContext';
 import { useCategories } from '../context/CategoryContext';
 import { useBanks } from '../context/BankContext';
@@ -52,6 +53,8 @@ export default function Expenses() {
   const [showFilters, setShowFilters] = useState(false);
   const [yearFilter, setYearFilter] = useState(() => isBS ? bsActiveYear : activeYear);
   const [page, setPage] = useState(1);
+  const [expandedId, setExpandedId] = useState(null);
+  const [detailExpense, setDetailExpense] = useState(null);
 
   // Sync yearFilter when activeYear, bsActiveYear, or calendar changes
   useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); setPage(1); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
@@ -228,9 +231,13 @@ export default function Expenses() {
 
   const renderExpenseRow = (expense) => {
     const cat = getCategoryById(expense.category);
-    return (
-      <div key={expense.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
 
+    return (
+      <div
+        key={expense.id}
+        className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0"
+        onClick={() => setDetailExpense(expense)}
+      >
         {/* ── Mobile card (< sm) ── */}
         <div className="sm:hidden px-4 py-3">
           <div className="flex items-start gap-3">
@@ -238,28 +245,12 @@ export default function Expenses() {
               {cat?.icon || '📦'}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={expense.title}>{capFirst(expense.title)}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{dateLabel(expense.date)}</p>
                 </div>
-                <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                  <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(expense.amount, currency)}</span>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: (cat?.color || '#6b7280') + '20', color: cat?.color || '#6b7280' }}>
-                    {cat?.name || expense.category}
-                  </span>
-                </div>
-              </div>
-              {(expense.notes || expense.description) && (
-                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  {expense.notes && <span className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Note:</span> {capFirst(expense.notes)}</span>}
-                  {expense.description && <span className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Desc:</span> {capFirst(expense.description)}</span>}
-                </div>
-              )}
-              <div className="flex items-center gap-1 mt-1.5">
-                <button onClick={() => setQuickAddOpen({ open: true, row: expense })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-4 h-4" /></button>
-                <button onClick={() => openEdit(expense)} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"><Edit2 className="w-4 h-4" /></button>
-                <button onClick={() => setDeleteTarget(expense)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                <span className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0">{formatCurrency(expense.amount, currency)}</span>
               </div>
             </div>
           </div>
@@ -290,13 +281,12 @@ export default function Expenses() {
               {cat?.name || expense.category}
             </span>
           </div>
-          <div className="col-span-1 flex items-center gap-1">
+          <div className="col-span-1 flex items-center gap-1" onClick={e => e.stopPropagation()}>
             <button onClick={() => setQuickAddOpen({ open: true, row: expense })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-4 h-4" /></button>
             <button onClick={() => openEdit(expense)} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"><Edit2 className="w-4 h-4" /></button>
             <button onClick={() => setDeleteTarget(expense)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-4 h-4" /></button>
           </div>
         </div>
-
       </div>
     );
   };
@@ -574,6 +564,17 @@ export default function Expenses() {
         accentColor="blue"
         calendar={calendar}
       />
+      {detailExpense && (
+        <ExpenseDetailModal
+          expense={detailExpense}
+          category={getCategoryById(detailExpense.category)}
+          bank={banks.find(b => b.id === detailExpense.bankId)}
+          onClose={() => setDetailExpense(null)}
+          onEdit={() => { openEdit(detailExpense); setDetailExpense(null); }}
+          onDelete={() => { setDeleteTarget(detailExpense); setDetailExpense(null); }}
+          onQuickAdd={() => setQuickAddOpen({ open: true, row: detailExpense })}
+        />
+      )}
     </div>
   );
 }
