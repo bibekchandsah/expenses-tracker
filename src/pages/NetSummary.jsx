@@ -6,12 +6,12 @@ import { useLoans } from '../context/LoanContext';
 import { useExpenses } from '../context/ExpenseContext';
 import { useCategories } from '../context/CategoryContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { formatCurrency, capWords } from '../utils/formatters';
+import { formatCurrency, capWords, monthsOfYear } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
-import { getBSYearRange, adDateToBSMonthKey, getBSMonthLabel, safeADToBS, BS_MONTHS_SHORT } from '../utils/calendarUtils';
+import { getBSYearRange, adDateToBSMonthKey, getBSMonthLabel, safeADToBS, BS_MONTHS_SHORT, bsMonthsOfYear } from '../utils/calendarUtils';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
@@ -36,6 +36,12 @@ export default function NetSummary() {
   const isBS = calendar === 'bs';
   const [yearFilter, setYearFilter] = useState(() => isBS ? bsActiveYear : activeYear);
   const [dailyMonth, setDailyMonth] = useState(null);
+
+  // Default cat month = '' means all months
+  const [catMonth, setCatMonth] = useState('');
+  useEffect(() => {
+    setCatMonth('');
+  }, [isBS]); // eslint-disable-line
 
   useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
   // Reset daily month when year or calendar changes
@@ -162,12 +168,16 @@ export default function NetSummary() {
       });
   }, [expenses, activeDailyMonth, isBS]); // eslint-disable-line
 
-  // Per-category expense breakdown
+  // Per-category expense breakdown — filtered by catMonth if set, otherwise full year
   const categoryData = useMemo(() => {
     const map = {};
-    const catFiltered = isBS
-      ? expenses.filter(e => e.date && bsYearRange && e.date >= bsYearRange.start && e.date <= bsYearRange.end)
-      : expenses.filter(e => e.date?.startsWith(String(yearFilter)));
+    const catFiltered = catMonth
+      ? (isBS
+          ? expenses.filter(e => adDateToBSMonthKey(e.date) === catMonth)
+          : expenses.filter(e => e.date?.startsWith(catMonth)))
+      : (isBS
+          ? expenses.filter(e => e.date && bsYearRange && e.date >= bsYearRange.start && e.date <= bsYearRange.end)
+          : expenses.filter(e => e.date?.startsWith(String(yearFilter))));
     catFiltered.forEach(e => {
       const id = e.category;
       if (!id) return;
@@ -179,7 +189,7 @@ export default function NetSummary() {
         return { id, total, name: cat?.name || id, icon: cat?.icon || '📦', color: cat?.color || '#6366f1' };
       })
       .sort((a, b) => b.total - a.total);
-  }, [expenses, getCategoryById, yearFilter, isBS, bsYearRange]);
+  }, [expenses, getCategoryById, yearFilter, catMonth, isBS, bsYearRange]);
 
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
 
@@ -494,14 +504,51 @@ export default function NetSummary() {
       )}
 
       {/* Category Expense Breakdown */}
-      {categoryData.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
-            <Tag className="w-4 h-4 text-primary-500" />
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center gap-2">
+            <Tag className="w-4 h-4 text-primary-500 flex-shrink-0" />
             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Expenses by Category</h2>
-            <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">{categoryData.length} categories</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">{categoryData.length} categories</span>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-xs text-gray-400 dark:text-gray-500 hidden sm:inline">Month:</span>
+              {isBS ? (
+                <select
+                  value={catMonth}
+                  onChange={e => setCatMonth(e.target.value)}
+                  className="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">All months</option>
+                  {bsMonthsOfYear(yearFilter).map(m => (
+                    <option key={m} value={m}>{getBSMonthLabel(m, 'long')}</option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  value={catMonth}
+                  onChange={e => setCatMonth(e.target.value)}
+                  className="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">All months</option>
+                  {monthsOfYear(yearFilter).map(m => (
+                    <option key={m} value={m}>
+                      {new Date(m + '-02').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
 
+          {categoryData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <Tag className="w-8 h-8 text-gray-200 dark:text-gray-700" />
+              <p className="text-sm text-gray-400 dark:text-gray-500">
+                No expenses{catMonth
+                  ? ` for ${isBS ? getBSMonthLabel(catMonth, 'long') : new Date(catMonth + '-02').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+                  : ' for the selected period'}
+              </p>
+            </div>
+          ) : (
           <div className="flex flex-col lg:flex-row">
             {/* Table — left */}
             <div className="lg:w-64 xl:w-72 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-gray-700 overflow-y-auto max-h-72">
@@ -589,8 +636,8 @@ export default function NetSummary() {
               </ResponsiveContainer>
             </div>
           </div>
+          )}
         </div>
-      )}
 
       {/* Monthly Expense Breakdown */}
       {monthlyData.length > 0 && (

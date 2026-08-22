@@ -56,6 +56,19 @@ export default function Dashboard() {
   const [incomeTrendPeriod, setIncomeTrendPeriod] = useState('12m');
   const [bankPeriod, setBankPeriod] = useState('12m');
 
+  // Default cat month = current month key
+  const defaultCatMonth = isBS
+    ? adDateToBSMonthKey(now.toISOString().slice(0, 10))
+    : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const [catMonth, setCatMonth] = useState(defaultCatMonth);
+  // Keep catMonth in sync when calendar or year changes
+  useEffect(() => {
+    const cur = isBS
+      ? adDateToBSMonthKey(new Date().toISOString().slice(0, 10))
+      : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    setCatMonth(cur);
+  }, [isBS]); // eslint-disable-line
+
   const stats = useMemo(() => {
     const monthExpenses = isBS
       ? expenses.filter(e => adDateToBSMonthKey(e.date) === displayMonth)
@@ -108,12 +121,12 @@ export default function Dashboard() {
     return { monthTotal, yearTotal, trend, avgMonthly, count: monthExpenses.length, yearCount: yearExpenses.length, yearTrend, avgTrend, countTrend };
   }, [expenses, displayMonth, selectedYear, selectedBSYear, bsYearRange, isBS]);
 
-  // Category breakdown — this month (within selectedYear) or full year
+  // Category breakdown — selected month or full year
   const categoryData = useMemo(() => {
     const filtered = catPeriod === 'month'
       ? (isBS
-          ? expenses.filter(e => adDateToBSMonthKey(e.date) === displayMonth)
-          : expenses.filter(e => e.date.startsWith(displayMonth)))
+          ? expenses.filter(e => adDateToBSMonthKey(e.date) === catMonth)
+          : expenses.filter(e => e.date.startsWith(catMonth)))
       : (isBS
           ? expenses.filter(e => e.date >= bsYearRange.start && e.date <= bsYearRange.end)
           : expenses.filter(e => e.date.startsWith(String(selectedYear))));
@@ -121,7 +134,7 @@ export default function Dashboard() {
       const cat = getCategoryById(g.category);
       return { ...g, name: cat?.name || g.category, color: cat?.color || '#6b7280' };
     }).sort((a, b) => b.total - a.total);
-  }, [expenses, displayMonth, selectedYear, selectedBSYear, bsYearRange, catPeriod, getCategoryById, isBS]);
+  }, [expenses, catMonth, selectedYear, selectedBSYear, bsYearRange, catPeriod, getCategoryById, isBS]);
 
   // Monthly bar chart (all 12 months of selected year)
   const monthlyData = useMemo(() => {
@@ -300,33 +313,56 @@ export default function Dashboard() {
 
         {/* Pie chart */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
               Category Breakdown ({catPeriod === 'month'
-                ? (isBS ? getBSMonthLabel(displayMonth, 'long') : monthLabel(displayMonth, 'long'))
+                ? (isBS ? getBSMonthLabel(catMonth, 'long') : monthLabel(catMonth, 'long'))
                 : String(activeSelYear)})
             </h2>
-            <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 text-xs font-medium">
-              <button
-                onClick={() => setCatPeriod('month')}
-                className={`px-3 py-1.5 transition-colors ${
-                  catPeriod === 'month'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
-                }`}
-              >Monthly</button>
-              <button
-                onClick={() => setCatPeriod('year')}
-                className={`px-3 py-1.5 transition-colors ${
-                  catPeriod === 'year'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
-                }`}
-              >Yearly</button>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Month picker — only visible in monthly mode */}
+              {catPeriod === 'month' && (
+                isBS ? (
+                  <select
+                    value={catMonth}
+                    onChange={e => setCatMonth(e.target.value)}
+                    className="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    {bsMonthsOfYear(isBS ? selectedBSYear : selectedYear).map(m => (
+                      <option key={m} value={m}>{getBSMonthLabel(m, 'long')}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="month"
+                    value={catMonth}
+                    onChange={e => setCatMonth(e.target.value)}
+                    className="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                )
+              )}
+              <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 text-xs font-medium">
+                <button
+                  onClick={() => setCatPeriod('month')}
+                  className={`px-3 py-1.5 transition-colors ${
+                    catPeriod === 'month'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                  }`}
+                >Monthly</button>
+                <button
+                  onClick={() => setCatPeriod('year')}
+                  className={`px-3 py-1.5 transition-colors ${
+                    catPeriod === 'year'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                  }`}
+                >Yearly</button>
+              </div>
             </div>
           </div>
           {categoryData.length === 0 ? (
-            <div className="flex items-center justify-center h-48 text-gray-400 text-sm">No expenses {catPeriod === 'month' ? 'this month' : `in ${selectedYear}`}</div>
+            <div className="flex items-center justify-center h-48 text-gray-400 text-sm">No expenses {catPeriod === 'month' ? `in ${isBS ? getBSMonthLabel(catMonth, 'long') : monthLabel(catMonth, 'long')}` : `in ${selectedYear}`}</div>
           ) : (
             <div className="flex items-center gap-4">
               <ResponsiveContainer width="55%" height={200}>
