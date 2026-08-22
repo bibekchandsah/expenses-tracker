@@ -20,6 +20,7 @@ import { safeADToBS, getBSYearRange } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
+import { exportCSV } from '../utils/csvExport';
 
 // ── Add / Edit Loan Modal ───────────────────────────────────────
 const EMPTY_FORM = {
@@ -554,19 +555,15 @@ export default function Loan() {
     if (!filteredLoans.length) { addToast('No records to export', 'info'); return; }
     const headers = ['Name', 'Date', 'Amount Borrowed', 'Paid Amount', 'Outstanding', 'Reason', 'Description'];
     const rows = filteredLoans.map(l => [
-      `"${(l.name || '').replace(/"/g, '""')}"`,
+      l.name || '',
       l.date || '',
       l.amount || 0,
       l.paidAmount || 0,
       (+l.amount || 0) - (+l.paidAmount || 0),
-      `"${(l.reason || '').replace(/"/g, '""')}"`,
-      `"${(l.description || '').replace(/"/g, '""')}"`,
+      l.reason || '',
+      l.description || '',
     ]);
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    a.download = 'loans.csv';
-    a.click();
+    exportCSV(headers, rows, 'loans.csv');
   }
 
   // Resize handler

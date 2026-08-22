@@ -311,7 +311,7 @@ export default function Expenses() {
             <span className="hidden sm:inline">Import CSV</span>
           </button>
           <button
-            onClick={() => exportToCSV(filteredExpenses)}
+            onClick={() => exportToCSV(filteredExpenses, categories)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             <Download className="w-4 h-4" />

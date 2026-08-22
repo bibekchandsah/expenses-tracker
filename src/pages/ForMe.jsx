@@ -20,6 +20,7 @@ import { safeADToBS, getBSYearRange } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
+import { exportCSV } from '../utils/csvExport';
 
 // ── helpers ──────────────────────────────────────────────────────
 function toInputDate(date) {
@@ -351,16 +352,12 @@ export default function ForMe() {
     if (!filtered.length) { addToast('No records to export', 'info'); return; }
     const headers = ['Name', 'Date', 'Amount', 'Description'];
     const rows = filtered.map(e => [
-      `"${(e.name || '').replace(/"/g, '""')}"`,
+      e.name || '',
       e.date || '',
       e.amount || 0,
-      `"${(e.description || '').replace(/"/g, '""')}"`,
+      e.description || '',
     ]);
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    a.download = 'for-me.csv';
-    a.click();
+    exportCSV(headers, rows, 'for-me.csv');
   }
 
   // Resize handler

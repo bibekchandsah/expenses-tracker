@@ -15,6 +15,7 @@ import { safeADToBS, getBSYearRange } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
+import { exportCSV } from '../utils/csvExport';
 
 const COMPOUND_FREQUENCIES = [
   { value: 1, label: 'Annually' },
@@ -1177,25 +1178,20 @@ export default function Interest() {
     if (!filteredRecords.length) { addToast('No data to export', 'info'); return; }
     const headers = ['Name', 'Date', 'Transaction Type', 'Interest Type', 'Principal', 'Rate (%)', 'Duration (Years)', 'Compound Frequency', 'Interest', 'Total', 'Info', 'Settled'];
     const rows = filteredRecords.map(r => [
-      r.name,
-      r.date,
+      r.name || '',
+      r.date || '',
       r.transactionType || 'given',
-      r.type,
-      r.principal,
-      r.rate,
-      r.years,
+      r.type || '',
+      r.principal ?? '',
+      r.rate ?? '',
+      r.years ?? '',
       r.compoundFrequency || '',
-      r.interest,
-      r.total,
+      r.interest ?? '',
+      r.total ?? '',
       r.info || '',
       r.isSettled ? 'Yes' : 'No',
     ]);
-    const csv = [headers, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = 'interest.csv'; a.click();
-    URL.revokeObjectURL(url);
+    exportCSV(headers, rows, 'interest.csv');
   }
 
   // Resize handler

@@ -18,6 +18,7 @@ import { safeADToBS, getBSYearRange, adDateToBSMonthKey, getBSMonthLabel } from 
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
+import { exportCSV } from '../utils/csvExport';
 
 // ── Add/Edit Bank Modal ─────────────────────────────────────────
 function BankModal({ isOpen, bank, onClose, onSave, pinned = false, onPinnedChange }) {
@@ -401,15 +402,16 @@ function bankEntryKey(r) {
 }
 
 // ── CSV Export ──────────────────────────────────────────────────
-function exportBankCSV(entries, bankName, openingBalance) {
+function exportBankCSV(entries, bankName) {
   const headers = ['Date', 'Description', 'Deposit', 'Withdraw', 'Closing Balance'];
-  const rows = entries.map(e => [e.date, `"${e.description.replace(/"/g, '""')}"`, e.deposit || '', e.withdraw || '', e.closingBalance?.toFixed(2)]);
-  const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `${bankName}-statement.csv`; a.click();
-  URL.revokeObjectURL(url);
+  const rows = entries.map(e => [
+    e.date || '',
+    e.description || '',
+    e.deposit || '',
+    e.withdraw || '',
+    e.closingBalance?.toFixed(2) ?? '',
+  ]);
+  exportCSV(headers, rows, `${bankName}-statement.csv`);
 }
 
 // ── Main Bank Page ──────────────────────────────────────────────

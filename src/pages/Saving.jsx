@@ -19,6 +19,7 @@ import { safeADToBS, getBSYearRange } from '../utils/calendarUtils';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
+import { exportCSV } from '../utils/csvExport';
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 
@@ -334,15 +335,11 @@ export default function Saving() {
     const headers = ['Date', 'Saved For', 'Amount', 'Description'];
     const rows = filteredSavings.map(r => [
       r.date || '',
-      `"${(r.expendOn || '').replace(/"/g, '""')}"`,
+      r.expendOn || '',
       r.amount || 0,
-      `"${(r.description || '').replace(/"/g, '""')}"`,
+      r.description || '',
     ]);
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    a.download = 'savings.csv';
-    a.click();
+    exportCSV(headers, rows, 'savings.csv');
   }
 
   // Resize handler

@@ -16,6 +16,7 @@ import { safeADToBS, adDateToBSMonthKey, getBSYearRange, bsMonthsOfYear, getBSMo
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import { useDebounce } from '../hooks/useDebounce';
+import { exportCSV } from '../utils/csvExport';
 
 const PAGE_SIZE = 30;
 
@@ -247,19 +248,14 @@ export default function Income() {
     if (!searchFiltered.length) { addToast('No data to export', 'info'); return; }
     const headers = ['Title', 'Date', 'Amount', 'Source', 'Notes', 'Description'];
     const rows = searchFiltered.map(i => [
-      i.title,
-      i.date,
-      i.amount,
+      i.title || '',
+      i.date || '',
+      i.amount ?? '',
       i.source || '',
       i.notes || '',
       i.description || '',
     ]);
-    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = 'income.csv'; a.click();
-    URL.revokeObjectURL(url);
+    exportCSV(headers, rows, 'income.csv');
   }
 
   // thisMonth for row highlight in breakdown table
