@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, DollarSign, Calendar, Tag, FileText, AlignLeft, Pin, Building2, ChevronDown, Search } from 'lucide-react';
+import { X, DollarSign, Calendar, Tag, FileText, AlignLeft, Pin, Building2, ChevronDown, Search, RotateCcw } from 'lucide-react';
 import { useCategories } from '../context/CategoryContext';
 import { useCalendar } from '../context/CalendarContext';
 import { useBanks } from '../context/BankContext';
@@ -9,12 +9,26 @@ import CategoryModal from './CategoryModal';
 const EMPTY = { title: '', amount: '', category: '', date: '', description: '', notes: '', bankId: '' };
 
 const LS_KEY = 'expenseLastBankId';
+const LS_LAST_FORM_KEY = 'expenseLastForm';
 
 function getLastBankId() {
   try { return localStorage.getItem(LS_KEY) || ''; } catch { return ''; }
 }
 function saveLastBankId(id) {
   try { localStorage.setItem(LS_KEY, id); } catch {}
+}
+function getLastForm() {
+  try {
+    const raw = localStorage.getItem(LS_LAST_FORM_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function saveLastForm(form) {
+  try {
+    // Don't persist date — user usually wants today on a new entry
+    const { date: _date, ...rest } = form;
+    localStorage.setItem(LS_LAST_FORM_KEY, JSON.stringify(rest));
+  } catch {}
 }
 
 function CategoryDropdown({ categories, value, onChange, error }) {
@@ -214,6 +228,8 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned 
       // Persist selected bank for next time
       if (form.bankId) saveLastBankId(form.bankId);
       await onSave({ ...form, amount: +form.amount });
+      // Save last-used values so the user can restore them next time
+      saveLastForm(form);
       if (pinned && !expense) {
         // keep modal open, reset form for next entry
         setForm(prev => ({ ...EMPTY, date: prev.date, bankId: prev.bankId }));
@@ -244,6 +260,30 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned 
             {expense ? 'Edit Expense' : 'Add Expense'}
           </h2>
           <div className="flex items-center gap-1">
+            {!expense && onPinnedChange && (
+              <button
+                type="button"
+                onClick={() => {
+                  const last = getLastForm();
+                  if (!last) return;
+                  setForm(prev => ({
+                    ...prev,
+                    title:       last.title       ?? prev.title,
+                    amount:      last.amount      ?? prev.amount,
+                    category:    last.category    ?? prev.category,
+                    notes:       last.notes       ?? prev.notes,
+                    description: last.description ?? prev.description,
+                    bankId:      last.bankId      ?? prev.bankId,
+                  }));
+                  setErrors({});
+                }}
+                disabled={!getLastForm()}
+                title="Restore last used values"
+                className="p-1.5 rounded-lg transition-colors text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            )}
             {!expense && onPinnedChange && (
               <button
                 type="button"
