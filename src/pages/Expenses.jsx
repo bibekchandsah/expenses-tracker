@@ -1,5 +1,5 @@
-﻿import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Plus, Search, Filter, Download, Edit2, Trash2, ChevronUp, ChevronDown, SlidersHorizontal, X, BarChart2, Upload, Zap } from 'lucide-react';
+﻿import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { Plus, Search, Filter, Download, Edit2, Trash2, ChevronUp, ChevronDown, SlidersHorizontal, X, BarChart2, Upload, Zap, MoreHorizontal } from 'lucide-react';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
 import ExpenseDetailModal from '../components/ExpenseDetailModal';
@@ -20,6 +20,20 @@ import YearSelector from '../components/ui/YearSelector';
 import { useDebounce } from '../hooks/useDebounce';
 
 const PAGE_SIZE = 30;
+
+const COL_PREFS_KEY = 'expenseColPrefs';
+const DEFAULT_COL_PREFS = { showBank: false, showActions: true };
+
+function loadColPrefs() {
+  try {
+    const raw = localStorage.getItem(COL_PREFS_KEY);
+    if (!raw) return { ...DEFAULT_COL_PREFS };
+    return { ...DEFAULT_COL_PREFS, ...JSON.parse(raw) };
+  } catch { return { ...DEFAULT_COL_PREFS }; }
+}
+function saveColPrefs(prefs) {
+  try { localStorage.setItem(COL_PREFS_KEY, JSON.stringify(prefs)); } catch {}
+}
 
 const IMPORT_FIELDS = [
   { key: 'title',       label: 'Title / Description',          required: true,  type: 'text'   },
@@ -55,6 +69,26 @@ export default function Expenses() {
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState(null);
   const [detailExpense, setDetailExpense] = useState(null);
+  const [colPrefs, setColPrefs] = useState(loadColPrefs);
+  const [colMenuOpen, setColMenuOpen] = useState(false);
+  const colMenuRef = useRef(null);
+
+  // Close column menu on outside click
+  useEffect(() => {
+    function handleOutside(e) {
+      if (colMenuRef.current && !colMenuRef.current.contains(e.target)) setColMenuOpen(false);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  function toggleColPref(key) {
+    setColPrefs(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      saveColPrefs(next);
+      return next;
+    });
+  }
 
   // Sync yearFilter when activeYear, bsActiveYear, or calendar changes
   useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); setPage(1); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
@@ -79,7 +113,8 @@ export default function Expenses() {
         String(e.amount).includes(q) ||
         e.notes?.toLowerCase().includes(q) ||
         e.description?.toLowerCase().includes(q) ||
-        cat?.name?.toLowerCase().includes(q)
+        cat?.name?.toLowerCase().includes(q) ||
+        banks.find(b => b.id === e.bankId)?.name?.toLowerCase().includes(q)
       );
     });
   }, [filteredExpenses, debouncedSearch, getCategoryById, yearFilter, bsYearRange, isBS]);
@@ -229,62 +264,88 @@ export default function Expenses() {
 
   const hasActiveFilters = filters.category || filters.month || filters.startDate || filters.endDate;
 
-  const renderExpenseRow = (expense) => {
+  const renderExpenseRow = (expense, isTableRow = false) => {
     const cat = getCategoryById(expense.category);
+    const bank = banks.find(b => b.id === expense.bankId);
 
+    if (isTableRow) {
+      return (
+        <tr
+          key={expense.id}
+          className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0"
+          onClick={() => setDetailExpense(expense)}
+        >
+          {/* Title / Date */}
+          <td className="px-5 py-3.5">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0" style={{ background: (cat?.color || '#6b7280') + '20' }}>
+                {cat?.icon || '📦'}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[160px]" title={expense.title}>{capFirst(expense.title)}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{dateLabel(expense.date)}</p>
+              </div>
+            </div>
+          </td>
+          {/* Amount */}
+          <td className="px-3 py-3.5">
+            <span className="text-sm font-bold text-gray-900 dark:text-white tabular-nums">{formatCurrency(expense.amount, currency)}</span>
+          </td>
+          {/* Note */}
+          <td className="px-3 py-3.5 max-w-[100px]">
+            {expense.notes
+              ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate block" title={capFirst(expense.notes)}>{capFirst(expense.notes)}</span>
+              : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
+          </td>
+          {/* Description */}
+          <td className="px-3 py-3.5 max-w-[100px]">
+            {expense.description
+              ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate block" title={capFirst(expense.description)}>{capFirst(expense.description)}</span>
+              : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
+          </td>
+          {/* Category */}
+          <td className="px-3 py-3.5">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium whitespace-nowrap" style={{ background: (cat?.color || '#6b7280') + '20', color: cat?.color || '#6b7280' }}>
+              {cat?.name || expense.category}
+            </span>
+          </td>
+          {/* Bank — toggled */}
+          <td className={`px-3 py-3.5 ${colPrefs.showBank ? '' : 'hidden'}`}>
+            {bank
+              ? <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 whitespace-nowrap max-w-[110px] truncate" title={bank.name}>{bank.name}</span>
+              : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
+          </td>
+          {/* Actions — toggled */}
+          <td className={`px-3 py-3.5 ${colPrefs.showActions ? '' : 'hidden'}`} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setQuickAddOpen({ open: true, row: expense })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-4 h-4" /></button>
+              <button onClick={() => openEdit(expense)} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-4 h-4" /></button>
+              <button onClick={() => setDeleteTarget(expense)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          </td>
+        </tr>
+      );
+    }
+
+    // Mobile card
     return (
       <div
         key={expense.id}
-        className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0"
+        className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer px-4 py-3"
         onClick={() => setDetailExpense(expense)}
       >
-        {/* ── Mobile card (< sm) ── */}
-        <div className="sm:hidden px-4 py-3">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0 mt-0.5" style={{ background: (cat?.color || '#6b7280') + '20' }}>
-              {cat?.icon || '📦'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={expense.title}>{capFirst(expense.title)}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{dateLabel(expense.date)}</p>
-                </div>
-                <span className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0">{formatCurrency(expense.amount, currency)}</span>
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0 mt-0.5" style={{ background: (cat?.color || '#6b7280') + '20' }}>
+            {cat?.icon || '📦'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={expense.title}>{capFirst(expense.title)}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{dateLabel(expense.date)}</p>
               </div>
+              <span className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0">{formatCurrency(expense.amount, currency)}</span>
             </div>
-          </div>
-        </div>
-
-        {/* ── Desktop row (sm+) ── */}
-        <div className="hidden sm:grid grid-cols-12 gap-3 px-5 py-4 items-center">
-          <div className="col-span-3 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0" style={{ background: (cat?.color || '#6b7280') + '20' }}>
-              {cat?.icon || '📦'}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={expense.title}>{capFirst(expense.title)}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{dateLabel(expense.date)}</p>
-            </div>
-          </div>
-          <div className="col-span-2">
-            <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(expense.amount, currency)}</span>
-          </div>
-          <div className="col-span-2">
-            {expense.notes ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={capFirst(expense.notes)}>{capFirst(expense.notes)}</span> : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
-          </div>
-          <div className="col-span-2">
-            {expense.description ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[120px]" title={capFirst(expense.description)}>{capFirst(expense.description)}</span> : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
-          </div>
-          <div className="col-span-2">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: (cat?.color || '#6b7280') + '20', color: cat?.color || '#6b7280' }}>
-              {cat?.name || expense.category}
-            </span>
-          </div>
-          <div className="col-span-1 flex items-center gap-1" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setQuickAddOpen({ open: true, row: expense })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-4 h-4" /></button>
-            <button onClick={() => openEdit(expense)} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"><Edit2 className="w-4 h-4" /></button>
-            <button onClick={() => setDeleteTarget(expense)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-4 h-4" /></button>
           </div>
         </div>
       </div>
@@ -337,7 +398,7 @@ export default function Expenses() {
               type="text"
               value={searchInput}
               onChange={e => { setSearchInput(e.target.value); setPage(1); }}
-              placeholder="Search by title, date (YYYY-MM-DD), note, description, category, amount..."
+              placeholder="Search by title, date, note, description, category, bank, amount..."
               className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
             />
           </div>
@@ -354,6 +415,43 @@ export default function Expenses() {
             <SlidersHorizontal className="w-4 h-4" />
             Filters {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-primary-600 inline-block" />}
           </button>
+
+          {/* Column visibility menu */}
+          <div className="relative" ref={colMenuRef}>
+            <button
+              onClick={() => setColMenuOpen(o => !o)}
+              className={`flex items-center justify-center w-9 h-9 rounded-xl border transition-colors ${
+                colMenuOpen
+                  ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 text-primary-700 dark:text-primary-400'
+                  : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
+              }`}
+              title="Column visibility"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+            {colMenuOpen && (
+              <div className="absolute right-0 top-full mt-1.5 z-30 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1 animate-fade-in">
+                <p className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Columns</p>
+                {[
+                  { key: 'showBank',    label: 'Bank column' },
+                  { key: 'showActions', label: 'Actions column' },
+                ].map(({ key, label }) => (
+                  <label
+                    key={key}
+                    className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={colPrefs[key]}
+                      onChange={() => toggleColPref(key)}
+                      className="w-4 h-4 rounded accent-primary-600 cursor-pointer"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
 
           {hasActiveFilters && (
             <button onClick={() => { resetFilters(); setSearchInput(''); setPage(1); }}
@@ -410,22 +508,6 @@ export default function Expenses() {
 
       {/* Expense list */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {/* Table header */}
-        <div className="hidden sm:grid grid-cols-12 gap-3 px-5 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-          <div className="col-span-3 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors" onClick={() => handleSort('date')}>
-            Title / Date <SortIcon field="date" />
-          </div>
-          <div className="col-span-2 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors" onClick={() => handleSort('amount')}>
-            Amount <SortIcon field="amount" />
-          </div>
-          <div className="col-span-2">Note</div>
-          <div className="col-span-2">Description</div>
-          <div className="col-span-2 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors" onClick={() => handleSort('category')}>
-            Category <SortIcon field="category" />
-          </div>
-          <div className="col-span-1">Actions</div>
-        </div>
-
         {searchFiltered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <p className="text-gray-400 dark:text-gray-500 text-sm mb-3">
@@ -438,24 +520,71 @@ export default function Expenses() {
             )}
           </div>
         ) : (
-          <div className="divide-y divide-gray-100 dark:divide-gray-700">
-            {useMonthView
-              ? groupedByMonth.flatMap(([month, items]) => [
-                  <div key={`mh-${month}`} className="px-5 py-2 bg-gray-50 dark:bg-gray-700/70 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
-                      {isBS
-                        ? getBSMonthLabel(month, 'long')
-                        : new Date(month + '-02').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                    </span>
-                    <span className="text-xs text-gray-400 dark:text-gray-500">
-                      {items.length} {items.length === 1 ? 'expense' : 'expenses'} · {formatCurrency(items.reduce((s, e) => s + (+e.amount || 0), 0), currency)}
-                    </span>
-                  </div>,
-                  ...items.map(renderExpenseRow)
-                ])
-              : paginated.map(renderExpenseRow)
-            }
-          </div>
+          <>
+            {/* Desktop table (sm+) */}
+            <table className="hidden sm:table w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-3 text-left cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-[28%]" onClick={() => handleSort('date')}>
+                    Title / Date <SortIcon field="date" />
+                  </th>
+                  <th className="px-3 py-3 text-left cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-[13%]" onClick={() => handleSort('amount')}>
+                    Amount <SortIcon field="amount" />
+                  </th>
+                  <th className="px-3 py-3 text-left w-[12%]">Note</th>
+                  <th className="px-3 py-3 text-left w-[12%]">Description</th>
+                  <th className="px-3 py-3 text-left cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-[15%]" onClick={() => handleSort('category')}>
+                    Category <SortIcon field="category" />
+                  </th>
+                  <th className={`px-3 py-3 text-left w-[13%] ${colPrefs.showBank ? '' : 'hidden'}`}>Bank</th>
+                  <th className={`px-3 py-3 text-left w-[7%] ${colPrefs.showActions ? '' : 'hidden'}`}>Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {useMonthView
+                  ? groupedByMonth.flatMap(([month, items]) => [
+                      <tr key={`mh-${month}`}>
+                        <td colSpan={5 + (colPrefs.showBank ? 1 : 0) + (colPrefs.showActions ? 1 : 0)}
+                          className="px-5 py-2 bg-gray-50 dark:bg-gray-700/70">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                              {isBS
+                                ? getBSMonthLabel(month, 'long')
+                                : new Date(month + '-02').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                            </span>
+                            <span className="text-xs text-gray-400 dark:text-gray-500">
+                              {items.length} {items.length === 1 ? 'expense' : 'expenses'} · {formatCurrency(items.reduce((s, e) => s + (+e.amount || 0), 0), currency)}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>,
+                      ...items.map(exp => renderExpenseRow(exp, true))
+                    ])
+                  : paginated.map(exp => renderExpenseRow(exp, true))
+                }
+              </tbody>
+            </table>
+
+            {/* Mobile list (< sm) */}
+            <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-700">
+              {useMonthView
+                ? groupedByMonth.flatMap(([month, items]) => [
+                    <div key={`mh-${month}`} className="px-4 py-2 bg-gray-50 dark:bg-gray-700/70 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                        {isBS
+                          ? getBSMonthLabel(month, 'long')
+                          : new Date(month + '-02').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      </span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">
+                        {items.length} {items.length === 1 ? 'expense' : 'expenses'} · {formatCurrency(items.reduce((s, e) => s + (+e.amount || 0), 0), currency)}
+                      </span>
+                    </div>,
+                    ...items.map(exp => renderExpenseRow(exp, false))
+                  ])
+                : paginated.map(exp => renderExpenseRow(exp, false))
+              }
+            </div>
+          </>
         )}
 
         {/* Pagination — only in non-grouped mode */}
