@@ -1,5 +1,6 @@
 ﻿import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Plus, Search, Filter, Download, Edit2, Trash2, ChevronUp, ChevronDown, SlidersHorizontal, X, BarChart2, Upload, Zap, MoreHorizontal } from 'lucide-react';
+import { useResizableColumns } from '../hooks/useResizableColumns';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
 import ExpenseDetailModal from '../components/ExpenseDetailModal';
@@ -50,6 +51,19 @@ function expenseKey(r) {
   return `${String(r.title || '').toLowerCase()}|${r.date}|${r.amount}`;
 }
 
+/** Drag handle rendered on the right edge of a resizable <th> */
+function ResizeHandle({ onMouseDown }) {
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      className="absolute right-0 top-0 h-full w-3 flex items-center justify-center cursor-col-resize z-10 group/handle opacity-0 group-hover:opacity-100 transition-opacity"
+      title="Drag to resize"
+    >
+      <div className="w-0.5 h-4 rounded-full bg-gray-300 dark:bg-gray-500 group-hover/handle:bg-primary-500 transition-colors" />
+    </div>
+  );
+}
+
 export default function Expenses() {
   const { expenses, filteredExpenses, loading, filters, setFilters, resetFilters, addExpense, updateExpense, deleteExpense } = useExpenses();
   const { currency } = useCurrency();
@@ -74,6 +88,10 @@ export default function Expenses() {
   const [colPrefs, setColPrefs] = useState(loadColPrefs);
   const [colMenuOpen, setColMenuOpen] = useState(false);
   const colMenuRef = useRef(null);
+
+  // Column resize — default widths: Title, Amount, Note, Desc, Category, Bank, Actions
+  const COL_DEFAULTS = [220, 120, 110, 110, 140, 130, 110];
+  const { colWidths, getResizeHandler, resetWidths } = useResizableColumns('expenses', COL_DEFAULTS);
 
   // Close column menu on outside click
   useEffect(() => {
@@ -279,47 +297,47 @@ export default function Expenses() {
           onClick={() => setDetailExpense(expense)}
         >
           {/* Title / Date */}
-          <td className="px-5 py-3.5">
+          <td className="px-5 py-3.5 overflow-hidden">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0" style={{ background: (cat?.color || '#6b7280') + '20' }}>
                 {cat?.icon || '📦'}
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[160px]" title={expense.title}>{capFirst(expense.title)}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={expense.title}>{capFirst(expense.title)}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{dateLabel(expense.date)}</p>
               </div>
             </div>
           </td>
           {/* Amount */}
-          <td className="px-3 py-3.5">
+          <td className="px-3 py-3.5 overflow-hidden">
             <span className="text-sm font-bold text-gray-900 dark:text-white tabular-nums">{formatCurrency(expense.amount, currency)}</span>
           </td>
           {/* Note */}
-          <td className="px-3 py-3.5 max-w-[100px]">
+          <td className="px-3 py-3.5 overflow-hidden">
             {expense.notes
               ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate block" title={capFirst(expense.notes)}>{capFirst(expense.notes)}</span>
               : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
           </td>
           {/* Description */}
-          <td className="px-3 py-3.5 max-w-[100px]">
+          <td className="px-3 py-3.5 overflow-hidden">
             {expense.description
               ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate block" title={capFirst(expense.description)}>{capFirst(expense.description)}</span>
               : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
           </td>
           {/* Category */}
-          <td className="px-3 py-3.5">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium whitespace-nowrap" style={{ background: (cat?.color || '#6b7280') + '20', color: cat?.color || '#6b7280' }}>
+          <td className="px-3 py-3.5 overflow-hidden">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium truncate max-w-full" style={{ background: (cat?.color || '#6b7280') + '20', color: cat?.color || '#6b7280' }}>
               {cat?.name || expense.category}
             </span>
           </td>
           {/* Bank — toggled */}
-          <td className={`px-3 py-3.5 ${colPrefs.showBank ? '' : 'hidden'}`}>
+          <td className={`px-3 py-3.5 overflow-hidden ${colPrefs.showBank ? '' : 'hidden'}`}>
             {bank
-              ? <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 whitespace-nowrap max-w-[110px] truncate" title={bank.name}>{bank.name}</span>
+              ? <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 truncate max-w-full" title={bank.name}>{bank.name}</span>
               : <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
           </td>
           {/* Actions — toggled */}
-          <td className={`px-3 py-3.5 ${colPrefs.showActions ? '' : 'hidden'}`} onClick={e => e.stopPropagation()}>
+          <td className={`px-3 py-3.5 overflow-hidden ${colPrefs.showActions ? '' : 'hidden'}`} onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-1">
               <button onClick={() => setQuickAddOpen({ open: true, row: expense })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-4 h-4" /></button>
               <button onClick={() => openEdit(expense)} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-4 h-4" /></button>
@@ -457,6 +475,13 @@ export default function Expenses() {
                     <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
                   </label>
                 ))}
+                <div className="mx-3 my-1 border-t border-gray-100 dark:border-gray-700" />
+                <button
+                  onClick={() => { resetWidths(); setColMenuOpen(false); }}
+                  className="w-full text-left px-3 py-2 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                >
+                  Reset column widths
+                </button>
               </div>
             )}
           </div>
@@ -586,22 +611,63 @@ export default function Expenses() {
         ) : (
           <>
             {/* Desktop table (sm+) */}
-            <table className="hidden sm:table w-full text-sm border-collapse">
+            <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-sm" style={{ tableLayout: 'fixed', minWidth: colWidths.slice(0, 5).reduce((a,b)=>a+b,0) + (colPrefs.showBank ? colWidths[5] : 0) + (colPrefs.showActions ? colWidths[6] : 0) + 'px' }}>
+              <colgroup>
+                <col style={{ width: colWidths[0] + 'px' }} />
+                <col style={{ width: colWidths[1] + 'px' }} />
+                <col style={{ width: colWidths[2] + 'px' }} />
+                <col style={{ width: colWidths[3] + 'px' }} />
+                <col style={{ width: colWidths[4] + 'px' }} />
+                {colPrefs.showBank    && <col style={{ width: colWidths[5] + 'px' }} />}
+                {colPrefs.showActions && <col style={{ width: colWidths[6] + 'px' }} />}
+              </colgroup>
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                  <th className="px-5 py-3 text-left cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-[28%]" onClick={() => handleSort('date')}>
-                    Title / Date <SortIcon field="date" />
+                  {/* Title / Date */}
+                  <th className="px-5 py-3 text-left relative select-none group" style={{ width: colWidths[0] }}>
+                    <span className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors" onClick={() => handleSort('date')}>
+                      Title / Date <SortIcon field="date" />
+                    </span>
+                    <ResizeHandle onMouseDown={getResizeHandler(0)} />
                   </th>
-                  <th className="px-3 py-3 text-left cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-[13%]" onClick={() => handleSort('amount')}>
-                    Amount <SortIcon field="amount" />
+                  {/* Amount */}
+                  <th className="px-3 py-3 text-left relative select-none group" style={{ width: colWidths[1] }}>
+                    <span className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors" onClick={() => handleSort('amount')}>
+                      Amount <SortIcon field="amount" />
+                    </span>
+                    <ResizeHandle onMouseDown={getResizeHandler(1)} />
                   </th>
-                  <th className="px-3 py-3 text-left w-[12%]">Note</th>
-                  <th className="px-3 py-3 text-left w-[12%]">Description</th>
-                  <th className="px-3 py-3 text-left cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-[15%]" onClick={() => handleSort('category')}>
-                    Category <SortIcon field="category" />
+                  {/* Note */}
+                  <th className="px-3 py-3 text-left relative select-none group" style={{ width: colWidths[2] }}>
+                    Note
+                    <ResizeHandle onMouseDown={getResizeHandler(2)} />
                   </th>
-                  <th className={`px-3 py-3 text-left w-[13%] ${colPrefs.showBank ? '' : 'hidden'}`}>Bank</th>
-                  <th className={`px-3 py-3 text-left w-[7%] ${colPrefs.showActions ? '' : 'hidden'}`}>Actions</th>
+                  {/* Description */}
+                  <th className="px-3 py-3 text-left relative select-none group" style={{ width: colWidths[3] }}>
+                    Description
+                    <ResizeHandle onMouseDown={getResizeHandler(3)} />
+                  </th>
+                  {/* Category */}
+                  <th className="px-3 py-3 text-left relative select-none group" style={{ width: colWidths[4] }}>
+                    <span className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors" onClick={() => handleSort('category')}>
+                      Category <SortIcon field="category" />
+                    </span>
+                    <ResizeHandle onMouseDown={getResizeHandler(4)} />
+                  </th>
+                  {/* Bank */}
+                  {colPrefs.showBank && (
+                    <th className="px-3 py-3 text-left relative select-none group" style={{ width: colWidths[5] }}>
+                      Bank
+                      <ResizeHandle onMouseDown={getResizeHandler(5)} />
+                    </th>
+                  )}
+                  {/* Actions */}
+                  {colPrefs.showActions && (
+                    <th className="px-3 py-3 text-left relative select-none" style={{ width: colWidths[6] }}>
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -628,6 +694,7 @@ export default function Expenses() {
                 }
               </tbody>
             </table>
+            </div>
 
             {/* Mobile list (< sm) */}
             <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-700">
