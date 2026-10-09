@@ -13,11 +13,13 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate, capFirst } from '../utils/formatters';
 import { useCurrency } from '../context/CurrencyContext';
 import { useCalendar } from '../context/CalendarContext';
-import { safeADToBS, adDateToBSMonthKey, getBSYearRange, getBSMonthLabel } from '../utils/calendarUtils';
+import { safeADToBS, adDateToBSMonthKey, getBSYearRange, getBSMonthLabel, bsMonthsOfYear } from '../utils/calendarUtils';
 import { exportToCSV } from '../utils/csvExport';
 import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import { useDebounce } from '../hooks/useDebounce';
+import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
+import { BSToAD } from 'bikram-sambat-js';
 
 const PAGE_SIZE = 30;
 
@@ -95,6 +97,7 @@ export default function Expenses() {
 
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebounce(searchInput, 300);
+  const [bsMonthFilter, setBsMonthFilter] = useState(''); // tracks selected BS month key for the dropdown display
 
   // Full-text search with BS-aware year filter
   const bsYearRange = useMemo(() => isBS ? getBSYearRange(yearFilter) : null, [isBS, yearFilter]);
@@ -454,7 +457,7 @@ export default function Expenses() {
           </div>
 
           {hasActiveFilters && (
-            <button onClick={() => { resetFilters(); setSearchInput(''); setPage(1); }}
+            <button onClick={() => { resetFilters(); setSearchInput(''); setPage(1); setBsMonthFilter(''); }}
               className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800 transition-colors">
               <X className="w-3.5 h-3.5" /> Clear
             </button>
@@ -475,32 +478,88 @@ export default function Expenses() {
                 {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-400 mb-1">Month</label>
-              <input
-                type="month"
-                value={filters.month}
-                onChange={e => { setFilters({ month: e.target.value }); setPage(1); }}
-                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
+
+            {isBS ? (
+              /* ── BS month filter — dropdown of 12 BS months ── */
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-400 mb-1">Month (BS)</label>
+                <select
+                  value={bsMonthFilter}
+                  onChange={e => {
+                    const bsMonthKey = e.target.value; // e.g. "2082-03" or ""
+                    setBsMonthFilter(bsMonthKey);
+                    if (!bsMonthKey) {
+                      setFilters({ month: '', startDate: '', endDate: '' });
+                    } else {
+                      // Convert BS month to AD start/end range; leave month:'' so
+                      // the context's startsWith check (which expects AD) is skipped
+                      try {
+                        const adStart = BSToAD(`${bsMonthKey}-01`);
+                        let adEnd = '';
+                        for (let d = 32; d >= 28; d--) {
+                          try { adEnd = BSToAD(`${bsMonthKey}-${String(d).padStart(2, '0')}`); break; } catch {}
+                        }
+                        setFilters({ month: '', startDate: adStart, endDate: adEnd });
+                      } catch {
+                        setFilters({ month: '', startDate: '', endDate: '' });
+                      }
+                    }
+                    setPage(1);
+                  }}
+                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">All months</option>
+                  {bsMonthsOfYear(bsActiveYear).map(key => (
+                    <option key={key} value={key}>{getBSMonthLabel(key, 'long')}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-400 mb-1">Month</label>
+                <input
+                  type="month"
+                  value={filters.month}
+                  onChange={e => { setFilters({ month: e.target.value }); setPage(1); }}
+                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-400 mb-1">From</label>
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={e => { setFilters({ startDate: e.target.value }); setPage(1); }}
-                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
+              {isBS ? (
+                <NepaliDatePickerInput
+                  value={filters.startDate}
+                  onChange={adDate => { setFilters({ startDate: adDate, month: '' }); setBsMonthFilter(''); setPage(1); }}
+                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              ) : (
+                <input
+                  type="date"
+                  value={filters.startDate}
+                  onChange={e => { setFilters({ startDate: e.target.value }); setPage(1); }}
+                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              )}
             </div>
+
             <div>
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-400 mb-1">To</label>
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={e => { setFilters({ endDate: e.target.value }); setPage(1); }}
-                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
+              {isBS ? (
+                <NepaliDatePickerInput
+                  value={filters.endDate}
+                  onChange={adDate => { setFilters({ endDate: adDate, month: '' }); setBsMonthFilter(''); setPage(1); }}
+                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              ) : (
+                <input
+                  type="date"
+                  value={filters.endDate}
+                  onChange={e => { setFilters({ endDate: e.target.value }); setPage(1); }}
+                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              )}
             </div>
           </div>
         )}
