@@ -402,8 +402,13 @@ export default function Expenses() {
               value={searchInput}
               onChange={e => { setSearchInput(e.target.value); setPage(1); }}
               placeholder="Search by title, date, note, description, category, bank, amount..."
-              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+              className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
             />
+            {searchInput && (
+              <button onClick={() => { setSearchInput(''); setPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Filter toggle */}

@@ -403,8 +403,13 @@ export default function Income() {
               placeholder="Search by title, date (YYYY-MM-DD), note, description, source amount..."
               value={searchInput}
               onChange={e => { setSearchInput(e.target.value); setPage(1); }}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
             />
+            {searchInput && (
+              <button onClick={() => { setSearchInput(''); setPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
           <button
             onClick={() => setShowFilters(p => !p)}
