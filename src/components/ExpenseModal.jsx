@@ -9,7 +9,8 @@ import CategoryModal from './CategoryModal';
 const EMPTY = { title: '', amount: '', category: '', date: '', description: '', notes: '', bankId: '' };
 
 const LS_KEY = 'expenseLastBankId';
-const LS_LAST_FORM_KEY = 'expenseLastForm';
+const LS_HISTORY_KEY = 'expenseFormHistory';
+const HISTORY_MAX = 5; // last transaction reuse limit
 
 function getLastBankId() {
   try { return localStorage.getItem(LS_KEY) || ''; } catch { return ''; }
@@ -17,17 +18,22 @@ function getLastBankId() {
 function saveLastBankId(id) {
   try { localStorage.setItem(LS_KEY, id); } catch {}
 }
-function getLastForm() {
+function getFormHistory() {
   try {
-    const raw = localStorage.getItem(LS_LAST_FORM_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+    const raw = localStorage.getItem(LS_HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
 }
-function saveLastForm(form) {
+function saveFormToHistory(form) {
   try {
-    // Don't persist date — user usually wants today on a new entry
-    const { date: _date, ...rest } = form;
-    localStorage.setItem(LS_LAST_FORM_KEY, JSON.stringify(rest));
+    const { date: _date, ...snapshot } = form;
+    const history = getFormHistory();
+    // Avoid exact duplicates (same title + amount + category)
+    const deduped = history.filter(h =>
+      !(h.title === snapshot.title && String(h.amount) === String(snapshot.amount) && h.category === snapshot.category)
+    );
+    const next = [snapshot, ...deduped].slice(0, HISTORY_MAX);
+    localStorage.setItem(LS_HISTORY_KEY, JSON.stringify(next));
   } catch {}
 }
 
@@ -174,7 +180,18 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned 
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyRef = useRef(null);
   const pendingCategoryName = useRef(null);
+
+  // Close history picker on outside click
+  useEffect(() => {
+    function handleOutside(e) {
+      if (historyRef.current && !historyRef.current.contains(e.target)) setHistoryOpen(false);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
 
   // Auto-select newly added category once Firestore updates `categories`
   useEffect(() => {
@@ -228,8 +245,8 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned 
       // Persist selected bank for next time
       if (form.bankId) saveLastBankId(form.bankId);
       await onSave({ ...form, amount: +form.amount });
-      // Save last-used values so the user can restore them next time
-      saveLastForm(form);
+      // Save to history so the user can restore previous values
+      saveFormToHistory(form);
       if (pinned && !expense) {
         // keep modal open, reset form for next entry
         setForm(prev => ({ ...EMPTY, date: prev.date, bankId: prev.bankId }));
@@ -261,28 +278,92 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSave, pinned 
           </h2>
           <div className="flex items-center gap-1">
             {!expense && onPinnedChange && (
-              <button
-                type="button"
-                onClick={() => {
-                  const last = getLastForm();
-                  if (!last) return;
-                  setForm(prev => ({
-                    ...prev,
-                    title:       last.title       ?? prev.title,
-                    amount:      last.amount      ?? prev.amount,
-                    category:    last.category    ?? prev.category,
-                    notes:       last.notes       ?? prev.notes,
-                    description: last.description ?? prev.description,
-                    bankId:      last.bankId      ?? prev.bankId,
-                  }));
-                  setErrors({});
-                }}
-                disabled={!getLastForm()}
-                title="Restore last used values"
-                className="p-1.5 rounded-lg transition-colors text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
+              <div className="relative" ref={historyRef}>
+                <button
+                  type="button"
+                  onClick={() => setHistoryOpen(o => !o)}
+                  disabled={getFormHistory().length === 0}
+                  title="Fill from recent entries"
+                  className={`p-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+                    historyOpen
+                      ? 'text-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+
+                {/* History picker panel */}
+                {historyOpen && (() => {
+                  const history = getFormHistory();
+                  return (
+                    <div className="absolute right-0 top-full mt-1.5 z-[70] w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl overflow-hidden animate-fade-in">
+                      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Recent entries</p>
+                        <span className="text-xs text-gray-400">{history.length} saved</span>
+                      </div>
+                      <ul className="py-1 max-h-72 overflow-y-auto">
+                        {history.map((entry, i) => {
+                          const cat = categories.find(c => c.id === entry.category);
+                          const bank = banks.find(b => b.id === entry.bankId);
+                          return (
+                            <li key={i}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setForm(prev => ({
+                                    ...prev,
+                                    title:       entry.title       ?? prev.title,
+                                    amount:      entry.amount      ?? prev.amount,
+                                    category:    entry.category    ?? prev.category,
+                                    notes:       entry.notes       ?? prev.notes,
+                                    description: entry.description ?? prev.description,
+                                    bankId:      entry.bankId      ?? prev.bankId,
+                                  }));
+                                  setErrors({});
+                                  setHistoryOpen(false);
+                                }}
+                                className="w-full text-left px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    {cat && (
+                                      <span className="w-6 h-6 rounded-lg flex items-center justify-center text-xs flex-shrink-0" style={{ background: (cat.color || '#6b7280') + '20' }}>
+                                        {cat.icon || '📦'}
+                                      </span>
+                                    )}
+                                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                                      {entry.title || <span className="italic text-gray-400">No title</span>}
+                                    </span>
+                                  </div>
+                                  <span className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0 tabular-nums">
+                                    {entry.amount ? Number(entry.amount).toLocaleString() : '—'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5 pl-8">
+                                  {cat && (
+                                    <span className="text-xs px-1.5 py-0.5 rounded-md font-medium" style={{ background: (cat.color || '#6b7280') + '20', color: cat.color || '#6b7280' }}>
+                                      {cat.name}
+                                    </span>
+                                  )}
+                                  {bank && (
+                                    <span className="text-xs px-1.5 py-0.5 rounded-md font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300">
+                                      {bank.name}
+                                    </span>
+                                  )}
+                                  {entry.notes && (
+                                    <span className="text-xs text-gray-400 truncate">{entry.notes}</span>
+                                  )}
+                                </div>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  );
+                })()}
+              </div>
             )}
             {!expense && onPinnedChange && (
               <button
