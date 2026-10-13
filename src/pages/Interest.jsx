@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Percent, Plus, Edit2, Trash2, X, Info, Zap, Calculator, TrendingUp, User, ChevronDown, PanelRightClose, PanelRightOpen, Search, Upload, Download, Pin, Building2, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { useResizableColumns } from '../hooks/useResizableColumns';
 import { useInterest } from '../context/InterestContext';
 import { useBanks } from '../context/BankContext';
 import { useToast } from '../components/ui/Toast';
@@ -884,6 +885,17 @@ function InfoModal({ isOpen, record, onClose }) {
   );
 }
 
+// ── Resize Handle ────────────────────────────────────────────────
+function ResizeHandle({ onMouseDown }) {
+  return (
+    <div onMouseDown={onMouseDown}
+      className="absolute right-0 top-0 h-full w-3 flex items-center justify-center cursor-col-resize z-10 group/handle opacity-0 group-hover:opacity-100 transition-opacity"
+      title="Drag to resize">
+      <div className="w-0.5 h-4 rounded-full bg-gray-300 dark:bg-gray-500 group-hover/handle:bg-primary-500 transition-colors" />
+    </div>
+  );
+}
+
 // ── Main Interest Page ──────────────────────────────────────────
 export default function Interest() {
   const { records, loading, addRecord, updateRecord, deleteRecord } = useInterest();
@@ -904,6 +916,10 @@ export default function Interest() {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [personFilter, setPersonFilter] = useState(null);
+
+  // Resizable columns: Type&Date, Name, Principal, Rate%, Duration, Interest, Total, Info, Actions
+  const INT_COL_DEFAULTS = [150, 140, 110, 80, 90, 120, 120, 60, 100];
+  const { colWidths: intColWidths, getResizeHandler: intResize } = useResizableColumns('interest', INT_COL_DEFAULTS);
   const [showSidePanel, setShowSidePanel] = useState(() => {
     try { return localStorage.getItem('interestSidePanelVisible') !== 'false'; } catch { return true; }
   });
@@ -1348,18 +1364,21 @@ export default function Interest() {
               <>
           {/* Desktop Table */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" style={{ tableLayout: 'fixed', minWidth: intColWidths.reduce((a,b)=>a+b,0)+'px' }}>
+              <colgroup>
+                {intColWidths.map((w,i) => <col key={i} style={{ width: w+'px' }} />)}
+              </colgroup>
               <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
                 <tr className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                  <th className="px-5 py-3 text-left">Type & Date</th>
-                  <th className="px-5 py-3 text-left">Name</th>
-                  <th className="px-5 py-3 text-right">Principal</th>
-                  <th className="px-5 py-3 text-center">Rate %</th>
-                  <th className="px-5 py-3 text-center">Duration</th>
-                  <th className="px-5 py-3 text-right">Interest</th>
-                  <th className="px-5 py-3 text-right">Total Value</th>
-                  <th className="px-5 py-3 text-center">Info</th>
-                  <th className="px-5 py-3 text-center">Actions</th>
+                  <th className="px-5 py-3 text-left relative select-none group">Type &amp; Date<ResizeHandle onMouseDown={intResize(0)} /></th>
+                  <th className="px-5 py-3 text-left relative select-none group">Name<ResizeHandle onMouseDown={intResize(1)} /></th>
+                  <th className="px-5 py-3 text-right relative select-none group">Principal<ResizeHandle onMouseDown={intResize(2)} /></th>
+                  <th className="px-5 py-3 text-center relative select-none group">Rate %<ResizeHandle onMouseDown={intResize(3)} /></th>
+                  <th className="px-5 py-3 text-center relative select-none group">Duration<ResizeHandle onMouseDown={intResize(4)} /></th>
+                  <th className="px-5 py-3 text-right relative select-none group">Interest<ResizeHandle onMouseDown={intResize(5)} /></th>
+                  <th className="px-5 py-3 text-right relative select-none group">Total Value<ResizeHandle onMouseDown={intResize(6)} /></th>
+                  <th className="px-5 py-3 text-center relative select-none group">Info<ResizeHandle onMouseDown={intResize(7)} /></th>
+                  <th className="px-5 py-3 text-center relative select-none">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">

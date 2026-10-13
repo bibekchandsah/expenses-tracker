@@ -1,6 +1,7 @@
 ﻿import { useState, useMemo, useEffect } from 'react';
 import CountUpValue from '../components/ui/CountUpValue';
 import { ArrowUp, ArrowDown, ChevronsUpDown, BarChart3, TrendingUp, TrendingDown, Users, Calendar, Tag, MessageCircle, Search, X } from 'lucide-react';
+import { useResizableColumns } from '../hooks/useResizableColumns';
 import { useLends } from '../context/LendContext';
 import { useLoans } from '../context/LoanContext';
 import { useExpenses } from '../context/ExpenseContext';
@@ -192,6 +193,20 @@ export default function NetSummary() {
   }, [expenses, getCategoryById, yearFilter, catMonth, isBS, bsYearRange]);
 
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
+
+  // Resizable columns: Name, Borrowed, To Give, Lent, To Receive, Net, Send Message
+  const NS_COL_DEFAULTS = [160, 120, 110, 110, 120, 110, 130];
+  const { colWidths: nsColWidths, getResizeHandler: nsResize } = useResizableColumns('netsummary', NS_COL_DEFAULTS);
+
+  function ResizeHandle({ onMouseDown }) {
+    return (
+      <div onMouseDown={onMouseDown}
+        className="absolute right-0 top-0 h-full w-3 flex items-center justify-center cursor-col-resize z-10 group/handle opacity-0 group-hover:opacity-100 transition-opacity"
+        title="Drag to resize">
+        <div className="w-0.5 h-4 rounded-full bg-gray-300 dark:bg-gray-500 group-hover/handle:bg-primary-500 transition-colors" />
+      </div>
+    );
+  }
 
   const SortBtn = ({ col, label, align = 'left' }) => (
     <button
@@ -412,16 +427,17 @@ export default function NetSummary() {
 
             {/* ── Desktop table (sm and above) ── */}
             <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm" style={{ tableLayout:'fixed', minWidth: nsColWidths.reduce((a,b)=>a+b,0)+'px' }}>
+                <colgroup>{nsColWidths.map((w,i)=><col key={i} style={{width:w+'px'}}/>)}</colgroup>
                 <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
                   <tr className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                    <th className="px-5 py-2.5 text-left"><SortBtn col="name" label="Name" /></th>
-                    <th className="px-5 py-2.5 text-right"><SortBtn col="borrowed"  label="Borrowed"   align="right" /></th>
-                    <th className="px-5 py-2.5 text-right"><SortBtn col="toGive"    label="To Give"    align="right" /></th>
-                    <th className="px-5 py-2.5 text-right"><SortBtn col="lent"      label="Lent"       align="right" /></th>
-                    <th className="px-5 py-2.5 text-right"><SortBtn col="toReceive" label="To Receive" align="right" /></th>
-                    <th className="px-5 py-2.5 text-right"><SortBtn col="net"       label="Net"        align="right" /></th>
-                    <th className="px-5 py-2.5 text-center whitespace-nowrap">Send Message</th>
+                    <th className="px-5 py-2.5 text-left relative select-none group"><SortBtn col="name" label="Name" /><ResizeHandle onMouseDown={nsResize(0)} /></th>
+                    <th className="px-5 py-2.5 text-right relative select-none group"><SortBtn col="borrowed"  label="Borrowed"   align="right" /><ResizeHandle onMouseDown={nsResize(1)} /></th>
+                    <th className="px-5 py-2.5 text-right relative select-none group"><SortBtn col="toGive"    label="To Give"    align="right" /><ResizeHandle onMouseDown={nsResize(2)} /></th>
+                    <th className="px-5 py-2.5 text-right relative select-none group"><SortBtn col="lent"      label="Lent"       align="right" /><ResizeHandle onMouseDown={nsResize(3)} /></th>
+                    <th className="px-5 py-2.5 text-right relative select-none group"><SortBtn col="toReceive" label="To Receive" align="right" /><ResizeHandle onMouseDown={nsResize(4)} /></th>
+                    <th className="px-5 py-2.5 text-right relative select-none group"><SortBtn col="net"       label="Net"        align="right" /><ResizeHandle onMouseDown={nsResize(5)} /></th>
+                    <th className="px-5 py-2.5 text-center relative select-none whitespace-nowrap">Send Message</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">

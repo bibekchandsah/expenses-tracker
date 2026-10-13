@@ -5,6 +5,7 @@ import {
   ArrowUp, ArrowDown, ChevronsUpDown, User, ChevronDown,
   PanelRightClose, PanelRightOpen, Upload, Download, Zap, Pin,
 } from 'lucide-react';
+import { useResizableColumns } from '../hooks/useResizableColumns';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
 import { useBanks } from '../context/BankContext';
@@ -218,6 +219,17 @@ const IMPORT_FIELDS = [
   { key: 'description', label: 'Description / Notes',   required: false, type: 'text'   },
 ];
 function forMeKey(r) { return `${String(r.name || '').toLowerCase()}|${r.date}|${r.amount}`; }
+
+function ResizeHandle({ onMouseDown }) {
+  return (
+    <div onMouseDown={onMouseDown}
+      className="absolute right-0 top-0 h-full w-3 flex items-center justify-center cursor-col-resize z-10 group/handle opacity-0 group-hover:opacity-100 transition-opacity"
+      title="Drag to resize">
+      <div className="w-0.5 h-4 rounded-full bg-gray-300 dark:bg-gray-500 group-hover/handle:bg-primary-500 transition-colors" />
+    </div>
+  );
+}
+
 export default function ForMe() {
   const { entries, loading, addEntry, updateEntry, deleteEntry } = useForMe();
   const { currency } = useCurrency();
@@ -235,6 +247,10 @@ export default function ForMe() {
   const [personFilter,  setPersonFilter]  = useState(null);
   const [sortCol,       setSortCol]       = useState('date');
   const [sortDir,       setSortDir]       = useState('desc');
+
+  // Resizable columns: Date, Amount, Name, Description, Act
+  const FM_COL_DEFAULTS = [110, 110, 160, 240, 80];
+  const { colWidths: fmColWidths, getResizeHandler: fmResize } = useResizableColumns('forme', FM_COL_DEFAULTS);
   const [panelOpen,     setPanelOpen]     = useState(true);
   const [chartOpen,     setChartOpen]     = useState(true);
   const [showSidePanel, setShowSidePanel] = useState(() => {
@@ -521,91 +537,63 @@ export default function ForMe() {
             </div>
 
             {/* Table header */}
-            <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-2.5 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              <div className="col-span-2"><SortBtn col="date"   label="Date"   /></div>
-              <div className="col-span-2 flex justify-end"><SortBtn col="amount" label="Amount" align="right" /></div>
-              <div className="col-span-3"><SortBtn col="name"   label="Name"   /></div>
-              <div className="col-span-4 pl-1">Description</div>
-              <div className="col-span-1 text-right">Act.</div>
-            </div>
-
-            {/* Rows */}
+            <div className="overflow-x-auto">
+            <table className="hidden lg:table w-full text-sm" style={{ tableLayout:'fixed', minWidth: fmColWidths.reduce((a,b)=>a+b,0)+'px' }}>
+              <colgroup>{fmColWidths.map((w,i)=><col key={i} style={{width:w+'px'}}/>)}</colgroup>
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-2.5 text-left relative select-none group"><SortBtn col="date" label="Date" /><ResizeHandle onMouseDown={fmResize(0)} /></th>
+                  <th className="px-5 py-2.5 text-right relative select-none group"><SortBtn col="amount" label="Amount" align="right" /><ResizeHandle onMouseDown={fmResize(1)} /></th>
+                  <th className="px-5 py-2.5 text-left relative select-none group"><SortBtn col="name" label="Name" /><ResizeHandle onMouseDown={fmResize(2)} /></th>
+                  <th className="px-5 py-2.5 text-left relative select-none group">Description<ResizeHandle onMouseDown={fmResize(3)} /></th>
+                  <th className="px-5 py-2.5 text-right relative select-none">Act.</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+            {/* Desktop rows only */}
             {filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-14 text-center px-4">
-                <Search className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">No records found</p>
-                {(search || personFilter) && (
-                  <button onClick={() => { setSearch(''); setPersonFilter(null); }} className="mt-2 text-xs text-primary-600 hover:underline">Clear filter</button>
-                )}
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
-                {filtered.map(entry => (
-                  <div key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
-
-                    {/* ── Mobile card (< lg) ── */}
-                    <div className="lg:hidden px-4 py-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <button
-                            onClick={() => { setPersonFilter(p => p === (entry.name || '').trim().toLowerCase() ? null : (entry.name || '').trim().toLowerCase()); setSearch(''); }}
-                            className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline text-left"
-                          >{capWords(entry.name)}</button>
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(toInputDate(entry.date))}</p>
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="text-sm font-bold text-pink-600 dark:text-pink-400">{formatCurrency(entry.amount, currency)}</span>
-                          <button onClick={() => setQuickAddOpen({ open: true, row: entry })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => { setEditingEntry(entry); setModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => setDeleteTarget(entry)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                      </div>
-                      {entry.description && (
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{capFirst(entry.description)}</p>
-                      )}
-                    </div>
-
-                    {/* ── Desktop row (lg+) ── */}
-                    <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-3.5 items-center">
-                      <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">{dateLabel(toInputDate(entry.date))}</div>
-                      <div className="col-span-2 text-right">
-                        <span className="text-sm font-bold text-pink-600 dark:text-pink-400">{formatCurrency(entry.amount, currency)}</span>
-                      </div>
-                      <div className="col-span-3">
-                        <button
-                          onClick={() => { setPersonFilter(p => p === (entry.name || '').trim().toLowerCase() ? null : (entry.name || '').trim().toLowerCase()); setSearch(''); }}
-                          className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline truncate max-w-full text-left"
-                          title={`Filter by ${capWords(entry.name)}`}
-                        >{capWords(entry.name)}</button>
-                      </div>
-                      <div className="col-span-4 pl-1">
-                        {entry.description
-                          ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={capFirst(entry.description)}>{capFirst(entry.description)}</span>
-                          : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
-                        }
-                      </div>
-                      <div className="col-span-1 flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setQuickAddOpen({ open: true, row: entry })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => { setEditingEntry(entry); setModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => setDeleteTarget(entry)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-                      </div>
-                    </div>
-
+              <tr><td colSpan={5} className="py-14 text-center px-4">
+                <div className="flex flex-col items-center justify-center">
+                  <Search className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No records found</p>
+                  {(search || personFilter) && <button onClick={() => { setSearch(''); setPersonFilter(null); }} className="mt-2 text-xs text-primary-600 hover:underline">Clear filter</button>}
+                </div>
+              </td></tr>
+            ) : filtered.map(entry => (
+              <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
+                <td className="px-5 py-3.5 text-xs text-gray-500 dark:text-gray-400 overflow-hidden">{dateLabel(toInputDate(entry.date))}</td>
+                <td className="px-5 py-3.5 text-right overflow-hidden">
+                  <span className="text-sm font-bold text-pink-600 dark:text-pink-400">{formatCurrency(entry.amount, currency)}</span>
+                </td>
+                <td className="px-5 py-3.5 overflow-hidden">
+                  <button onClick={() => { setPersonFilter(p => p === (entry.name || '').trim().toLowerCase() ? null : (entry.name || '').trim().toLowerCase()); setSearch(''); }}
+                    className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline truncate max-w-full text-left block">{capWords(entry.name)}</button>
+                </td>
+                <td className="px-5 py-3.5 overflow-hidden">
+                  {entry.description ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">{capFirst(entry.description)}</span> : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>}
+                </td>
+                <td className="px-5 py-3.5 overflow-hidden">
+                  <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => setQuickAddOpen({ open: true, row: entry })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => { setEditingEntry(entry); setModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => setDeleteTarget(entry)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
-                ))}
-              </div>
-            )}
-
+                </td>
+              </tr>
+            ))}
+            </tbody>
             {/* Table footer totals */}
             {filtered.length > 0 && (
-              <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-3 bg-gray-50 dark:bg-gray-700/50 border-t-2 border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">
-                <div className="col-span-2">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</div>
-                <div className="col-span-2 text-right text-pink-600 dark:text-pink-400">
-                  {formatCurrency(filtered.reduce((s, e) => s + (+e.amount || 0), 0))}
-                </div>
-                <div className="col-span-8" />
-              </div>
+              <tfoot className="bg-gray-50 dark:bg-gray-700/50 border-t-2 border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">
+                <tr>
+                  <td className="px-5 py-3">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</td>
+                  <td className="px-5 py-3 text-right text-pink-600 dark:text-pink-400">{formatCurrency(filtered.reduce((s, e) => s + (+e.amount || 0), 0))}</td>
+                  <td colSpan={3} />
+                </tr>
+              </tfoot>
             )}
+            </table>
+            </div>
           </div>
 
           {/* ── Resizable Divider ── */}

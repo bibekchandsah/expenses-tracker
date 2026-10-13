@@ -5,6 +5,7 @@ import {
   ArrowDownCircle, ArrowUpCircle, Wallet, Download, Upload,
   ChevronsUpDown, Check, Pen, Search, ArrowUp, ArrowDown, Zap, Pin,
 } from 'lucide-react';
+import { useResizableColumns } from '../hooks/useResizableColumns';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
 import { useBanks } from '../context/BankContext';
@@ -414,6 +415,17 @@ function exportBankCSV(entries, bankName) {
   exportCSV(headers, rows, `${bankName}-statement.csv`);
 }
 
+// ── Resize Handle ──────────────────────────────────────────────
+function ResizeHandle({ onMouseDown }) {
+  return (
+    <div onMouseDown={onMouseDown}
+      className="absolute right-0 top-0 h-full w-3 flex items-center justify-center cursor-col-resize z-10 group/handle opacity-0 group-hover:opacity-100 transition-opacity"
+      title="Drag to resize">
+      <div className="w-0.5 h-4 rounded-full bg-gray-300 dark:bg-gray-500 group-hover/handle:bg-primary-500 transition-colors" />
+    </div>
+  );
+}
+
 // ── Main Bank Page ──────────────────────────────────────────────
 export default function Bank() {
   const {
@@ -444,6 +456,10 @@ export default function Bank() {
   const [sortCol, setSortCol] = useState(null);   // null | 'date'|'description'|'deposit'|'withdraw'|'balance'
   const [sortDir, setSortDir] = useState('asc');  // 'asc' | 'desc'
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Resizable columns: Date, Description, Deposit, Withdraw, Balance, Actions
+  const BANK_COL_DEFAULTS = [110, 260, 120, 120, 110, 100];
+  const { colWidths: bankColWidths, getResizeHandler: bankResize } = useResizableColumns('bank', BANK_COL_DEFAULTS);
   const [yearFilter, setYearFilter] = useState(() => isBS ? bsActiveYear : activeYear);
 
   useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); setMonthPage(0); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
@@ -767,89 +783,155 @@ export default function Bank() {
               </div>
             </div>
             {/* Table Head */}
-            <div className="hidden sm:grid grid-cols-12 gap-2 px-5 py-2.5 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              {[{col:'date',label:'Date',span:'col-span-2',align:'text-left'},
-                {col:'description',label:'Description',span:'col-span-4',align:'text-left'},
-                {col:'deposit',label:'Deposit',span:'col-span-2',align:'text-right'},
-                {col:'withdraw',label:'Withdraw',span:'col-span-2',align:'text-right'},
-                {col:'balance',label:'Balance',span:'col-span-1',align:'text-right'},
-              ].map(({col,label,span,align}) => (
-                <button
-                  key={col}
-                  onClick={() => handleSort(col)}
-                  className={`${span} flex items-center gap-1 ${align === 'text-right' ? 'justify-end' : ''} hover:text-gray-900 dark:hover:text-white transition-colors ${
-                    sortCol === col ? 'text-primary-600 dark:text-primary-400' : ''
-                  }`}
-                >
-                  {align === 'text-right' && <SortIcon col={col} />}
-                  {label}
-                  {align !== 'text-right' && <SortIcon col={col} />}
-                </button>
-              ))}
-              <div className="col-span-1 text-right">Actions</div>
-            </div>
+            <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-sm" style={{ tableLayout: 'fixed', minWidth: bankColWidths.reduce((a,b)=>a+b,0)+'px' }}>
+              <colgroup>
+                {bankColWidths.map((w,i) => <col key={i} style={{ width: w+'px' }} />)}
+              </colgroup>
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  {[
+                    { col:'date',        label:'Date',        align:'left'  },
+                    { col:'description', label:'Description', align:'left'  },
+                    { col:'deposit',     label:'Deposit',     align:'right' },
+                    { col:'withdraw',    label:'Withdraw',    align:'right' },
+                    { col:'balance',     label:'Balance',     align:'right' },
+                  ].map(({ col, label, align }, idx) => (
+                    <th key={col}
+                      className={`px-5 py-2.5 text-${align} relative select-none group cursor-pointer hover:text-gray-900 dark:hover:text-white transition-colors ${sortCol === col ? 'text-primary-600 dark:text-primary-400' : ''}`}
+                      onClick={() => handleSort(col)}>
+                      <span className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''}`}>
+                        {align === 'right' && <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />}
+                        {label}
+                        {align !== 'right' && <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />}
+                      </span>
+                      <ResizeHandle onMouseDown={bankResize(idx)} />
+                    </th>
+                  ))}
+                  <th className="px-5 py-2.5 text-right relative select-none">Actions</th>
+                </tr>
+              </thead>
 
             {entriesLoading ? (
-              <div className="flex items-center justify-center py-16">
-                <LoadingSpinner />
-              </div>
-            ) : entries.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center mb-3">
-                  <ChevronsUpDown className="w-6 h-6 text-gray-400" />
+              <tbody><tr><td colSpan={6} className="py-16 text-center">
+                <div className="flex items-center justify-center">
+                  <LoadingSpinner />
                 </div>
-                <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">No transactions yet for <strong>{selectedBank?.name}</strong></p>
-                <button
-                  onClick={() => { setEditingEntry(null); setEntryModalOpen(true); }}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm rounded-xl hover:bg-primary-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" /> Add First Entry
-                </button>
-              </div>
+              </td></tr></tbody>
+            ) : entries.length === 0 ? (
+              <tbody><tr><td colSpan={6} className="py-16 text-center px-4">
+                <div className="flex flex-col items-center justify-center">
+                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center mb-3">
+                    <ChevronsUpDown className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">No transactions yet for <strong>{selectedBank?.name}</strong></p>
+                  <button onClick={() => { setEditingEntry(null); setEntryModalOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm rounded-xl hover:bg-primary-700 transition-colors">
+                    <Plus className="w-4 h-4" /> Add First Entry
+                  </button>
+                </div>
+              </td></tr></tbody>
             ) : filteredMonths.length === 0 && searchActive ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-                <Search className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3" />
-                <p className="text-gray-500 dark:text-gray-400 text-sm">No entries match <strong>&ldquo;{search}&rdquo;</strong></p>
-                <button onClick={() => setSearch('')} className="mt-3 text-xs text-primary-600 hover:underline">Clear search</button>
-              </div>
+              <tbody><tr><td colSpan={6} className="py-16 text-center px-4">
+                <div className="flex flex-col items-center justify-center">
+                  <Search className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3" />
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">No entries match <strong>&ldquo;{search}&rdquo;</strong></p>
+                  <button onClick={() => setSearch('')} className="mt-3 text-xs text-primary-600 hover:underline">Clear search</button>
+                </div>
+              </td></tr></tbody>
             ) : (
-              <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
+              <>
                 {(searchActive ? filteredMonths : (showAll ? months : (currentMonth ? [currentMonth] : []))).map((month) => (
-                  // apply sort inside each month group
                   { ...month, entries: sortEntries(month.entries) }
                 )).map((month) => (
-                  <div key={month.key}>
-                    {/* Month section header (only in all-months / search view) */}
+                  <tbody key={month.key} className="divide-y divide-gray-100 dark:divide-gray-700/50">
                     {(showAll || searchActive) && (
-                      <div className="grid grid-cols-12 gap-2 px-5 py-2 bg-primary-50 dark:bg-primary-900/20 border-b border-primary-100 dark:border-primary-800">
-                        <div className="col-span-12 text-xs font-bold text-primary-700 dark:text-primary-400 uppercase tracking-wider">
-                          {month.label}
-                        </div>
+                      <tr><td colSpan={6} className="px-5 py-2 bg-primary-50 dark:bg-primary-900/20 border-b border-primary-100 dark:border-primary-800 text-xs font-bold text-primary-700 dark:text-primary-400 uppercase tracking-wider">
+                        {month.label}
+                      </td></tr>
+                    )}
+                    {month.entries.map((entry) => (
+                      <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
+                        <td className="px-5 py-3.5 overflow-hidden">
+                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{dateLabel(entry.date)}</p>
+                        </td>
+                        <td className="px-5 py-3.5 overflow-hidden">
+                          <p className="text-sm text-gray-900 dark:text-white font-medium truncate" title={capFirst(entry.description)}>{capFirst(entry.description)}</p>
+                        </td>
+                        <td className="px-5 py-3.5 text-right overflow-hidden">
+                          {+entry.deposit > 0
+                            ? <span className="text-sm font-semibold text-green-600 dark:text-green-400">+{formatCurrency(entry.deposit, currency)}</span>
+                            : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                        </td>
+                        <td className="px-5 py-3.5 text-right overflow-hidden">
+                          {+entry.withdraw > 0
+                            ? <span className="text-sm font-semibold text-red-600 dark:text-red-400">−{formatCurrency(entry.withdraw, currency)}</span>
+                            : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                        </td>
+                        <td className="px-5 py-3.5 text-right overflow-hidden">
+                          <span className={`text-sm font-bold ${entry.closingBalance >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-600 dark:text-red-400'}`}>
+                            {formatCurrency(entry.closingBalance, currency)}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 overflow-hidden">
+                          <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => setQuickAddOpen({ open: true, row: entry })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => { setEditingEntry(entry); setEntryModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => setDeleteEntryTarget(entry)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {/* Per-month totals row */}
+                    <tr className="bg-gray-50 dark:bg-gray-700/40 border-t border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                      <td colSpan={2} className="px-5 py-2.5">{month.label} — {month.entries.length} transaction{month.entries.length !== 1 ? 's' : ''}</td>
+                      <td className="px-5 py-2.5 text-right text-green-600 dark:text-green-400">{formatCurrency(month.totalDeposit, currency)}</td>
+                      <td className="px-5 py-2.5 text-right text-red-600 dark:text-red-400">{formatCurrency(month.totalWithdraw, currency)}</td>
+                      <td className="px-5 py-2.5 text-right text-blue-600 dark:text-blue-400">{formatCurrency(month.entries[0]?.closingBalance ?? (selectedBank?.openingBalance || 0), currency)}</td>
+                      <td />
+                    </tr>
+                  </tbody>
+                ))}
+                {/* All-months grand total */}
+                {showAll && entries.length > 0 && (
+                  <tfoot className="bg-gray-100 dark:bg-gray-700 border-t-2 border-gray-300 dark:border-gray-600 text-xs font-black text-gray-700 dark:text-gray-200 uppercase tracking-wide">
+                    <tr>
+                      <td colSpan={2} className="px-5 py-3">Grand Total — {entries.length} transactions</td>
+                      <td className="px-5 py-3 text-right text-green-700 dark:text-green-400">{formatCurrency(stats.totalDeposit, currency)}</td>
+                      <td className="px-5 py-3 text-right text-red-700 dark:text-red-400">{formatCurrency(stats.totalWithdraw, currency)}</td>
+                      <td className="px-5 py-3 text-right text-blue-700 dark:text-blue-400">{formatCurrency(stats.currentBalance, currency)}</td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                )}
+              </>
+            )}
+            </table>
+            </div>
+
+            {/* Mobile list (< sm) */}
+            <div className="sm:hidden">
+            {!(entriesLoading) && entries.length > 0 && !(filteredMonths.length === 0 && searchActive) && (
+              <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                {(searchActive ? filteredMonths : (showAll ? months : (currentMonth ? [currentMonth] : []))).map((month) => (
+                  { ...month, entries: sortEntries(month.entries) }
+                )).map((month) => (
+                  <div key={`m-${month.key}`}>
+                    {(showAll || searchActive) && (
+                      <div className="px-5 py-2 bg-primary-50 dark:bg-primary-900/20 border-b border-primary-100 dark:border-primary-800 text-xs font-bold text-primary-700 dark:text-primary-400 uppercase tracking-wider">
+                        {month.label}
                       </div>
                     )}
-
                     {month.entries.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group"
-                    >
-                      {/* ── Mobile card (< sm) ── */}
-                      <div className="sm:hidden px-5 py-3.5">
+                      <div key={`mob-${entry.id}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group px-5 py-3.5">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{dateLabel(entry.date)}</p>
                             <p className="text-sm text-gray-900 dark:text-white font-medium truncate mt-0.5" title={capFirst(entry.description)}>{capFirst(entry.description)}</p>
                           </div>
                           <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                            {+entry.deposit > 0 && (
-                              <span className="text-sm font-semibold text-green-600 dark:text-green-400">+{formatCurrency(entry.deposit, currency)}</span>
-                            )}
-                            {+entry.withdraw > 0 && (
-                              <span className="text-sm font-semibold text-red-600 dark:text-red-400">−{formatCurrency(entry.withdraw, currency)}</span>
-                            )}
-                            <span className={`text-xs font-bold ${entry.closingBalance >= 0 ? 'text-gray-700 dark:text-gray-300' : 'text-red-600 dark:text-red-400'}`}>
-                              Bal: {formatCurrency(entry.closingBalance, currency)}
-                            </span>
+                            {+entry.deposit > 0 && <span className="text-sm font-semibold text-green-600 dark:text-green-400">+{formatCurrency(entry.deposit, currency)}</span>}
+                            {+entry.withdraw > 0 && <span className="text-sm font-semibold text-red-600 dark:text-red-400">−{formatCurrency(entry.withdraw, currency)}</span>}
+                            <span className={`text-xs font-bold ${entry.closingBalance >= 0 ? 'text-gray-700 dark:text-gray-300' : 'text-red-600 dark:text-red-400'}`}>Bal: {formatCurrency(entry.closingBalance, currency)}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -858,75 +940,12 @@ export default function Bank() {
                           <button onClick={() => setDeleteEntryTarget(entry)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </div>
-
-                      {/* ── Desktop row (sm+) ── */}
-                      <div className="hidden sm:grid grid-cols-12 gap-2 px-5 py-3.5 items-center">
-                        {/* Date */}
-                        <div className="col-span-2">
-                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{dateLabel(entry.date)}</p>
-                        </div>
-
-                        {/* Description */}
-                        <div className="col-span-4">
-                          <p className="text-sm text-gray-900 dark:text-white font-medium truncate" title={capFirst(entry.description)}>{capFirst(entry.description)}</p>
-                        </div>
-
-                        {/* Deposit */}
-                        <div className="col-span-2 text-right">
-                          {+entry.deposit > 0 ? (
-                            <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-                              +{formatCurrency(entry.deposit, currency)}
-                            </span>
-                          ) : <span className="text-gray-300 dark:text-gray-600">—</span>}
-                        </div>
-
-                        {/* Withdraw */}
-                        <div className="col-span-2 text-right">
-                          {+entry.withdraw > 0 ? (
-                            <span className="text-sm font-semibold text-red-600 dark:text-red-400">
-                              −{formatCurrency(entry.withdraw, currency)}
-                            </span>
-                          ) : <span className="text-gray-300 dark:text-gray-600">—</span>}
-                        </div>
-
-                        {/* Closing Balance */}
-                        <div className="col-span-1 text-right">
-                          <span className={`text-sm font-bold ${entry.closingBalance >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-600 dark:text-red-400'}`}>
-                            {formatCurrency(entry.closingBalance, currency)}
-                          </span>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="col-span-1 flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => setQuickAddOpen({ open: true, row: entry })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => { setEditingEntry(entry); setEntryModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => setDeleteEntryTarget(entry)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Per-month totals row */}
-                  <div className="hidden sm:grid grid-cols-12 gap-2 px-5 py-2.5 bg-gray-50 dark:bg-gray-700/40 border-t border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                    <div className="col-span-6">{month.label} — {month.entries.length} transaction{month.entries.length !== 1 ? 's' : ''}</div>
-                    <div className="col-span-2 text-right text-green-600 dark:text-green-400">{formatCurrency(month.totalDeposit, currency)}</div>
-                    <div className="col-span-2 text-right text-red-600 dark:text-red-400">{formatCurrency(month.totalWithdraw, currency)}</div>
-                    <div className="col-span-2 text-right text-blue-600 dark:text-blue-400">{formatCurrency(month.entries[0]?.closingBalance ?? (selectedBank?.openingBalance || 0), currency)}</div>
+                    ))}
                   </div>
-                </div>
                 ))}
-
-                {/* All-months grand total */}
-                {showAll && entries.length > 0 && (
-                  <div className="hidden sm:grid grid-cols-12 gap-2 px-5 py-3 bg-gray-100 dark:bg-gray-700 border-t-2 border-gray-300 dark:border-gray-600 text-xs font-black text-gray-700 dark:text-gray-200 uppercase tracking-wide">
-                    <div className="col-span-6">Grand Total — {entries.length} transactions</div>
-                    <div className="col-span-2 text-right text-green-700 dark:text-green-400">{formatCurrency(stats.totalDeposit, currency)}</div>
-                    <div className="col-span-2 text-right text-red-700 dark:text-red-400">{formatCurrency(stats.totalWithdraw, currency)}</div>
-                    <div className="col-span-2 text-right text-blue-700 dark:text-blue-400">{formatCurrency(stats.currentBalance, currency)}</div>
-                  </div>
-                )}
               </div>
             )}
+            </div>
 
             {/* Month navigation — hidden when showing all months or searching */}
             {months.length > 0 && !showAll && !searchActive && (
