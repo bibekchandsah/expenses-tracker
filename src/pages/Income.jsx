@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import CountUpValue from '../components/ui/CountUpValue';
 import { Plus, Search, SlidersHorizontal, X, Download, Edit2, Trash2, Upload, Zap } from 'lucide-react';
+import { useResizableColumns } from '../hooks/useResizableColumns';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
 import { useIncomes } from '../context/IncomeContext';
@@ -43,6 +44,19 @@ const SOURCE_COLORS = {
   Other:      'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-400',
 };
 
+/** Drag handle rendered on the right edge of a resizable <th> */
+function ResizeHandle({ onMouseDown }) {
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      className="absolute right-0 top-0 h-full w-3 flex items-center justify-center cursor-col-resize z-10 group/handle opacity-0 group-hover:opacity-100 transition-opacity"
+      title="Drag to resize"
+    >
+      <div className="w-0.5 h-4 rounded-full bg-gray-300 dark:bg-gray-500 group-hover/handle:bg-green-500 transition-colors" />
+    </div>
+  );
+}
+
 function SortIcon({ field, sortBy, sortDir }) {
   if (sortBy !== field) return <span className="text-gray-400 ml-1 text-xs">⇅</span>;
   return <span className="text-green-600 dark:text-green-400 ml-1 text-xs">{sortDir === 'desc' ? '↓' : '↑'}</span>;
@@ -61,6 +75,10 @@ export default function Income() {
   const { activeYear, bsActiveYear } = useActiveYear();
   const isBS = calendar === 'bs';
   const { sources: incomeSources } = useIncomeSources();
+
+  // Column resize — default widths: Title, Amount, Notes, Description, Source, Actions
+  const INCOME_COL_DEFAULTS = [220, 120, 150, 150, 140, 110];
+  const { colWidths, getResizeHandler, resetWidths } = useResizableColumns('income', INCOME_COL_DEFAULTS, 40);
 
   const [modalOpen, setModalOpen]       = useState(false);
   const [modalPinned, setModalPinned]   = useState(false);
@@ -267,59 +285,60 @@ export default function Income() {
   const hasActiveFilters = filters.source || filters.month || filters.startDate || filters.endDate;
 
   const renderRow = (inc) => (
-    <div key={inc.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors group">
-
+    <>
       {/* ── Mobile card (< sm) ── */}
-      <div className="sm:hidden px-4 py-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{capFirst(inc.title)}</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(inc.date)}</p>
+      <tr key={`${inc.id}-mobile`} className="sm:hidden">
+        <td colSpan="6" className="px-4 py-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{capFirst(inc.title)}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(inc.date)}</p>
+            </div>
+            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+              <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(inc.amount, currency)}</span>
+              {inc.source && (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SOURCE_COLORS[inc.source] ?? SOURCE_COLORS.Other}`}>
+                  {sourceLabel(inc.source, incomeSources)}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(inc.amount, currency)}</span>
-            {inc.source && (
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SOURCE_COLORS[inc.source] ?? SOURCE_COLORS.Other}`}>
-                {sourceLabel(inc.source, incomeSources)}
-              </span>
-            )}
+          {(inc.notes || inc.description) && (
+            <div className="mt-1.5 space-y-0.5">
+              {inc.notes && <p className="text-xs text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">Notes:</span> {capFirst(inc.notes)}</p>}
+              {inc.description && <p className="text-xs text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">Desc:</span> {capFirst(inc.description)}</p>}
+            </div>
+          )}
+          <div className="flex items-center gap-1 mt-1.5">
+            <button onClick={() => setQuickAddOpen({ open: true, row: inc })} className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-lg transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+            <button onClick={() => openEdit(inc)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setDeleteTarget(inc)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
           </div>
-        </div>
-        {(inc.notes || inc.description) && (
-          <div className="mt-1.5 space-y-0.5">
-            {inc.notes && <p className="text-xs text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">Notes:</span> {capFirst(inc.notes)}</p>}
-            {inc.description && <p className="text-xs text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">Desc:</span> {capFirst(inc.description)}</p>}
-          </div>
-        )}
-        <div className="flex items-center gap-1 mt-1.5">
-          <button onClick={() => setQuickAddOpen({ open: true, row: inc })} className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-lg transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
-          <button onClick={() => openEdit(inc)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-          <button onClick={() => setDeleteTarget(inc)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-        </div>
-      </div>
+        </td>
+      </tr>
 
       {/* ── Desktop row (sm+) ── */}
-      <div className="hidden sm:grid grid-cols-12 gap-0 px-4 py-3 items-center">
-        <div className="col-span-3">
+      <tr key={`${inc.id}-desktop`} className="hidden sm:table-row border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors group">
+        <td className="px-3 py-3" style={{ width: colWidths[0] }}>
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{capFirst(inc.title)}</p>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(inc.date)}</p>
-        </div>
-        <div className="col-span-2">
+        </td>
+        <td className="px-3 py-3" style={{ width: colWidths[1] }}>
           <span className="text-sm font-semibold text-green-600 dark:text-green-400">
             {formatCurrency(inc.amount, currency)}
           </span>
-        </div>
-        <div className="col-span-2">
-          <p className="text-sm text-gray-600 dark:text-gray-300 truncate max-w-[140px]" title={capFirst(inc.notes) || ''}>
+        </td>
+        <td className="px-3 py-3" style={{ width: colWidths[2] }}>
+          <p className="text-sm text-gray-600 dark:text-gray-300 truncate" title={capFirst(inc.notes) || ''}>
             {inc.notes ? capFirst(inc.notes) : <span className="text-gray-300 dark:text-gray-600">—</span>}
           </p>
-        </div>
-        <div className="col-span-2">
-          <p className="text-sm text-gray-600 dark:text-gray-300 truncate max-w-[140px]" title={capFirst(inc.description) || ''}>
+        </td>
+        <td className="px-3 py-3" style={{ width: colWidths[3] }}>
+          <p className="text-sm text-gray-600 dark:text-gray-300 truncate" title={capFirst(inc.description) || ''}>
             {inc.description ? capFirst(inc.description) : <span className="text-gray-300 dark:text-gray-600">—</span>}
           </p>
-        </div>
-        <div className="col-span-2">
+        </td>
+        <td className="px-3 py-3" style={{ width: colWidths[4] }}>
           {inc.source ? (
             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SOURCE_COLORS[inc.source] ?? SOURCE_COLORS.Other}`}>
               {sourceLabel(inc.source, incomeSources)}
@@ -327,15 +346,16 @@ export default function Income() {
           ) : (
             <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
           )}
-        </div>
-        <div className="col-span-1 flex items-center justify-end gap-1">
-          <button onClick={() => setQuickAddOpen({ open: true, row: inc })} className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-lg transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
-          <button onClick={() => openEdit(inc)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-          <button onClick={() => setDeleteTarget(inc)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-        </div>
-      </div>
-
-    </div>
+        </td>
+        <td className="px-3 py-3" style={{ width: colWidths[5] }}>
+          <div className="flex items-center justify-end gap-1">
+            <button onClick={() => setQuickAddOpen({ open: true, row: inc })} className="p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-lg transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+            <button onClick={() => openEdit(inc)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setDeleteTarget(inc)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+          </div>
+        </td>
+      </tr>
+    </>
   );
 
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
@@ -484,44 +504,88 @@ export default function Income() {
 
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {/* Header */}
-        <div className="hidden sm:grid grid-cols-12 gap-0 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700">
-          <div className="col-span-3 cursor-pointer select-none flex items-center" onClick={() => handleSort('title')}>
-            Title / Date <SortIcon field="title" sortBy={filters.sortBy} sortDir={filters.sortDir} />
-          </div>
-          <div className="col-span-2 cursor-pointer select-none flex items-center" onClick={() => handleSort('amount')}>
-            Amount <SortIcon field="amount" sortBy={filters.sortBy} sortDir={filters.sortDir} />
-          </div>
-          <div className="col-span-2">Notes</div>
-          <div className="col-span-2">Description</div>
-          <div className="col-span-2 cursor-pointer select-none flex items-center" onClick={() => handleSort('source')}>
-            Source <SortIcon field="source" sortBy={filters.sortBy} sortDir={filters.sortDir} />
-          </div>
-          <div className="col-span-1 text-right">Actions</div>
-        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            {/* Header with resize handles */}
+            <thead className="hidden sm:table-header-group">
+              <tr className="bg-gray-50 dark:bg-gray-700/50 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700">
+                <th className="px-3 py-3 text-left cursor-pointer select-none relative group" style={{ width: colWidths[0] }} onClick={() => handleSort('title')}>
+                  <span className="flex items-center">
+                    Title / Date <SortIcon field="title" sortBy={filters.sortBy} sortDir={filters.sortDir} />
+                  </span>
+                  <ResizeHandle onMouseDown={getResizeHandler(0)} />
+                </th>
+                <th className="px-3 py-3 text-left cursor-pointer select-none relative group" style={{ width: colWidths[1] }} onClick={() => handleSort('amount')}>
+                  <span className="flex items-center">
+                    Amount <SortIcon field="amount" sortBy={filters.sortBy} sortDir={filters.sortDir} />
+                  </span>
+                  <ResizeHandle onMouseDown={getResizeHandler(1)} />
+                </th>
+                <th className="px-3 py-3 text-left relative select-none group" style={{ width: colWidths[2] }}>
+                  Notes
+                  <ResizeHandle onMouseDown={getResizeHandler(2)} />
+                </th>
+                <th className="px-3 py-3 text-left relative select-none group" style={{ width: colWidths[3] }}>
+                  Description
+                  <ResizeHandle onMouseDown={getResizeHandler(3)} />
+                </th>
+                <th className="px-3 py-3 text-left cursor-pointer select-none relative group" style={{ width: colWidths[4] }} onClick={() => handleSort('source')}>
+                  <span className="flex items-center">
+                    Source <SortIcon field="source" sortBy={filters.sortBy} sortDir={filters.sortDir} />
+                  </span>
+                  <ResizeHandle onMouseDown={getResizeHandler(4)} />
+                </th>
+                <th className="px-3 py-3 text-right relative group" style={{ width: colWidths[5] }}>
+                  <div className="flex items-center justify-end gap-2">
+                    <span>Actions</span>
+                    <button
+                      onClick={resetWidths}
+                      className="text-gray-400 hover:text-green-600 transition-colors"
+                      title="Reset column widths"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+                  </div>
+                </th>
+              </tr>
+            </thead>
 
-        {/* Rows */}
-        {searchFiltered.length === 0 ? (
-          <div className="py-16 text-center text-gray-400 dark:text-gray-500">
-            <p className="text-4xl mb-3">💰</p>
-            <p className="font-medium">No income entries yet</p>
-            <p className="text-sm mt-1">Click "Add Income" to get started</p>
-          </div>
-        ) : useMonthView ? (
-          groupedByMonth.flatMap(([month, items]) => [
-            <div key={`mh-${month}`} className="px-4 py-2 bg-gray-50 dark:bg-gray-700/70 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
-                {isBS ? getBSMonthLabel(month, 'long') : monthLabel(month, 'long')}
-              </span>
-              <span className="text-xs text-gray-400 dark:text-gray-500">
-                {items.length} {items.length === 1 ? 'entry' : 'entries'} · {formatCurrency(items.reduce((s, i) => s + (+i.amount || 0), 0), currency)}
-              </span>
-            </div>,
-            ...items.map(renderRow)
-          ])
-        ) : (
-          paginated.map(renderRow)
-        )}
+            {/* Rows */}
+            <tbody>
+              {searchFiltered.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="py-16 text-center text-gray-400 dark:text-gray-500">
+                    <div className="flex flex-col items-center">
+                      <p className="text-4xl mb-3">💰</p>
+                      <p className="font-medium">No income entries yet</p>
+                      <p className="text-sm mt-1">Click "Add Income" to get started</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : useMonthView ? (
+                groupedByMonth.flatMap(([month, items]) => [
+                  <tr key={`mh-${month}`} className="bg-gray-50 dark:bg-gray-700/70 border-b border-gray-200 dark:border-gray-600">
+                    <td colSpan="6" className="px-4 py-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                          {isBS ? getBSMonthLabel(month, 'long') : monthLabel(month, 'long')}
+                        </span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                          {items.length} {items.length === 1 ? 'entry' : 'entries'} · {formatCurrency(items.reduce((s, i) => s + (+i.amount || 0), 0), currency)}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>,
+                  ...items.map(renderRow)
+                ])
+              ) : (
+                paginated.map(renderRow)
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination — only in paginated mode */}
         {!useMonthView && totalPages > 1 && (

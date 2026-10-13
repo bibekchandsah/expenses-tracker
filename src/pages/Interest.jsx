@@ -919,7 +919,7 @@ export default function Interest() {
 
   // Resizable columns: Type&Date, Name, Principal, Rate%, Duration, Interest, Total, Info, Actions
   const INT_COL_DEFAULTS = [150, 140, 110, 80, 90, 120, 120, 60, 100];
-  const { colWidths: intColWidths, getResizeHandler: intResize } = useResizableColumns('interest', INT_COL_DEFAULTS);
+  const { colWidths: intColWidths, getResizeHandler: intResize, resetWidths: intResetWidths } = useResizableColumns('interest', INT_COL_DEFAULTS, 40);
   const [showSidePanel, setShowSidePanel] = useState(() => {
     try { return localStorage.getItem('interestSidePanelVisible') !== 'false'; } catch { return true; }
   });
@@ -1378,7 +1378,20 @@ export default function Interest() {
                   <th className="px-5 py-3 text-right relative select-none group">Interest<ResizeHandle onMouseDown={intResize(5)} /></th>
                   <th className="px-5 py-3 text-right relative select-none group">Total Value<ResizeHandle onMouseDown={intResize(6)} /></th>
                   <th className="px-5 py-3 text-center relative select-none group">Info<ResizeHandle onMouseDown={intResize(7)} /></th>
-                  <th className="px-5 py-3 text-center relative select-none">Actions</th>
+                  <th className="px-5 py-3 text-center relative select-none group" style={{ width: intColWidths[8] }}>
+                    <div className="flex items-center justify-center gap-2">
+                      <span>Actions</span>
+                      <button
+                        onClick={intResetWidths}
+                        className="text-gray-400 hover:text-primary-600 transition-colors"
+                        title="Reset column widths"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </button>
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">

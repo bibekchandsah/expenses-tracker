@@ -5,6 +5,7 @@ import {
   ArrowUp, ArrowDown, ChevronsUpDown,
   PanelRightClose, PanelRightOpen, Upload, Download, Zap, Pin,
 } from 'lucide-react';
+import { useResizableColumns } from '../hooks/useResizableColumns';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
 import { useBanks } from '../context/BankContext';
@@ -22,6 +23,19 @@ import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
 import { exportCSV } from '../utils/csvExport';
 
 const todayStr = () => new Date().toISOString().split('T')[0];
+
+/** Drag handle rendered on the right edge of a resizable <th> */
+function ResizeHandle({ onMouseDown }) {
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      className="absolute right-0 top-0 h-full w-3 flex items-center justify-center cursor-col-resize z-10 group/handle opacity-0 group-hover:opacity-100 transition-opacity"
+      title="Drag to resize"
+    >
+      <div className="w-0.5 h-4 rounded-full bg-gray-300 dark:bg-gray-500 group-hover/handle:bg-primary-500 transition-colors" />
+    </div>
+  );
+}
 
 function SortIcon({ col, sortCol, sortDir }) {
   if (sortCol !== col) return <ChevronsUpDown className="w-3 h-3 opacity-40" />;
@@ -272,6 +286,10 @@ export default function Saving() {
   });
   const [isResizing, setIsResizing] = useState(false);
 
+  // Column resize — default widths: Date, Amount, Expend On, Description, Actions
+  const SAVING_COL_DEFAULTS = [100, 120, 200, 240, 100];
+  const { colWidths, getResizeHandler, resetWidths } = useResizableColumns('saving', SAVING_COL_DEFAULTS, 40);
+
   useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
 
   const bsYearRange = useMemo(() => isBS ? getBSYearRange(yearFilter) : null, [isBS, yearFilter]);
@@ -397,7 +415,7 @@ export default function Saving() {
   const SortBtn = ({ col, label, align = 'left' }) => (
     <button
       onClick={() => handleSort(col)}
-      className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''} w-full hover:text-gray-900 dark:hover:text-white transition-colors ${sortCol === col ? 'text-primary-600 dark:text-primary-400' : ''}`}
+      className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''} hover:text-gray-900 dark:hover:text-white transition-colors ${sortCol === col ? 'text-primary-600 dark:text-primary-400' : ''}`}
     >
       {align === 'right' && <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />}
       <span>{label}</span>
@@ -514,89 +532,131 @@ export default function Saving() {
               </button>
             </div>
 
-            {/* Table header */}
-            <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-2.5 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              <div className="col-span-2"><SortBtn col="date"     label="Date"      /></div>
-              <div className="col-span-2 flex justify-end"><SortBtn col="amount"   label="Amount"    align="right" /></div>
-              <div className="col-span-3"><SortBtn col="expendOn" label="Expend On" /></div>
-              <div className="col-span-4 pl-1">Description</div>
-              <div className="col-span-1 text-right">Act.</div>
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                {/* Table header */}
+                <thead className="hidden lg:table-header-group">
+                  <tr className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    <th className="px-3 py-2.5 text-left relative select-none group" style={{ width: colWidths[0] }}>
+                      <SortBtn col="date" label="Date" />
+                      <ResizeHandle onMouseDown={getResizeHandler(0)} />
+                    </th>
+                    <th className="px-3 py-2.5 text-right relative select-none group" style={{ width: colWidths[1] }}>
+                      <SortBtn col="amount" label="Amount" align="right" />
+                      <ResizeHandle onMouseDown={getResizeHandler(1)} />
+                    </th>
+                    <th className="px-3 py-2.5 text-left relative select-none group" style={{ width: colWidths[2] }}>
+                      <SortBtn col="expendOn" label="Expend On" />
+                      <ResizeHandle onMouseDown={getResizeHandler(2)} />
+                    </th>
+                    <th className="px-3 py-2.5 text-left relative select-none group" style={{ width: colWidths[3] }}>
+                      Description
+                      <ResizeHandle onMouseDown={getResizeHandler(3)} />
+                    </th>
+                    <th className="px-3 py-2.5 text-right relative group" style={{ width: colWidths[4] }}>
+                      <div className="flex items-center justify-end gap-2">
+                        <span>Act.</span>
+                        <button
+                          onClick={resetWidths}
+                          className="text-gray-400 hover:text-primary-600 transition-colors"
+                          title="Reset column widths"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </button>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+
+                {/* Rows */}
+                <tbody>
+                  {filteredSavings.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="py-14 text-center">
+                        <div className="flex flex-col items-center px-4">
+                          <Search className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+                          <p className="text-sm text-gray-500 dark:text-gray-400">No records found</p>
+                          {search && <button onClick={() => setSearch('')} className="mt-2 text-xs text-primary-600 hover:underline">Clear filter</button>}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredSavings.map(row => (
+                      <>
+                        {/* ── Mobile card (< lg) ── */}
+                        <tr key={`${row.id}-mobile`} className="lg:hidden hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                          <td colSpan="5" className="px-4 py-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount, currency)}</p>
+                              <div className="flex-shrink-0">
+                                {row.expendOn
+                                  ? <span className="inline-block px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs">{capFirst(row.expendOn)}</span>
+                                  : <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                                }
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 mt-1">
+                              <p className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">{dateLabel(row.date)}</p>
+                              <div className="flex items-center gap-1 min-w-0">
+                                {row.description && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{capFirst(row.description)}</p>}
+                                <button onClick={() => setQuickAddOpen({ open: true, row: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors flex-shrink-0" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => setSavingModal({ open: true, item: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors flex-shrink-0" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => setDeleteTarget(row)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* ── Desktop row (lg+) ── */}
+                        <tr key={`${row.id}-desktop`} className="hidden lg:table-row hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group border-b border-gray-100 dark:border-gray-700/50">
+                          <td className="px-3 py-3.5 text-xs text-gray-500 dark:text-gray-400" style={{ width: colWidths[0] }}>{dateLabel(row.date)}</td>
+                          <td className="px-3 py-3.5 text-justify" style={{ width: colWidths[1] }}>
+                            <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount, currency)}</span>
+                          </td>
+                          <td className="px-3 py-3.5" style={{ width: colWidths[2] }}>
+                            {row.expendOn
+                              ? <span className="inline-block px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs truncate max-w-full" title={capFirst(row.expendOn)}>{capFirst(row.expendOn)}</span>
+                              : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
+                            }
+                          </td>
+                          <td className="px-3 py-3.5" style={{ width: colWidths[3] }}>
+                            {row.description
+                              ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={capFirst(row.description)}>{capFirst(row.description)}</span>
+                              : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
+                            }
+                          </td>
+                          <td className="px-3 py-3.5 text-right" style={{ width: colWidths[4] }}>
+                            <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => setQuickAddOpen({ open: true, row: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => setSavingModal({ open: true, item: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => setDeleteTarget(row)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      </>
+                    ))
+                  )}
+                </tbody>
+
+                {/* Footer totals */}
+                {filteredSavings.length > 0 && (
+                  <tfoot className="hidden lg:table-footer-group">
+                    <tr className="bg-gray-50 dark:bg-gray-700/50 border-t-2 border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">
+                      <td className="px-3 py-3" style={{ width: colWidths[0] }}>
+                        {filteredSavings.length} record{filteredSavings.length !== 1 ? 's' : ''}{search && ` (of ${savings.length})`}
+                      </td>
+                      <td className="px-3 py-3 text-justify text-gray-900 dark:text-white" style={{ width: colWidths[1] }}>
+                        {formatCurrency(filteredSavings.reduce((s, r) => s + (+r.amount || 0), 0), currency)}
+                      </td>
+                      <td className="px-3 py-3" colSpan="3" style={{ width: colWidths[2] + colWidths[3] + colWidths[4] }} />
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
             </div>
-
-            {/* Rows */}
-            {filteredSavings.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-14 text-center px-4">
-                <Search className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">No records found</p>
-                {search && <button onClick={() => setSearch('')} className="mt-2 text-xs text-primary-600 hover:underline">Clear filter</button>}
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
-                {filteredSavings.map(row => (
-                  <div key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
-
-                    {/* ── Mobile card (< lg) ── */}
-                    <div className="lg:hidden px-4 py-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount, currency)}</p>
-                        <div className="flex-shrink-0">
-                          {row.expendOn
-                            ? <span className="inline-block px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs">{capFirst(row.expendOn)}</span>
-                            : <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
-                          }
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between gap-2 mt-1">
-                        <p className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">{dateLabel(row.date)}</p>
-                        <div className="flex items-center gap-1 min-w-0">
-                          {row.description && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{capFirst(row.description)}</p>}
-                          <button onClick={() => setQuickAddOpen({ open: true, row: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors flex-shrink-0" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => setSavingModal({ open: true, item: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors flex-shrink-0" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => setDeleteTarget(row)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* ── Desktop row (lg+) ── */}
-                    <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-3.5 items-center">
-                      <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">{dateLabel(row.date)}</div>
-                      <div className="col-span-2 text-right">
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(row.amount, currency)}</span>
-                      </div>
-                      <div className="col-span-3">
-                        {row.expendOn
-                          ? <span className="inline-block px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs truncate max-w-full" title={capFirst(row.expendOn)}>{capFirst(row.expendOn)}</span>
-                          : <span className="text-gray-300 dark:text-gray-600 text-sm">-</span>
-                        }
-                      </div>
-                      <div className="col-span-4 pl-1">
-                        {row.description
-                          ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={capFirst(row.description)}>{capFirst(row.description)}</span>
-                          : <span className="text-gray-300 dark:text-gray-600 text-sm">-</span>
-                        }
-                      </div>
-                      <div className="col-span-1 flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setQuickAddOpen({ open: true, row: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => setSavingModal({ open: true, item: row })} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => setDeleteTarget(row)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-                      </div>
-                    </div>
-
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Footer totals */}
-            {filteredSavings.length > 0 && (
-              <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-3 bg-gray-50 dark:bg-gray-700/50 border-t-2 border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">
-                <div className="col-span-2">{filteredSavings.length} record{filteredSavings.length !== 1 ? 's' : ''}{search && ` (of ${savings.length})`}</div>
-                <div className="col-span-2 text-right text-gray-900 dark:text-white">
-                  {formatCurrency(filteredSavings.reduce((s, r) => s + (+r.amount || 0), 0))}
-                </div>
-                <div className="col-span-8" />
-              </div>
-            )}
           </div>
 
           {/* ── Resizable Divider ── */}

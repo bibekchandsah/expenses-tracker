@@ -196,7 +196,7 @@ export default function NetSummary() {
 
   // Resizable columns: Name, Borrowed, To Give, Lent, To Receive, Net, Send Message
   const NS_COL_DEFAULTS = [160, 120, 110, 110, 120, 110, 130];
-  const { colWidths: nsColWidths, getResizeHandler: nsResize } = useResizableColumns('netsummary', NS_COL_DEFAULTS);
+  const { colWidths: nsColWidths, getResizeHandler: nsResize, resetWidths: nsResetWidths } = useResizableColumns('netsummary', NS_COL_DEFAULTS, 40);
 
   function ResizeHandle({ onMouseDown }) {
     return (
@@ -437,7 +437,20 @@ export default function NetSummary() {
                     <th className="px-5 py-2.5 text-right relative select-none group"><SortBtn col="lent"      label="Lent"       align="right" /><ResizeHandle onMouseDown={nsResize(3)} /></th>
                     <th className="px-5 py-2.5 text-right relative select-none group"><SortBtn col="toReceive" label="To Receive" align="right" /><ResizeHandle onMouseDown={nsResize(4)} /></th>
                     <th className="px-5 py-2.5 text-right relative select-none group"><SortBtn col="net"       label="Net"        align="right" /><ResizeHandle onMouseDown={nsResize(5)} /></th>
-                    <th className="px-5 py-2.5 text-center relative select-none whitespace-nowrap">Send Message</th>
+                    <th className="px-5 py-2.5 text-center relative select-none whitespace-nowrap group" style={{ width: nsColWidths[6] }}>
+                      <div className="flex items-center justify-center gap-2">
+                        <span>Send Message</span>
+                        <button
+                          onClick={nsResetWidths}
+                          className="text-gray-400 hover:text-primary-600 transition-colors"
+                          title="Reset column widths"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </button>
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">

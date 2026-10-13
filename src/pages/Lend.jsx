@@ -5,6 +5,7 @@ import {
   ArrowUp, ArrowDown, ChevronsUpDown, User, CheckCircle2, AlertCircle, ChevronDown,
   PanelRightClose, PanelRightOpen, Upload, Download, Zap, Pin, Building2,
 } from 'lucide-react';
+import { useResizableColumns } from '../hooks/useResizableColumns';
 import CSVImportModal from '../components/CSVImportModal';
 import QuickAddModal from '../components/QuickAddModal';
 import { useBanks } from '../context/BankContext';
@@ -21,6 +22,19 @@ import { useActiveYear } from '../context/ActiveYearContext';
 import YearSelector from '../components/ui/YearSelector';
 import NepaliDatePickerInput from '../components/ui/NepaliDatePickerInput';
 import { exportCSV } from '../utils/csvExport';
+
+/** Drag handle rendered on the right edge of a resizable <th> */
+function ResizeHandle({ onMouseDown }) {
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      className="absolute right-0 top-0 h-full w-3 flex items-center justify-center cursor-col-resize z-10 group/handle opacity-0 group-hover:opacity-100 transition-opacity"
+      title="Drag to resize"
+    >
+      <div className="w-0.5 h-4 rounded-full bg-gray-300 dark:bg-gray-500 group-hover/handle:bg-primary-500 transition-colors" />
+    </div>
+  );
+}
 
 // ── Add / Edit Lend Modal ───────────────────────────────────────
 const EMPTY_FORM = {
@@ -355,6 +369,10 @@ export default function Lend() {
   });
   const [isResizing, setIsResizing] = useState(false);
   
+  // Column resize — default widths: Date, Name, Lent, Reason, Returned, Due, Description, Actions
+  const LEND_COL_DEFAULTS = [100, 140, 100, 140, 100, 100, 160, 100];
+  const { colWidths, getResizeHandler, resetWidths } = useResizableColumns('lend', LEND_COL_DEFAULTS, 40);
+
   const { activeYear, bsActiveYear } = useActiveYear();
   const isBS = calendar === 'bs';
   const [yearFilter, setYearFilter] = useState(() => isBS ? bsActiveYear : activeYear);
@@ -617,7 +635,7 @@ export default function Lend() {
   const SortBtn = ({ col, label, align = 'left' }) => (
     <button
       onClick={() => handleSort(col)}
-      className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''} w-full hover:text-gray-900 dark:hover:text-white transition-colors ${sortCol === col ? 'text-primary-600 dark:text-primary-400' : ''}`}
+      className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''} hover:text-gray-900 dark:hover:text-white transition-colors ${sortCol === col ? 'text-primary-600 dark:text-primary-400' : ''}`}
     >
       {align === 'right' && <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />}
       <span>{label}</span>
@@ -733,143 +751,194 @@ export default function Lend() {
               )}
             </div>
 
-            {/* Table header */}
-            <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-2.5 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              <div className="col-span-2"><SortBtn col="date"           label="Date"     /></div>
-              <div className="col-span-2"><SortBtn col="name"           label="Name"     /></div>
-              <div className="col-span-1 flex justify-end"><SortBtn col="amount"         label="Lent"     align="right" /></div>
-              <div className="col-span-2"><SortBtn col="reason"         label="Reason"   /></div>
-              <div className="col-span-1 flex justify-end"><SortBtn col="returnedAmount" label="Returned" align="right" /></div>
-              <div className="col-span-1 flex justify-end"><SortBtn col="remaining"      label="Due"      align="right" /></div>
-              <div className="col-span-2 text-left pl-1">Description</div>
-              <div className="col-span-1 text-right">Act.</div>
-            </div>
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                {/* Table header */}
+                <thead className="hidden lg:table-header-group">
+                  <tr className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    <th className="px-3 py-2.5 text-left relative select-none group" style={{ width: colWidths[0] }}>
+                      <SortBtn col="date" label="Date" />
+                      <ResizeHandle onMouseDown={getResizeHandler(0)} />
+                    </th>
+                    <th className="px-3 py-2.5 text-left relative select-none group" style={{ width: colWidths[1] }}>
+                      <SortBtn col="name" label="Name" />
+                      <ResizeHandle onMouseDown={getResizeHandler(1)} />
+                    </th>
+                    <th className="px-3 py-2.5 text-right relative select-none group" style={{ width: colWidths[2] }}>
+                      <SortBtn col="amount" label="Lent" align="right" />
+                      <ResizeHandle onMouseDown={getResizeHandler(2)} />
+                    </th>
+                    <th className="px-3 py-2.5 text-left relative select-none group" style={{ width: colWidths[3] }}>
+                      <SortBtn col="reason" label="Reason" />
+                      <ResizeHandle onMouseDown={getResizeHandler(3)} />
+                    </th>
+                    <th className="px-3 py-2.5 text-right relative select-none group" style={{ width: colWidths[4] }}>
+                      <SortBtn col="returnedAmount" label="Returned" align="right" />
+                      <ResizeHandle onMouseDown={getResizeHandler(4)} />
+                    </th>
+                    <th className="px-3 py-2.5 text-right relative select-none group" style={{ width: colWidths[5] }}>
+                      <SortBtn col="remaining" label="Due" align="right" />
+                      <ResizeHandle onMouseDown={getResizeHandler(5)} />
+                    </th>
+                    <th className="px-3 py-2.5 text-left relative select-none group" style={{ width: colWidths[6] }}>
+                      Description
+                      <ResizeHandle onMouseDown={getResizeHandler(6)} />
+                    </th>
+                    <th className="px-3 py-2.5 text-right relative group" style={{ width: colWidths[7] }}>
+                      <div className="flex items-center justify-end gap-2">
+                        <span>Act.</span>
+                        <button
+                          onClick={resetWidths}
+                          className="text-gray-400 hover:text-primary-600 transition-colors"
+                          title="Reset column widths"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </button>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
 
-            {/* Rows */}
-            {filteredLends.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-14 text-center px-4">
-                <Search className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">No records found</p>
-                {(search || personFilter) && (
-                  <button onClick={() => { setSearch(''); setPersonFilter(null); }} className="mt-2 text-xs text-primary-600 hover:underline">Clear filter</button>
+                {/* Rows */}
+                <tbody>
+                  {filteredLends.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="py-14 text-center">
+                        <div className="flex flex-col items-center px-4">
+                          <Search className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+                          <p className="text-sm text-gray-500 dark:text-gray-400">No records found</p>
+                          {(search || personFilter) && (
+                            <button onClick={() => { setSearch(''); setPersonFilter(null); }} className="mt-2 text-xs text-primary-600 hover:underline">Clear filter</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredLends.map(lend => {
+                      const remaining = (+lend.amount || 0) - (+lend.returnedAmount || 0);
+                      const isSettled = remaining <= 0;
+                      return (
+                        <>
+                          {/* ── Mobile card (< lg) ── */}
+                          <tr key={`${lend.id}-mobile`} className="lg:hidden hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                            <td colSpan="8" className="px-4 py-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <button
+                                    onClick={() => { setPersonFilter(p => p === (lend.name || '').trim().toLowerCase() ? null : (lend.name || '').trim().toLowerCase()); setSearch(''); }}
+                                    className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline text-left"
+                                  >{capWords(lend.name)}</button>
+                                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(lend.date)}</p>
+                                </div>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <button onClick={() => setQuickAddOpen({ open: true, row: lend })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => { setEditingLend(lend); setModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => setDeleteTarget(lend)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2 mt-2">
+                                <div>
+                                  <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Lent</p>
+                                  <p className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(lend.amount, currency)}</p>
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Returned</p>
+                                  {+lend.returnedAmount > 0
+                                    ? <p className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(lend.returnedAmount, currency)}</p>
+                                    : <p className="text-sm text-gray-300 dark:text-gray-600">—</p>
+                                  }
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Due</p>
+                                  {isSettled
+                                    ? <span className="inline-flex items-center justify-end gap-0.5 text-xs font-semibold text-green-600 dark:text-green-400"><CheckCircle2 className="w-3 h-3" /> Settled</span>
+                                    : <p className="text-sm font-bold text-red-600 dark:text-red-400">{formatCurrency(remaining, currency)}</p>
+                                  }
+                                </div>
+                              </div>
+                              {(lend.reason || lend.description) && (
+                                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5">
+                                  {lend.reason && <p className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Reason:</span> {capFirst(lend.reason)}</p>}
+                                  {lend.description && <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1"><span className="text-gray-400 dark:text-gray-500">Note:</span> {capFirst(lend.description)}</p>}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+
+                          {/* ── Desktop row (lg+) ── */}
+                          <tr key={`${lend.id}-desktop`} className="hidden lg:table-row hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group border-b border-gray-100 dark:border-gray-700/50">
+                            <td className="px-3 py-3.5 text-xs text-gray-500 dark:text-gray-400" style={{ width: colWidths[0] }}>{dateLabel(lend.date)}</td>
+                            <td className="px-3 py-3.5" style={{ width: colWidths[1] }}>
+                              <button
+                                onClick={() => { setPersonFilter(p => p === (lend.name || '').trim().toLowerCase() ? null : (lend.name || '').trim().toLowerCase()); setSearch(''); }}
+                                className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline truncate max-w-full text-left"
+                                title={`Filter by ${capWords(lend.name)}`}
+                              >{capWords(lend.name)}</button>
+                            </td>
+                            <td className="px-3 py-3.5 text-right" style={{ width: colWidths[2] }}>
+                              <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(lend.amount, currency)}</span>
+                            </td>
+                            <td className="px-3 py-3.5" style={{ width: colWidths[3] }}>
+                              <span className="text-sm text-gray-600 dark:text-gray-400 truncate block" title={lend.reason}>{lend.reason ? capFirst(lend.reason) : '—'}</span>
+                            </td>
+                            <td className="px-3 py-3.5 text-right" style={{ width: colWidths[4] }}>
+                              {+lend.returnedAmount > 0
+                                ? <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(lend.returnedAmount, currency)}</span>
+                                : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
+                              }
+                            </td>
+                            <td className="px-3 py-3.5 text-right" style={{ width: colWidths[5] }}>
+                              {isSettled
+                                ? <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-green-600 dark:text-green-400"><CheckCircle2 className="w-3 h-3" /> Settled</span>
+                                : <span className="text-sm font-bold text-red-600 dark:text-red-400">{formatCurrency(remaining, currency)}</span>
+                              }
+                            </td>
+                            <td className="px-3 py-3.5" style={{ width: colWidths[6] }}>
+                              {lend.description
+                                ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={capFirst(lend.description)}>{capFirst(lend.description)}</span>
+                                : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
+                              }
+                            </td>
+                            <td className="px-3 py-3.5 text-right" style={{ width: colWidths[7] }}>
+                              <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => setQuickAddOpen({ open: true, row: lend })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => { setEditingLend(lend); setModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => setDeleteTarget(lend)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        </>
+                      );
+                    })
+                  )}
+                </tbody>
+
+                {/* Table footer totals */}
+                {filteredLends.length > 0 && (
+                  <tfoot className="hidden lg:table-footer-group">
+                    <tr className="bg-gray-50 dark:bg-gray-700/50 border-t-2 border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">
+                      <td className="px-3 py-3" colSpan="2" style={{ width: colWidths[0] + colWidths[1] }}>
+                        {filteredLends.length} record{filteredLends.length !== 1 ? 's' : ''}
+                      </td>
+                      <td className="px-3 py-3 text-right text-gray-900 dark:text-white" style={{ width: colWidths[2] }}>
+                        {formatCurrency(filteredLends.reduce((s, l) => s + (+l.amount || 0), 0), currency)}
+                      </td>
+                      <td className="px-3 py-3" style={{ width: colWidths[3] }} />
+                      <td className="px-3 py-3 text-right text-green-600 dark:text-green-400" style={{ width: colWidths[4] }}>
+                        {formatCurrency(filteredLends.reduce((s, l) => s + (+l.returnedAmount || 0), 0), currency)}
+                      </td>
+                      <td className="px-3 py-3 text-right text-red-600 dark:text-red-400" style={{ width: colWidths[5] }}>
+                        {formatCurrency(filteredLends.reduce((s, l) => s + ((+l.amount || 0) - (+l.returnedAmount || 0)), 0), currency)}
+                      </td>
+                      <td className="px-3 py-3" colSpan="2" style={{ width: colWidths[6] + colWidths[7] }} />
+                    </tr>
+                  </tfoot>
                 )}
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
-                {filteredLends.map(lend => {
-                  const remaining = (+lend.amount || 0) - (+lend.returnedAmount || 0);
-                  const isSettled = remaining <= 0;
-                  return (
-                    <div key={lend.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
-
-                      {/* ── Mobile card (< lg) ── */}
-                      <div className="lg:hidden px-4 py-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <button
-                              onClick={() => { setPersonFilter(p => p === (lend.name || '').trim().toLowerCase() ? null : (lend.name || '').trim().toLowerCase()); setSearch(''); }}
-                              className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline text-left"
-                            >{capWords(lend.name)}</button>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel(lend.date)}</p>
-                          </div>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <button onClick={() => setQuickAddOpen({ open: true, row: lend })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => { setEditingLend(lend); setModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => setDeleteTarget(lend)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 mt-2">
-                          <div>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Lent</p>
-                            <p className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(lend.amount, currency)}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Returned</p>
-                            {+lend.returnedAmount > 0
-                              ? <p className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(lend.returnedAmount, currency)}</p>
-                              : <p className="text-sm text-gray-300 dark:text-gray-600">—</p>
-                            }
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Due</p>
-                            {isSettled
-                              ? <span className="inline-flex items-center justify-end gap-0.5 text-xs font-semibold text-green-600 dark:text-green-400"><CheckCircle2 className="w-3 h-3" /> Settled</span>
-                              : <p className="text-sm font-bold text-red-600 dark:text-red-400">{formatCurrency(remaining, currency)}</p>
-                            }
-                          </div>
-                        </div>
-                        {(lend.reason || lend.description) && (
-                          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5">
-                            {lend.reason && <p className="text-xs text-gray-500 dark:text-gray-400"><span className="text-gray-400 dark:text-gray-500">Reason:</span> {capFirst(lend.reason)}</p>}
-                            {lend.description && <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1"><span className="text-gray-400 dark:text-gray-500">Note:</span> {capFirst(lend.description)}</p>}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* ── Desktop row (lg+) ── */}
-                      <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-3.5 items-center">
-                        <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">{dateLabel(lend.date)}</div>
-                        <div className="col-span-2">
-                          <button
-                            onClick={() => { setPersonFilter(p => p === (lend.name || '').trim().toLowerCase() ? null : (lend.name || '').trim().toLowerCase()); setSearch(''); }}
-                            className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline truncate max-w-full text-left"
-                            title={`Filter by ${capWords(lend.name)}`}
-                          >{capWords(lend.name)}</button>
-                        </div>
-                        <div className="col-span-1 text-right">
-                          <span className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(lend.amount, currency)}</span>
-                        </div>
-                        <div className="col-span-2">
-                          <span className="text-sm text-gray-600 dark:text-gray-400 truncate block" title={lend.reason}>{lend.reason ? capFirst(lend.reason) : '—'}</span>
-                        </div>
-                        <div className="col-span-1 text-right">
-                          {+lend.returnedAmount > 0
-                            ? <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCurrency(lend.returnedAmount, currency)}</span>
-                            : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
-                          }
-                        </div>
-                        <div className="col-span-1 text-right">
-                          {isSettled
-                            ? <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-green-600 dark:text-green-400"><CheckCircle2 className="w-3 h-3" /> Settled</span>
-                            : <span className="text-sm font-bold text-red-600 dark:text-red-400">{formatCurrency(remaining, currency)}</span>
-                          }
-                        </div>
-                        <div className="col-span-2 pl-1">
-                          {lend.description
-                            ? <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" title={capFirst(lend.description)}>{capFirst(lend.description)}</span>
-                            : <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
-                          }
-                        </div>
-                        <div className="col-span-1 flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => setQuickAddOpen({ open: true, row: lend })} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors" title="Quick Add"><Zap className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => { setEditingLend(lend); setModalOpen(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => setDeleteTarget(lend)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                      </div>
-
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Table footer totals */}
-            {filteredLends.length > 0 && (
-              <div className="hidden lg:grid grid-cols-12 gap-1 px-5 py-3 bg-gray-50 dark:bg-gray-700/50 border-t-2 border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">
-                <div className="col-span-4">{filteredLends.length} record{filteredLends.length !== 1 ? 's' : ''}</div>
-                <div className="col-span-1 text-right text-gray-900 dark:text-white">
-                  {formatCurrency(filteredLends.reduce((s, l) => s + (+l.amount || 0), 0))}
-                </div>
-                <div className="col-span-2" />
-                <div className="col-span-1 text-right text-green-600 dark:text-green-400">
-                  {formatCurrency(filteredLends.reduce((s, l) => s + (+l.returnedAmount || 0), 0))}
-                </div>
-                <div className="col-span-1 text-right text-red-600 dark:text-red-400">
-                  {formatCurrency(filteredLends.reduce((s, l) => s + ((+l.amount || 0) - (+l.returnedAmount || 0)), 0))}
-                </div>
-                <div className="col-span-3" />
-              </div>
-            )}
+              </table>
+            </div>
           </div>
 
           {/* ── Resizable Divider ── */}

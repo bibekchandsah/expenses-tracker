@@ -459,7 +459,7 @@ export default function Bank() {
 
   // Resizable columns: Date, Description, Deposit, Withdraw, Balance, Actions
   const BANK_COL_DEFAULTS = [110, 260, 120, 120, 110, 100];
-  const { colWidths: bankColWidths, getResizeHandler: bankResize } = useResizableColumns('bank', BANK_COL_DEFAULTS);
+  const { colWidths: bankColWidths, getResizeHandler: bankResize, resetWidths: bankResetWidths } = useResizableColumns('bank', BANK_COL_DEFAULTS, 40);
   const [yearFilter, setYearFilter] = useState(() => isBS ? bsActiveYear : activeYear);
 
   useEffect(() => { setYearFilter(isBS ? bsActiveYear : activeYear); setMonthPage(0); }, [activeYear, bsActiveYear, calendar]); // eslint-disable-line
@@ -808,7 +808,20 @@ export default function Bank() {
                       <ResizeHandle onMouseDown={bankResize(idx)} />
                     </th>
                   ))}
-                  <th className="px-5 py-2.5 text-right relative select-none">Actions</th>
+                  <th className="px-5 py-2.5 text-right relative select-none group" style={{ width: bankColWidths[5] }}>
+                    <div className="flex items-center justify-end gap-2">
+                      <span>Actions</span>
+                      <button
+                        onClick={bankResetWidths}
+                        className="text-gray-400 hover:text-primary-600 transition-colors"
+                        title="Reset column widths"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </button>
+                    </div>
+                  </th>
                 </tr>
               </thead>
 
