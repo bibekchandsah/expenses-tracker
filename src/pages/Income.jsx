@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import CountUpValue from '../components/ui/CountUpValue';
 import { Plus, Search, SlidersHorizontal, X, Download, Edit2, Trash2, Upload, Zap } from 'lucide-react';
 import { useResizableColumns } from '../hooks/useResizableColumns';
@@ -285,7 +285,7 @@ export default function Income() {
   const hasActiveFilters = filters.source || filters.month || filters.startDate || filters.endDate;
 
   const renderRow = (inc) => (
-    <>
+    <React.Fragment key={inc.id}>
       {/* ── Mobile card (< sm) ── */}
       <tr key={`${inc.id}-mobile`} className="sm:hidden">
         <td colSpan="6" className="px-4 py-3">
@@ -355,7 +355,7 @@ export default function Income() {
           </div>
         </td>
       </tr>
-    </>
+    </React.Fragment>
   );
 
   if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;

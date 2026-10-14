@@ -192,11 +192,11 @@ export default function NetSummary() {
       .sort((a, b) => b.total - a.total);
   }, [expenses, getCategoryById, yearFilter, catMonth, isBS, bsYearRange]);
 
-  if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
-
   // Resizable columns: Name, Borrowed, To Give, Lent, To Receive, Net, Send Message
   const NS_COL_DEFAULTS = [160, 120, 110, 110, 120, 110, 130];
   const { colWidths: nsColWidths, getResizeHandler: nsResize, resetWidths: nsResetWidths } = useResizableColumns('netsummary', NS_COL_DEFAULTS, 40);
+
+  if (loading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
 
   function ResizeHandle({ onMouseDown }) {
     return (
